@@ -1043,6 +1043,10 @@ static int zynq_nand_check_is_16bit_bw_flash(void)
 	return is_16bit_bw;
 }
 
+#if defined(CONFIG_MARS_ZX)
+extern void zx_set_storage (int store);
+#endif
+
 static int zynq_nand_init(struct nand_chip *nand_chip, int devnum)
 {
 	struct zynq_nand_info *xnand;
@@ -1061,7 +1065,9 @@ static int zynq_nand_init(struct nand_chip *nand_chip, int devnum)
 		printf("%s: failed to allocate\n", __func__);
 		goto free;
 	}
-
+#if defined (CONFIG_MARS_ZX)
+        zx_set_storage(ZX_NAND);
+#endif
 	xnand->nand_base = (void *)ZYNQ_NAND_BASEADDR;
 	mtd = &nand_info[0];
 

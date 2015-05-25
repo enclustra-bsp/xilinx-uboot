@@ -768,11 +768,19 @@ static int zynq_qspi_transfer(struct zynq_qspi_priv *priv)
 	return 0;
 }
 
+#if defined (CONFIG_MARS_ZX)
+extern void zx_set_storage(int store);
+#endif
+
 static int zynq_qspi_claim_bus(struct udevice *dev)
 {
 	struct udevice *bus = dev->parent;
 	struct zynq_qspi_priv *priv = dev_get_priv(bus);
 	struct zynq_qspi_regs *regs = priv->regs;
+
+#if defined (CONFIG_MARS_ZX)
+	zx_set_storage(ZX_QSPI);
+#endif
 
 	debug("%s\n", __func__);
 	writel(ZYNQ_QSPI_ENABLE_ENABLE_MASK, &regs->enbr);
