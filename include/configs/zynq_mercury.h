@@ -12,6 +12,7 @@
 #define __CONFIG_ZYNQ_MERCURY_H
 
 #define CONFIG_CPU_FREQ_HZ		800000000
+#define CONFIG_MERCURY_ZX
 
 #define CONFIG_SYS_SDRAM_SIZE		(1024 * 1024 * 1024)
 
@@ -24,12 +25,17 @@
 #define CONFIG_ZYNQ_USB
 #define CONFIG_ZYNQ_SDHCI0
 #define CONFIG_ZYNQ_QSPI
+#define CONFIG_NAND_ZYNQ
 
 #define CONFIG_ZYNQ_BOOT_FREEBSD
 
 #include <configs/zynq-common.h>
 
-/*#define MTDIDS_DEFAULT          "nand0=nand"
+#define ZX_NONE    (0)
+#define ZX_NAND    (1)
+#define ZX_QSPI    (2)
+
+#define MTDIDS_DEFAULT          "nand0=nand"
 #define MTDPARTS_DEFAULT        "mtdparts=" \
                                 "nand:5m(nand-linux)," \
                                 "1m(nand-device-tree)," \
@@ -43,7 +49,7 @@
 #define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_PARTITIONS
 #define CONFIG_RBTREE
-#define CONFIG_CMD_UBI*/
+#define CONFIG_CMD_UBI
 
 /* QSPI Flash Memory Map */
 #define QSPI_BOOT_OFFSET          0x00000000   // Storage for Bootimage (FSBL, FPGA Bitstream, UBoot)
@@ -88,8 +94,8 @@
                                                 \
     "fdt_high=0x20000000\0"                     \
     "initrd_high=0x20000000\0"                  \
-   /* "mtdids=" MTDIDS_DEFAULT "\0" */   \
-  /*  "mtdparts=" MTDPARTS_DEFAULT "\0" */\
+    "mtdids=" MTDIDS_DEFAULT "\0" 		\
+    "mtdparts=" MTDPARTS_DEFAULT "\0" 		\
     "nandargs=setenv bootargs console=ttyPS0,115200 " \
         "root=ubi0:ubi-rootfs rw " \
         "rootfstype=ubifs " \

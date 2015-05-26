@@ -768,7 +768,87 @@ static int zynq_qspi_transfer(struct zynq_qspi_priv *priv)
 	return 0;
 }
 
-#if defined (CONFIG_MARS_ZX)
+/*
+ * zynq_qspi_check_is_dual_flash - checking for dual or single qspi
+ *
+ * This function will check the type of the flash whether it supports
+ * single or dual qspi based on the MIO configuration done by FSBL.
+ *
+ * User needs to correctly configure the MIO's based on the
+ * number of qspi flashes present on the board.
+ *
+ * function will return -1, if there is no MIO configuration for
+ * qspi flash.
+ */
+static int zynq_qspi_check_is_dual_flash(int *is_dio)
+{
+	int is_dual = -1;
+	int lower_mio = 0, upper_mio = 0, upper_mio_cs1 = 0;
+
+	lower_mio = zynq_slcr_get_mio_pin_status("qspi0");
+	if (lower_mio == ZYNQ_QSPI_MIO_NUM_QSPI0) {
+		is_dual = SF_SINGLE_FLASH;
+	} else {
+		lower_mio = zynq_slcr_get_mio_pin_status("qspi0_dio");
+		if (lower_mio == ZYNQ_QSPI_MIO_NUM_QSPI0_DIO) {
+			debug("QSPI in Single 2-bit\n");
+			*is_dio = SF_DUALIO_FLASH;
+			is_dual = SF_SINGLE_FLASH;
+		}
+	}
+
+	if (*is_dio != SF_DUALIO_FLASH) {
+		upper_mio_cs1 = zynq_slcr_get_mio_pin_status("qspi1_cs");
+		if ((lower_mio == ZYNQ_QSPI_MIO_NUM_QSPI0) &&
+		    (upper_mio_cs1 == ZYNQ_QSPI_MIO_NUM_QSPI1_CS))
+			is_dual = SF_DUAL_STACKED_FLASH;
+
+		upper_mio = zynq_slcr_get_mio_pin_status("qspi1");
+		if ((lower_mio == ZYNQ_QSPI_MIO_NUM_QSPI0) &&
+		    (upper_mio_cs1 == ZYNQ_QSPI_MIO_NUM_QSPI1_CS) &&
+		    (upper_mio == ZYNQ_QSPI_MIO_NUM_QSPI1))
+			is_dual = SF_DUAL_PARALLEL_FLASH;
+	} else {
+		upper_mio_cs1 = zynq_slcr_get_mio_pin_status("qspi1_cs_dio");
+		if ((lower_mio == ZYNQ_QSPI_MIO_NUM_QSPI0_DIO) &&
+		    (upper_mio_cs1 == ZYNQ_QSPI_MIO_NUM_QSPI1_CS_DIO)) {
+			debug("QSPI in DualStacked 2-bit\n");
+			is_dual = SF_DUAL_STACKED_FLASH;
+		}
+		upper_mio = zynq_slcr_get_mio_pin_status("qspi1_dio");
+		if ((lower_mio == ZYNQ_QSPI_MIO_NUM_QSPI0_DIO) &&
+		    (upper_mio_cs1 == ZYNQ_QSPI_MIO_NUM_QSPI1_CS_DIO) &&
+		    (upper_mio == ZYNQ_QSPI_MIO_NUM_QSPI1_DIO)) {
+			debug("QSPI in DualParallel 2-bit\n");
+			is_dual = SF_DUAL_PARALLEL_FLASH;
+		}
+	}
+
+	return is_dual;
+}
+
+int spi_cs_is_valid(unsigned int bus, unsigned int cs)
+{
+	/* 1 bus with 2 chipselect */
+	return bus == 0 && cs < 2;
+}
+
+void spi_cs_activate(struct spi_slave *slave)
+{
+	debug("%s: slave 0x%08x\n", __func__, (unsigned)slave);
+}
+
+void spi_cs_deactivate(struct spi_slave *slave)
+{
+	debug("%s: slave 0x%08x\n", __func__, (unsigned)slave);
+}
+
+void spi_init()
+{
+	debug("%s\n", __func__);
+}
+
+#if defined(CONFIG_MARS_ZX) || defined(CONFIG_MERCURY_ZX)
 extern void zx_set_storage(int store);
 #endif
 
@@ -778,11 +858,13 @@ static int zynq_qspi_claim_bus(struct udevice *dev)
 	struct zynq_qspi_priv *priv = dev_get_priv(bus);
 	struct zynq_qspi_regs *regs = priv->regs;
 
-#if defined (CONFIG_MARS_ZX)
+#if defined(CONFIG_MARS_ZX) || defined(CONFIG_MERCURY_ZX)
 	zx_set_storage(ZX_QSPI);
 #endif
 
-	debug("%s\n", __func__);
+	debug("%s: bus: %d cs: %d max_hz: %d mode: %d\n",
+	      __func__, bus, cs, max_hz, mode);
+
 	writel(ZYNQ_QSPI_ENABLE_ENABLE_MASK, &regs->enbr);
 
 	return 0;

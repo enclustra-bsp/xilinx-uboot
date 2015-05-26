@@ -31,7 +31,7 @@ static xilinx_desc fpga045 = XILINX_XC7Z045_DESC(0x45);
 static xilinx_desc fpga100 = XILINX_XC7Z100_DESC(0x100);
 #endif
 
-#if defined(CONFIG_MARS_ZX)
+#if defined(CONFIG_MARS_ZX) || defined(CONFIG_MERCURY_ZX)
 
 extern void zynq_slcr_unlock(void);
 extern void zynq_slcr_lock(void);
