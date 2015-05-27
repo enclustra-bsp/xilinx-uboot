@@ -1,1 +1,1 @@
-mmc rescan && fatload mmc 0 ${kernel_loadaddr} ${kernel_image} && fatload mmc 0 {devicetree_loadaddr} ${devicetree_image} && fatload mmc 0 ${ramdisk_loadaddr} ${ramdisk_image} && bootm ${kernel_loadaddr} ${ramdisk_loadaddr} ${devicetree_loadaddr}
+mmc rescan && fatload mmc 0 ${kernel_loadaddr} ${kernel_image} && fatload mmc 0 {devicetree_loadaddr} ${devicetree_image} ${devicetree_image} && fatload mmc 0 ${ramdisk_loadaddr} ${ramdisk_image} && bootm ${kernel_loadaddr} ${ramdisk_loadaddr} ${devicetree_loadaddr}
