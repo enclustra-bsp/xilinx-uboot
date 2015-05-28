@@ -27,6 +27,9 @@ config TARGET_ZYNQ_CSE
 config TARGET_ZYNQ_MARS_ZX3
 	bool "Enclustra Mars ZX3 SOM"
 
+config TARGET_ZYNQ_MARS_ZX2
+	bool "Enclustra Mars ZX2 SOM"
+
 config TARGET_ZYNQ_MERCURY
 	bool "Enclustra Mercury family SOM's"
 
@@ -50,6 +53,7 @@ config SYS_CONFIG_NAME
 	default "zynq_cse" if TARGET_ZYNQ_CSE
 	default "zynq_afx" if TARGET_ZYNQ_AFX
 	default "zynq_mars_zx3" if TARGET_ZYNQ_MARS_ZX3
+	default "zynq_mars_zx2" if TARGET_ZYNQ_MARS_ZX2
 	default "zynq_mercury" if TARGET_ZYNQ_MERCURY
 
 endif
