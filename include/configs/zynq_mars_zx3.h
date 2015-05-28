@@ -39,32 +39,31 @@
 
 #define MTDIDS_DEFAULT          "nand0=nand"
 #define MTDPARTS_DEFAULT        "mtdparts=" \
-                                "nand:5m(nand-linux)," \
-                                "1m(nand-device-tree)," \
-                                "-(nand-rootfs)"
-
-#define MTDIDS_DEFAULT          "nand0=nand"
-#define MTDPARTS_DEFAULT        "mtdparts=" \
-                                "nand:5m(nand-linux)," \
-                                "1m(nand-device-tree)," \
+                                "nand:5M(nand-linux),"  \
+                                "1M(nand-device-tree)," \
+				"1M(nand-bootscript),"  \
                                 "-(nand-rootfs)"
 #define CONFIG_MTD_DEVICE
 #define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_PARTITIONS
 #define CONFIG_RBTREE
-#define CONFIG_CMD_UBI
+/*#define CONFIG_CMD_UBI
+#define CONFIG_CMD_UBIFS
+#define CONFIG_LZO*/
 
 /* QSPI Flash Memory Map */
 #define QSPI_BOOT_OFFSET          0x00000000   // Storage for Bootimage (FSBL, FPGA Bitstream, UBoot)
 #define QSPI_BOOT_SIZE            0x00600000   // size 6MB
 #define QSPI_RESCUELINUX_OFFSET   0x00600000   // Storage for Linux Kernel
-#define QSPI_RESCUELINUX_SIZE     0x00300000   // size 3MB
-#define QSPI_RESCUEDTB_OFFSET     0x00900000   // Storage for Linux Devicetree
+#define QSPI_RESCUELINUX_SIZE     0x00500000   // size 5MB
+#define QSPI_RESCUEDTB_OFFSET     0x00B00000   // Storage for Linux Devicetree
 #define QSPI_RESCUEDTB_SIZE       0x00080000   // size 512kB
-#define QSPI_BOOTARGS_OFFSET      0x00980000   // Storage for Uboot Environment
+#define QSPI_BOOTARGS_OFFSET      0x00B80000   // Storage for Uboot Environment
 #define QSPI_BOOTARGS_SIZE        0x00080000   // size 512kB
-#define QSPI_RESCUEROOTFS_OFFSET  0x00A00000   // Storage for Linux Root FS
-#define QSPI_RESCUEROOTFS_SIZE    0x00600000   // size 6MB
+#define QSPI_BOOTSCRIPT_OFFSET    0x00C00000   // Storage for Uboot boot script
+#define QSPI_BOOTSCRIPT_SIZE      0x00010000   // size 128kB
+#define QSPI_RESCUEROOTFS_OFFSET  0x00C10000   // Storage for Linux Root FS
+#define QSPI_RESCUEROOTFS_SIZE    0x003F0000   // size 3.9MB
 
 #ifdef CONFIG_ENV_OFFSET
 #undef CONFIG_ENV_OFFSET
@@ -81,59 +80,55 @@
     "loadaddr=0x200000\0"                       \
     "ethaddr=00:0a:35:00:01:22\0"               \
     "ipaddr=192.168.1.113\0"                    \
-    "serverip=192.168.1.62\0"                   \
+    "serverip=192.168.1.103\0"                  \
     "netmask=255.255.255.0\0"                   \
                                                 \
-    "kernel_image=uImage\0"                     \
-    "ramdisk_image=uramdisk.image.gz\0"         \
+    "kernel_image=uimage\0"                     \
+    "ramdisk_image=uramdisk\0"         		\
     "devicetree_image=devicetree.dtb\0"         \
-                                                \
+    "bootscript_image=uboot.scr\0"		\
+						\
+    "kernel_loadaddr=0x3000000\0"		\
+    "devicetree_loadaddr=0x2A00000\0"		\
+    "ramdisk_loadaddr=0x2000000\0"		\
+    "bootscript_loadaddr=0x1000000\0"		\
+						\
     "ramdisk_size="    STRINGIFY(QSPI_RESCUEROOTFS_SIZE) "\0"   \
     "kernel_size="     STRINGIFY(QSPI_RESCUELINUX_SIZE)  "\0"   \
     "devicetree_size=" STRINGIFY(QSPI_RESCUEDTB_SIZE)    "\0"   \
+    "bootscript_size=" STRINGIFY(QSPI_BOOTSCRIPT_SIZE)   "\0"   \
+						\
+    "qspi_kernel_offset="     STRINGIFY(QSPI_RESCUELINUX_OFFSET) "\0"\
+    "qspi_ramdisk_offset="    STRINGIFY(QSPI_RESCUEROOTFS_OFFSET)"\0"\
+    "qspi_devicetree_offset=" STRINGIFY(QSPI_RESCUEDTB_OFFSET)   "\0"\
+    "qspi_bootscript_offset=" STRINGIFY(QSPI_BOOTSCRIPT_OFFSET)  "\0"\
                                                 \
     "nand_kernel_size=0x500000\0"               \
     "nand_devicetree_size=0x10000\0"            \
                                                 \
     "fdt_high=0x20000000\0"                     \
     "initrd_high=0x20000000\0"                  \
-    "mtdids=" MTDIDS_DEFAULT "\0"    \
-    "mtdparts=" MTDPARTS_DEFAULT "\0" \
-    "nandargs=setenv bootargs console=ttyPS0,115200 " \
-        "root=ubi0:ubi-rootfs rw " \
-        "rootfstype=ubifs " \
-        "ubi.mtd=nand-rootfs " \
-        "ip=:::::eth0:off " \
-        "$othbootargs " \
-        "earlyprintk\0" \
-    "ramargs=setenv bootargs console=ttyPS0,115200 " \
-        "root=/dev/ram rw " \
-        "ip=:::::eth0:off " \
-        "$othbootargs " \
-        "earlyprintk\0" \
-    "prodboot=echo Booting on NAND...;" \
-        "nand device 0;" \
-        "ubi part nand-linux;" \
-        "ubi read 0x3000000 kernel ${nand_kernel_size};" \
-        "ubi part nand-device-tree;" \
-        "ubi read 0x2A00000 dtb ${nand_devicetree_size};" \
-        "run nandargs;" \
-        "bootm 0x3000000 - 0x2A00000\0" \
-    "rescboot=echo Booting on QSPI Flash...;" \
-        "sf probe;" \
-        "sf read 0x3000000 " STRINGIFY(QSPI_RESCUELINUX_OFFSET) " ${kernel_size};" \
-        "sf read 0x2A00000 " STRINGIFY(QSPI_RESCUEDTB_OFFSET) " ${devicetree_size};" \
-        "sf read 0x2000000 " STRINGIFY(QSPI_RESCUEROOTFS_OFFSET) " ${ramdisk_size};" \
-    "nand device 0;" \
-        "run ramargs;" \
-        "bootm 0x3000000 0x2000000 0x2A00000;\0" \
-    "jtagboot=echo Booting on TFTP...;" \
-        "tftp 0x3000000 ${kernel_image};" \
-        "tftp 0x2A00000 ${devicetree_image};" \
-        "tftp 0x2000000 ${ramdisk_image};" \
-        "run ramargs;" \
-        "bootm 0x3000000 0x2000000 0x2A00000\0" \
-    "modeboot=prodboot\0"
-
+    "mtdids=" MTDIDS_DEFAULT "\0"    		\
+    "mtdparts=" MTDPARTS_DEFAULT "\0" 		\
+						\
+    "qspiboot=echo Bootinq on QSPI Flash ...; "	\
+        "zx_set_storage QSPI && "		\
+        "sf probe && "				\
+        "sf read ${bootscript_loadaddr} ${qspi_bootscript_offset} ${bootscript_size} && "\
+        "source ${bootscript_loadaddr}\0"	\
+						\
+    "sdboot=echo Booting on SD Card ...; "	\
+        "mmc rescan && "			\
+	"fatload mmc 0 ${bootscript_loadaddr} ${bootscript_image} && "\
+        "source ${bootscript_loadaddr}\0"	\
+						\
+    "jtagboot=echo Booting on TFTP ...; "	\
+        "tftpboot ${bootscript_loadaddr} ${bootscript_image} && "\
+        "source ${bootscript_loadaddr}\0"	\
+						\
+    "nandboot=echo Booting on NAND ...; " 	\
+        "zx_set_storage NAND && " 		\
+        "nand read ${bootscript_loadaddr} nand-bootscript ${bootscript_size} && " \
+        "source ${bootscript_loadaddr} \0"
 
 #endif /* __CONFIG_ZYNQ_MARS_ZX3_H */
