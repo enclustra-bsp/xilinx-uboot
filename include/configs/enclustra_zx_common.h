@@ -55,21 +55,25 @@
     "ramdisk_image=uramdisk\0"                  \
     "devicetree_image=devicetree.dtb\0"         \
     "bootscript_image=uboot.scr\0"              \
+    "bootimage_image=boot.bin\n			\
                                                 \
     "kernel_loadaddr=0x3000000\0"               \
     "devicetree_loadaddr=0x2A00000\0"           \
     "ramdisk_loadaddr=0x2000000\0"              \
     "bootscript_loadaddr=0x1000000\0"           \
+    "bootimage_loadaddr=0x4000000\0"		\
                                                 \
     "ramdisk_size="    STRINGIFY(QSPI_RESCUEROOTFS_SIZE) "\0"   \
     "kernel_size="     STRINGIFY(QSPI_RESCUELINUX_SIZE)  "\0"   \
     "devicetree_size=" STRINGIFY(QSPI_RESCUEDTB_SIZE)    "\0"   \
     "bootscript_size=" STRINGIFY(QSPI_BOOTSCRIPT_SIZE)   "\0"   \
+    "bootimage_size="  STRINGIFY(QSPI_BOOT_SIZE)         "\0"   \
 								\
     "qspi_kernel_offset="     STRINGIFY(QSPI_RESCUELINUX_OFFSET) "\0"\
     "qspi_ramdisk_offset="    STRINGIFY(QSPI_RESCUEROOTFS_OFFSET)"\0"\
     "qspi_devicetree_offset=" STRINGIFY(QSPI_RESCUEDTB_OFFSET)   "\0"\
     "qspi_bootscript_offset=" STRINGIFY(QSPI_BOOTSCRIPT_OFFSET)  "\0"\
+    "qspi_bootimage_offset="  STRINGIFY(QSPI_BOOT_OFFSET)        "\0"\
                                                 \
     "nand_kernel_size=0x500000\0"               \
     "nand_devicetree_size=0x10000\0"            \
