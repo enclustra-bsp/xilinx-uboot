@@ -55,7 +55,7 @@
     "ramdisk_image=uramdisk\0"                  \
     "devicetree_image=devicetree.dtb\0"         \
     "bootscript_image=uboot.scr\0"              \
-    "bootimage_image=boot.bin\n"		\
+    "bootimage_image=boot.bin\0"		\
                                                 \
     "kernel_loadaddr=0x3000000\0"               \
     "devicetree_loadaddr=0x2A00000\0"           \
