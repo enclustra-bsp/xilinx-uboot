@@ -101,7 +101,11 @@
     "nandboot=echo Booting on NAND ...; "       \
         "zx_set_storage NAND && "               \
         "nand read ${bootscript_loadaddr} nand-bootscript ${bootscript_size} && " \
+        "source ${bootscript_loadaddr} \0"	\
+						\
+    "usbboot=echo Booting on USB ...; "       	\
+	"usb start && "				\
+        "load usb 0 ${bootscript_loadaddr} ${bootscript_image} && " \
         "source ${bootscript_loadaddr} \0"
-
 
 #endif
