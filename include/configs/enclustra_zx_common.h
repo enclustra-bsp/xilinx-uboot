@@ -91,7 +91,7 @@
                                                 \
     "sdboot=echo Booting on SD Card ...; "      \
         "mmc rescan && "                        \
-        "fatload mmc 0 ${bootscript_loadaddr} ${bootscript_image} && "\
+        "load mmc 0 ${bootscript_loadaddr} ${bootscript_image} && "\
         "source ${bootscript_loadaddr}\0"       \
                                                 \
     "jtagboot=echo Booting on TFTP ...; "       \
