@@ -1173,7 +1173,7 @@ static int zynq_nand_init(struct nand_chip *nand_chip, int devnum)
 		nand_chip->ecc.bytes = 0;
 
 		/* NAND with on-die ECC supports subpage reads */
-		nand_chip->options |= NAND_SUBPAGE_READ;
+		nand_chip->options |= NAND_SUBPAGE_READ |  NAND_NO_SUBPAGE_WRITE;
 
 		/* On-Die ECC spare bytes offset 8 is used for ECC codes */
 		if (ondie_ecc_enabled) {
