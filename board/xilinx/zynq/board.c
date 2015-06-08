@@ -46,7 +46,8 @@ static void set_mio_mux_nand( void ){
 
         /* Define MuxIO for NAND */
         /* Caution: overwrite some QSPI muxing !!! */
-        writel(NANDMUX0, &slcr_base->mio_pin[0]);       /* Pin 0, NAND Flash Chip Select */
+        writel(NANDMUX,  &slcr_base->mio_pin[0]);       /* Pin 0, NAND Flash Chip Select */
+        writel(0x1601,   &slcr_base->mio_pin[1]);       /* Pin 1, not NAND */
         writel(NANDMUX,  &slcr_base->mio_pin[2]);       /* Pin 2, NAND Flash ALEn */
         writel(NANDMUX,  &slcr_base->mio_pin[3]);       /* Pin 3, NAND WE_B */
         writel(NANDMUX,  &slcr_base->mio_pin[4]);       /* Pin 4, NAND Flash IO Bit 2 */
@@ -54,11 +55,11 @@ static void set_mio_mux_nand( void ){
         writel(NANDMUX,  &slcr_base->mio_pin[6]);       /* Pin 6, NAND Flash IO Bit 1 */
         writel(NANDMUX,  &slcr_base->mio_pin[7]);       /* Pin 7, NAND Flash CLE_B */
         writel(NANDMUX,  &slcr_base->mio_pin[8]);       /* Pin 8, NAND Flash RD_B */
-        writel(NANDMUX,  &slcr_base->mio_pin[9]);       /* Pin 9, NAND Flash IO Bit 4 */
-        writel(NANDMUX,  &slcr_base->mio_pin[10]);      /* Pin 10, NAND Flash IO Bit 5 */
-        writel(NANDMUX,  &slcr_base->mio_pin[11]);      /* Pin 11, NAND Flash IO Bit 6 */
-        writel(NANDMUX,  &slcr_base->mio_pin[12]);      /* Pin 12, NAND Flash IO Bit 7 */
-        writel(NANDMUX,  &slcr_base->mio_pin[13]);      /* Pin 13, NAND Flash IO Bit 3 */
+        writel(NANDMUX0,  &slcr_base->mio_pin[9]);       /* Pin 9, NAND Flash IO Bit 4 */
+        writel(NANDMUX0,  &slcr_base->mio_pin[10]);      /* Pin 10, NAND Flash IO Bit 5 */
+        writel(NANDMUX0,  &slcr_base->mio_pin[11]);      /* Pin 11, NAND Flash IO Bit 6 */
+        writel(NANDMUX0,  &slcr_base->mio_pin[12]);      /* Pin 12, NAND Flash IO Bit 7 */
+        writel(NANDMUX0,  &slcr_base->mio_pin[13]);      /* Pin 13, NAND Flash IO Bit 3 */
         writel(NANDMUX,  &slcr_base->mio_pin[14]);      /* Pin 14, NAND Flash Busy */
 
 	zynq_slcr_lock();
