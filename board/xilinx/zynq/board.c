@@ -129,6 +129,19 @@ int zx_set_storage_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 	return CMD_RET_SUCCESS;
 }
 
+#elif defined(CONFIG_MARS_ZX2)
+/* Mars ZX2 do not have NAND flash, so there is no point to change pinmuxes.
+ * Just return SUCCESS
+ */
+
+int zx_set_storage_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	return CMD_RET_SUCCESS;
+}
+
+#endif
+
+#if defined(CONFIG_MARS_ZX) || defined(CONFIG_MARS_ZX2) || defined(CONFIG_MERCURY_ZX)
 U_BOOT_CMD(zx_set_storage, 2, 0, zx_set_storage_cmd,
 	"Set non volatile memory access",
 	"<NAND|QSPI> - Set access for the selected memory device");
