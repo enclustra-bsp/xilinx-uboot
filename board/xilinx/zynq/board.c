@@ -12,6 +12,8 @@
 #include <zynqpl.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
+#include <micrel.h>
+#include <miiphy.h>
 #include <asm/io.h>
 #include <nand.h>
 
@@ -139,6 +141,38 @@ int zx_set_storage_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 	return CMD_RET_SUCCESS;
 }
 
+/* Setup clock skews for ethernet PHY */
+
+#define MARS_ZX2_CLK_SKEW_VAL	0x3FF
+#define MARS_ZX2_DATA_SKEW_VAL	0x00
+
+int board_phy_config(struct phy_device *phydev)
+{
+	/* min rx/tx ctrl delay */
+	ksz9031_phy_extended_write(phydev, 2,
+				   MII_KSZ9031_EXT_RGMII_CTRL_SIG_SKEW,
+				   MII_KSZ9031_MOD_DATA_NO_POST_INC,
+				   MARS_ZX2_DATA_SKEW_VAL);
+	/* min rx delay */
+	ksz9031_phy_extended_write(phydev, 2,
+				   MII_KSZ9031_EXT_RGMII_RX_DATA_SKEW,
+				   MII_KSZ9031_MOD_DATA_NO_POST_INC,
+				   MARS_ZX2_DATA_SKEW_VAL);
+	/* max tx delay */
+	ksz9031_phy_extended_write(phydev, 2,
+				   MII_KSZ9031_EXT_RGMII_TX_DATA_SKEW,
+				   MII_KSZ9031_MOD_DATA_NO_POST_INC,
+				   MARS_ZX2_DATA_SKEW_VAL);
+	/* rx/tx clk skew */
+	ksz9031_phy_extended_write(phydev, 2,
+				   MII_KSZ9031_EXT_RGMII_CLOCK_SKEW,
+				   MII_KSZ9031_MOD_DATA_NO_POST_INC,
+				   MARS_ZX2_CLK_SKEW_VAL);
+
+	phydev->drv->config(phydev);
+
+	return 0;
+}
 #endif
 
 #if defined(CONFIG_MARS_ZX) || defined(CONFIG_MARS_ZX2) || defined(CONFIG_MERCURY_ZX)
