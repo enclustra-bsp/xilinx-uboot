@@ -30,7 +30,15 @@
 
 #define CONFIG_ZYNQ_BOOT_FREEBSD
 
+/* Select Micrel PHY */
+#define CONFIG_PHY_MICREL
+
 #include <configs/zynq-common.h>
 #include <configs/enclustra_zx_common.h>
+
+/* Unselect Marvell PHY (selected by zynq-common) */
+#ifdef CONFIG_PHY_MARVELL
+#undef CONFIG_PHY_MARVELL
+#endif
 
 #endif /* __CONFIG_ZYNQ_MARS_ZX3_H */
