@@ -36,7 +36,7 @@
 #include <configs/zynq-common.h>
 #include <configs/enclustra_zx_common.h>
 
-/* Unselect Marvell PHY (selected by zynq-common */
+/* Unselect Marvell PHY (selected by zynq-common) */
 #ifdef CONFIG_PHY_MARVELL
 #undef CONFIG_PHY_MARVELL
 #endif
