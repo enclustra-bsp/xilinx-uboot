@@ -6,6 +6,8 @@
 #define ZX_NAND    (1)
 #define ZX_QSPI    (2)
 
+#define PHY_ANEG_TIMEOUT	8000	/* PHY needs a longer aneg time */
+
 #define MTDIDS_DEFAULT          "nand0=nand"
 #define MTDPARTS_DEFAULT        "mtdparts=" \
 	                                "nand:5M(nand-linux),"  \
