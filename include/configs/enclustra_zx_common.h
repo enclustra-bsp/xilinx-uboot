@@ -23,6 +23,22 @@
  * #define CONFIG_LZO*/
 
 /* QSPI Flash Memory Map */
+/* 64MB of QSPI Flash on Mercury */
+#ifdef CONFIG_ENCLUSTRA_QSPI_64M
+#define QSPI_BOOT_OFFSET          0x00000000   // Storage for Bootimage (FSBL, FPGA Bitstream, UBoot)
+#define QSPI_BOOT_SIZE            0x00700000   // size 7MB
+#define QSPI_RESCUELINUX_OFFSET   0x00700000   // Storage for Linux Kernel
+#define QSPI_RESCUELINUX_SIZE     0x00500000   // size 5MB
+#define QSPI_RESCUEDTB_OFFSET     0x00C00000   // Storage for Linux Devicetree
+#define QSPI_RESCUEDTB_SIZE       0x00080000   // size 512kB
+#define QSPI_BOOTARGS_OFFSET      0x00C80000   // Storage for Uboot Environment
+#define QSPI_BOOTARGS_SIZE        0x00080000   // size 512kB
+#define QSPI_BOOTSCRIPT_OFFSET    0x00D00000   // Storage for Uboot boot script
+#define QSPI_BOOTSCRIPT_SIZE      0x00040000   // size 256kB
+#define QSPI_RESCUEROOTFS_OFFSET  0x00D40000   // Storage for Linux Root FS
+#define QSPI_RESCUEROOTFS_SIZE    0x032C0000   // size 51.9MB
+#else
+/* 16MB of QSPI Flash on Mars */
 #define QSPI_BOOT_OFFSET          0x00000000   // Storage for Bootimage (FSBL, FPGA Bitstream, UBoot)
 #define QSPI_BOOT_SIZE            0x00600000   // size 6MB
 #define QSPI_RESCUELINUX_OFFSET   0x00600000   // Storage for Linux Kernel
@@ -35,6 +51,7 @@
 #define QSPI_BOOTSCRIPT_SIZE      0x00040000   // size 256kB
 #define QSPI_RESCUEROOTFS_OFFSET  0x00C40000   // Storage for Linux Root FS
 #define QSPI_RESCUEROOTFS_SIZE    0x003C0000   // size 3.84MB
+#endif
 
 #ifdef CONFIG_ENV_SIZE
 #undef CONFIG_ENV_SIZE

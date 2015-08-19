@@ -29,6 +29,8 @@
 
 #define CONFIG_ZYNQ_BOOT_FREEBSD
 
+#define CONFIG_ENCLUSTRA_QSPI_64M
+
 /* Select Micrel PHY */
 #define CONFIG_PHY_MICREL
 
