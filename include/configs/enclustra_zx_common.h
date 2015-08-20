@@ -75,7 +75,7 @@
     "serverip=192.168.1.103\0"                  \
     "netmask=255.255.255.0\0"                   \
                                                 \
-    "kernel_image=uimage\0"                     \
+    "kernel_image=uImage\0"                     \
     "ramdisk_image=uramdisk\0"                  \
     "devicetree_image=devicetree.dtb\0"         \
     "bootscript_image=uboot.scr\0"              \
