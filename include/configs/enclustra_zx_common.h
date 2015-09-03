@@ -82,8 +82,8 @@
     "bootimage_image=boot.bin\0"		\
     "jffs2_image=rootfs.jffs2\0"                \
                                                 \
-    "kernel_loadaddr=0x3000000\0"               \
-    "devicetree_loadaddr=0x2A00000\0"           \
+    "kernel_loadaddr=0x6000000\0"               \
+    "devicetree_loadaddr=0x6600000\0"           \
     "ramdisk_loadaddr=0x2000000\0"              \
     "jffs2_loadaddr=0x2000000\0"                \
     "bootscript_loadaddr=0x1000000\0"           \
