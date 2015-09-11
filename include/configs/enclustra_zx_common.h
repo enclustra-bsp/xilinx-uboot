@@ -82,6 +82,7 @@
     "devicetree_image=devicetree.dtb\0"         \
     "bootscript_image=uboot.scr\0"              \
     "bootimage_image=boot.bin\0"		\
+    "bootimage_image_full=boot_full.bin\0"      \
     "jffs2_image=rootfs.jffs2\0"                \
     "ubifs_image=rootfs.ubi\0"                  \
                                                 \
