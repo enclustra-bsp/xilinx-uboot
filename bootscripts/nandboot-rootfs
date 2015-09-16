@@ -1,1 +1,1 @@
-nand read ${kernel_loadaddr} nand-linux ${kernel_size} && nand read ${devicetree_loadaddr} nand-device-tree ${devicetree_size} && bootm ${kernel_loadaddr} - ${devicetree_loadaddr}
+run nand_args && nand read ${kernel_loadaddr} nand-linux ${kernel_size} && nand read ${devicetree_loadaddr} nand-device-tree ${devicetree_size} && bootm ${kernel_loadaddr} - ${devicetree_loadaddr}

@@ -112,6 +112,13 @@
     "nand_kernel_size=0x500000\0"               \
     "nand_devicetree_size=0x10000\0"            \
                                                 \
+    "def_args=console=ttyPS0,115200 rw earlyprintk\0"\
+    "ramdisk_args=setenv bootargs ${def_args} root=/dev/ram\0"\
+    "mmc_args=setenv bootargs ${def_args} rootwait root=/dev/mmcblk0p2\0"\
+    "nand_args=setenv bootargs ${def_args} rootwait=1 ubi.mtd=3 rootfstype=ubifs root=ubi0:rootfs\0"\
+    "qspi_args=setenv bootargs ${def_args} root=/dev/mtdblock5 rootfstype=jffs2 rootwait\0"\
+    "net_args=setenv bootargs ${def_args} root=/dev/nfs nfsroot=${serverip}:${serverpath},v3 ip=dhcp\0"\
+                                                \
     "fdt_high=0x20000000\0"                     \
     "initrd_high=0x20000000\0"                  \
     "mtdids=" MTDIDS_DEFAULT "\0"               \

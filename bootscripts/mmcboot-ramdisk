@@ -1,1 +1,1 @@
-mmc rescan && load mmc 0 ${kernel_loadaddr} ${kernel_image} && load mmc 0 ${devicetree_loadaddr} ${devicetree_image} && load mmc 0 ${ramdisk_loadaddr} ${ramdisk_image} && bootm ${kernel_loadaddr} ${ramdisk_loadaddr} ${devicetree_loadaddr}
+run ramdisk_args && mmc rescan && load mmc 0 ${kernel_loadaddr} ${kernel_image} && load mmc 0 ${devicetree_loadaddr} ${devicetree_image} && load mmc 0 ${ramdisk_loadaddr} ${ramdisk_image} && bootm ${kernel_loadaddr} ${ramdisk_loadaddr} ${devicetree_loadaddr}
