@@ -75,6 +75,7 @@
     "ethaddr=00:0a:35:00:01:22\0"               \
     "ipaddr=192.168.1.113\0"                    \
     "serverip=192.168.1.103\0"                  \
+    "serverpath=/srv/nfs/rootfs\0"              \
     "netmask=255.255.255.0\0"                   \
                                                 \
     "kernel_image=uImage\0"                     \
@@ -117,7 +118,7 @@
     "mmc_args=setenv bootargs ${def_args} rootwait root=/dev/mmcblk0p2\0"\
     "nand_args=setenv bootargs ${def_args} rootwait=1 ubi.mtd=3 rootfstype=ubifs root=ubi0:rootfs\0"\
     "qspi_args=setenv bootargs ${def_args} root=/dev/mtdblock5 rootfstype=jffs2 rootwait\0"\
-    "net_args=setenv bootargs ${def_args} root=/dev/nfs nfsroot=${serverip}:${serverpath},v3 ip=dhcp\0"\
+    "net_args=setenv bootargs ${def_args} rootwait root=/dev/nfs nfsroot=${serverip}:${serverpath},v3 ip=dhcp\0"\
                                                 \
     "fdt_high=0x20000000\0"                     \
     "initrd_high=0x20000000\0"                  \
@@ -147,6 +148,10 @@
     "usbboot=echo Booting on USB ...; "       	\
 	"usb start && "				\
         "load usb 0 ${bootscript_loadaddr} ${bootscript_image} && " \
-        "source ${bootscript_loadaddr} \0"
+        "source ${bootscript_loadaddr} \0"      \
+                                                \
+    "netboot=echo Booting from TFTP/NFS ...; "  \
+        "tftpboot ${bootscript_loadaddr} ${bootscript_image} && "\
+        "source ${bootscript_loadaddr}\0"
 
 #endif
