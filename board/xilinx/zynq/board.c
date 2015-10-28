@@ -16,6 +16,7 @@
 #include <miiphy.h>
 #include <asm/io.h>
 #include <nand.h>
+#include <i2c.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -218,6 +219,55 @@ int board_late_init(void)
 		setenv("modeboot", "");
 		break;
 	}
+
+#if defined(ENCLUSTRA_EEPROM_ADDR_TAB) && defined(ENCLUSTRA_EEPROM_HWMAC_REG)
+	u8 chip_addr_tab[] = ENCLUSTRA_EEPROM_ADDR_TAB;
+	int i, ret;
+	u8 hwaddr[6];
+	char hwaddr_str[16];
+
+	if (getenv("ethaddr") == NULL) {
+		/* Init i2c */
+		i2c_init(0, 0);
+		i2c_set_bus_num(0);
+
+		for (i = 0; i < ARRAY_SIZE(chip_addr_tab); i++) {
+			/* Probe the chip */
+			if (i2c_probe(chip_addr_tab[i]) != 0)
+				continue;
+
+			/* Attempt to read the mac address */
+			ret = i2c_read(chip_addr_tab[i],
+				       ENCLUSTRA_EEPROM_HWMAC_REG,
+				       1,
+				       hwaddr,
+				       6);
+
+			/* Do not continue if read failed */
+			if (ret)
+				continue;
+
+			/* Check if the value is a valid mac registered for
+			 * Enclustra  GmbH */
+			if (((*(uint32_t*)hwaddr) & 0xFFFFFF) != ENCLUSTRA_MAC)
+				continue;
+
+			/* Format the address using a string */
+			sprintf(hwaddr_str,
+				"%02X:%02X:%02X:%02X:%02X:%02X",
+				hwaddr[0],
+				hwaddr[1],
+				hwaddr[2],
+				hwaddr[3],
+				hwaddr[4],
+				hwaddr[5]);
+
+			/* Set the actual env variable */
+			setenv("ethaddr", hwaddr_str);
+			break;
+		}
+	}
+#endif
 
 	return 0;
 }

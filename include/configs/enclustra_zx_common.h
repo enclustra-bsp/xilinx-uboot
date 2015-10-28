@@ -65,6 +65,10 @@
 #endif
 #define CONFIG_ENV_OFFSET QSPI_BOOTARGS_OFFSET
 
+#define ENCLUSTRA_EEPROM_ADDR_TAB   {0x5C,0x64,0x0B,0x0F}
+#define ENCLUSTRA_EEPROM_HWMAC_REG  0x10
+#define ENCLUSTRA_MAC               0xF7B020
+
 #define STRINGIFY_PRE(x)   #x
 #define STRINGIFY(x)   STRINGIFY_PRE(x)
 #ifdef CONFIG_EXTRA_ENV_SETTINGS
@@ -72,7 +76,6 @@
 #endif
 #define CONFIG_EXTRA_ENV_SETTINGS               \
     "loadaddr=0x200000\0"                       \
-    "ethaddr=00:0a:35:00:01:22\0"               \
     "ipaddr=192.168.1.113\0"                    \
     "serverip=192.168.1.103\0"                  \
     "serverpath=/srv/nfs/rootfs\0"              \
