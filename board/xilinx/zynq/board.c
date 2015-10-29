@@ -224,6 +224,7 @@ int board_late_init(void)
 	u8 chip_addr_tab[] = ENCLUSTRA_EEPROM_ADDR_TAB;
 	int i, ret;
 	u8 hwaddr[6];
+	u32 hwaddr_h;
 	char hwaddr_str[16];
 
 	if (getenv("ethaddr") == NULL) {
@@ -249,7 +250,8 @@ int board_late_init(void)
 
 			/* Check if the value is a valid mac registered for
 			 * Enclustra  GmbH */
-			if (((*(uint32_t*)hwaddr) & 0xFFFFFF) != ENCLUSTRA_MAC)
+			hwaddr_h = hwaddr[0] | hwaddr[1] << 8 | hwaddr[2] << 16;
+			if ((hwaddr_h & 0xFFFFFF) != ENCLUSTRA_MAC)
 				continue;
 
 			/* Format the address using a string */
