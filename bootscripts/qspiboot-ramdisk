@@ -1,1 +1,15 @@
-run ramdisk_args && sf read ${kernel_loadaddr} ${qspi_kernel_offset} ${kernel_size} && sf read ${devicetree_loadaddr} ${qspi_devicetree_offset} ${devicetree_size} && sf read ${ramdisk_loadaddr} ${qspi_ramdisk_offset} ${ramdisk_size} && bootm ${kernel_loadaddr} ${ramdisk_loadaddr} ${devicetree_loadaddr}
+run ramdisk_args;
+sf read ${kernel_loadaddr} ${qspi_kernel_offset} ${kernel_size};
+
+sf read ${devicetree_loadaddr} ${qspi_devicetree_offset} ${devicetree_size};
+fdt addr ${devicetree_loadaddr};
+
+fdt set /amba/spi@e000d000/flash/partition@qspi-bootimage   reg <0x00000000 ${bootimage_size}>;
+fdt set /amba/spi@e000d000/flash/partition@qspi-kernel      reg <${qspi_kernel_offset} ${kernel_size}>;
+fdt set /amba/spi@e000d000/flash/partition@qspi-device-tree reg <${qspi_devicetree_offset} ${devicetree_size}>;
+fdt set /amba/spi@e000d000/flash/partition@qspi-bootargs    reg <0x00700000 0x00080000>;
+fdt set /amba/spi@e000d000/flash/partition@qspi-bootscript  reg <${qspi_bootscript_offset} ${bootscript_size}>;
+fdt set /amba/spi@e000d000/flash/partition@qspi-rootfs      reg <${qspi_ramdisk_offset} ${ramdisk_size}>;
+
+sf read ${ramdisk_loadaddr} ${qspi_ramdisk_offset} ${ramdisk_size};
+bootm ${kernel_loadaddr} ${ramdisk_loadaddr} ${devicetree_loadaddr};
