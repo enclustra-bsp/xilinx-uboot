@@ -17,6 +17,8 @@
 #include <asm/io.h>
 #include <nand.h>
 #include <i2c.h>
+#include <spi.h>
+#include <spi_flash.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -269,6 +271,79 @@ int board_late_init(void)
 			break;
 		}
 	}
+#endif
+
+#if defined(CONFIG_ZYNQ_QSPI)
+#if defined(CONFIG_MARS_ZX) || defined(CONFIG_MERCURY_ZX)
+#define xstr(s) str(s)
+#define str(s) #s
+	struct spi_flash *env_flash;
+	uint32_t flash_size;
+
+	/* Probe the QSPI flash */
+	env_flash = spi_flash_probe(0, 0, 1000000, SPI_MODE_3);
+
+	if (env_flash) {
+		/* Calculate the size in megabytes */
+		flash_size = env_flash->size / 1024.0 / 1024.0;
+
+		if (flash_size >= 64) {
+			setenv("ramdisk_size",
+			       xstr(QSPI_64M_ROOTFS_SIZE));
+			setenv("jffs2_size",
+			       xstr(QSPI_64M_ROOTFS_SIZE));
+			setenv("ubifs_size",
+			       xstr(QSPI_64M_ROOTFS_SIZE));
+			setenv("kernel_size",
+			       xstr(QSPI_64M_LINUX_SIZE));
+			setenv("devicetree_size",
+			       xstr(QSPI_64M_DTB_SIZE));
+			setenv("bootscript_size",
+			       xstr(QSPI_64M_BOOTSCRIPT_SIZE));
+			setenv("bootimage_size",
+			       xstr(QSPI_64M_BOOT_SIZE));
+			setenv("fullboot_size",
+			       xstr(QSPI_64M_FULLBOOT_SIZE));
+			setenv("qspi_bootimage_offset",
+			       xstr(QSPI_BOOT_OFFSET));
+			setenv("qspi_kernel_offset",
+			       xstr(QSPI_64M_LINUX_OFFSET));
+			setenv("qspi_ramdisk_offset",
+			       xstr(QSPI_64M_ROOTFS_OFFSET));
+			setenv("qspi_devicetree_offset",
+			       xstr(QSPI_64M_DTB_OFFSET));
+			setenv("qspi_bootscript_offset",
+			       xstr(QSPI_64M_BOOTSCRIPT_OFFSET));
+		} else if (flash_size >= 16) {
+			setenv("ramdisk_size",
+			       xstr(QSPI_16M_ROOTFS_SIZE));
+			setenv("jffs2_size",
+			       xstr(QSPI_16M_ROOTFS_SIZE));
+			setenv("ubifs_size",
+			       xstr(QSPI_16M_ROOTFS_SIZE));
+			setenv("kernel_size",
+			       xstr(QSPI_16M_LINUX_SIZE));
+			setenv("devicetree_size",
+			       xstr(QSPI_16M_DTB_SIZE));
+			setenv("bootscript_size",
+			       xstr(QSPI_16M_BOOTSCRIPT_SIZE));
+			setenv("bootimage_size",
+			       xstr(QSPI_16M_BOOT_SIZE));
+			setenv("fullboot_size",
+			       xstr(QSPI_16M_FULLBOOT_SIZE));
+			setenv("qspi_bootimage_offset",
+			       xstr(QSPI_BOOT_OFFSET));
+			setenv("qspi_kernel_offset",
+			       xstr(QSPI_16M_LINUX_OFFSET));
+			setenv("qspi_ramdisk_offset",
+			       xstr(QSPI_16M_ROOTFS_OFFSET));
+			setenv("qspi_devicetree_offset",
+			       xstr(QSPI_16M_DTB_OFFSET));
+			setenv("qspi_bootscript_offset",
+			       xstr(QSPI_16M_BOOTSCRIPT_OFFSET));
+		}
+	}
+#endif
 #endif
 
 	return 0;

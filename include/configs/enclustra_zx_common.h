@@ -23,37 +23,35 @@
  * #define CONFIG_LZO*/
 
 /* QSPI Flash Memory Map */
-/* 64MB of QSPI Flash on Mercury */
-#ifdef CONFIG_ENCLUSTRA_QSPI_64M
-#define QSPI_BOOT_OFFSET          0x00000000   // Storage for Bootimage (FSBL, FPGA Bitstream, UBoot)
-#define QSPI_BOOT_SIZE            0x00700000   // size 7MB
-#define QSPI_RESCUELINUX_OFFSET   0x00700000   // Storage for Linux Kernel
-#define QSPI_RESCUELINUX_SIZE     0x00500000   // size 5MB
-#define QSPI_RESCUEDTB_OFFSET     0x00C00000   // Storage for Linux Devicetree
-#define QSPI_RESCUEDTB_SIZE       0x00080000   // size 512kB
-#define QSPI_BOOTARGS_OFFSET      0x00C80000   // Storage for Uboot Environment
-#define QSPI_BOOTARGS_SIZE        0x00080000   // size 512kB
-#define QSPI_BOOTSCRIPT_OFFSET    0x00D00000   // Storage for Uboot boot script
-#define QSPI_BOOTSCRIPT_SIZE      0x00040000   // size 256kB
-#define QSPI_RESCUEROOTFS_OFFSET  0x00D40000   // Storage for Linux Root FS
-#define QSPI_RESCUEROOTFS_SIZE    0x032C0000   // size 51.9MB
-#define QSPI_FULLBOOT_SIZE        0x04000000
-#else
-/* 16MB of QSPI Flash on Mars */
-#define QSPI_BOOT_OFFSET          0x00000000   // Storage for Bootimage (FSBL, FPGA Bitstream, UBoot)
-#define QSPI_BOOT_SIZE            0x00600000   // size 6MB
-#define QSPI_RESCUELINUX_OFFSET   0x00600000   // Storage for Linux Kernel
-#define QSPI_RESCUELINUX_SIZE     0x00500000   // size 5MB
-#define QSPI_RESCUEDTB_OFFSET     0x00B00000   // Storage for Linux Devicetree
-#define QSPI_RESCUEDTB_SIZE       0x00080000   // size 512kB
-#define QSPI_BOOTARGS_OFFSET      0x00B80000   // Storage for Uboot Environment
-#define QSPI_BOOTARGS_SIZE        0x00080000   // size 512kB
-#define QSPI_BOOTSCRIPT_OFFSET    0x00C00000   // Storage for Uboot boot script
-#define QSPI_BOOTSCRIPT_SIZE      0x00040000   // size 256kB
-#define QSPI_RESCUEROOTFS_OFFSET  0x00C40000   // Storage for Linux Root FS
-#define QSPI_RESCUEROOTFS_SIZE    0x003C0000   // size 3.84MB
-#define QSPI_FULLBOOT_SIZE        0x01000000
-#endif
+#define QSPI_BOOT_OFFSET           0x00000000 // Storage for Bootimage
+#define QSPI_BOOTARGS_OFFSET       0x00700000 // Storage for Uboot Environment
+#define QSPI_BOOTARGS_SIZE         0x00080000 // size 512kB
+
+/* 64M QSPI Flash */
+#define QSPI_64M_BOOT_SIZE         0x00700000 // size 7MB
+#define QSPI_64M_LINUX_OFFSET      0x00780000 // Storage for Linux Kernel
+/* env goes here, size 512kB */
+#define QSPI_64M_LINUX_SIZE        0x00500000 // size 5MB
+#define QSPI_64M_DTB_OFFSET        0x00C80000 // Storage for Linux Devicetree
+#define QSPI_64M_DTB_SIZE          0x00080000 // size 512kB
+#define QSPI_64M_BOOTSCRIPT_OFFSET 0x00D00000 // Storage for Uboot boot script
+#define QSPI_64M_BOOTSCRIPT_SIZE   0x00080000 // size 256kB
+#define QSPI_64M_ROOTFS_OFFSET     0x00D80000 // Storage for Linux Root FS
+#define QSPI_64M_ROOTFS_SIZE       0x03280000 // size 50.5MB
+#define QSPI_64M_FULLBOOT_SIZE     0x04000000 // whole 64MB
+
+/* 16M QSPI Flash */
+#define QSPI_16M_BOOT_SIZE         0x00600000 // size 6MB
+#define QSPI_16M_DTB_OFFSET        0x00600000 // Storage for Linux Devicetree
+#define QSPI_16M_DTB_SIZE          0x00080000 // size 512kB
+#define QSPI_16M_BOOTSCRIPT_OFFSET 0x00680000 // Storage for Uboot boot script
+#define QSPI_16M_BOOTSCRIPT_SIZE   0x00080000 // size 512kB
+/* env goes here, size 512kB */
+#define QSPI_16M_LINUX_OFFSET      0x00780000 // Storage for Linux Kernel
+#define QSPI_16M_LINUX_SIZE        0x00500000 // size 5MB
+#define QSPI_16M_ROOTFS_OFFSET     0x00C80000 // Storage for Linux Root FS
+#define QSPI_16M_ROOTFS_SIZE       0x00380000 // size 3.5MB
+#define QSPI_16M_FULLBOOT_SIZE     0x01000000 // whole 16MB
 
 #ifdef CONFIG_ENV_SIZE
 #undef CONFIG_ENV_SIZE
@@ -69,8 +67,6 @@
 #define ENCLUSTRA_EEPROM_HWMAC_REG  0x10
 #define ENCLUSTRA_MAC               0xF7B020
 
-#define STRINGIFY_PRE(x)   #x
-#define STRINGIFY(x)   STRINGIFY_PRE(x)
 #ifdef CONFIG_EXTRA_ENV_SETTINGS
 #undef CONFIG_EXTRA_ENV_SETTINGS
 #endif
@@ -97,22 +93,6 @@
     "ubifs_loadaddr=0x2000000\0"                \
     "bootscript_loadaddr=0x1000000\0"           \
     "bootimage_loadaddr=0x4000000\0"		\
-                                                \
-    "ramdisk_size="    STRINGIFY(QSPI_RESCUEROOTFS_SIZE) "\0"   \
-    "jffs2_size="      STRINGIFY(QSPI_RESCUEROOTFS_SIZE) "\0"   \
-    "ubifs_size="      STRINGIFY(QSPI_RESCUEROOTFS_SIZE) "\0"   \
-    "kernel_size="     STRINGIFY(QSPI_RESCUELINUX_SIZE)  "\0"   \
-    "devicetree_size=" STRINGIFY(QSPI_RESCUEDTB_SIZE)    "\0"   \
-    "bootscript_size=" STRINGIFY(QSPI_BOOTSCRIPT_SIZE)   "\0"   \
-    "bootimage_size="  STRINGIFY(QSPI_BOOT_SIZE)         "\0"   \
-    "fullboot_size="   STRINGIFY(QSPI_FULLBOOT_SIZE)     "\0"   \
-								\
-    "qspi_kernel_offset="     STRINGIFY(QSPI_RESCUELINUX_OFFSET) "\0"\
-    "qspi_ramdisk_offset="    STRINGIFY(QSPI_RESCUEROOTFS_OFFSET)"\0"\
-    "qspi_devicetree_offset=" STRINGIFY(QSPI_RESCUEDTB_OFFSET)   "\0"\
-    "qspi_bootscript_offset=" STRINGIFY(QSPI_BOOTSCRIPT_OFFSET)  "\0"\
-    "qspi_bootimage_offset="  STRINGIFY(QSPI_BOOT_OFFSET)        "\0"\
-                                                \
     "nand_kernel_size=0x500000\0"               \
     "nand_devicetree_size=0x10000\0"            \
                                                 \
