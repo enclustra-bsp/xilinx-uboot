@@ -68,6 +68,9 @@
 #define ENCLUSTRA_EEPROM_HWMAC_REG  0x10
 #define ENCLUSTRA_MAC               0xF7B020
 
+/* Default MAC address */
+#define ENCLUSTRA_ETHADDR_DEFAULT "00:07:ED:00:01:23"
+
 #ifdef CONFIG_EXTRA_ENV_SETTINGS
 #undef CONFIG_EXTRA_ENV_SETTINGS
 #endif

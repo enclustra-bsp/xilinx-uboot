@@ -228,6 +228,9 @@ int board_late_init(void)
 	u8 hwaddr[6];
 	u32 hwaddr_h;
 	char hwaddr_str[16];
+	bool hwaddr_set;
+
+	hwaddr_set = false;
 
 	if (getenv("ethaddr") == NULL) {
 		/* Init i2c */
@@ -268,9 +271,15 @@ int board_late_init(void)
 
 			/* Set the actual env variable */
 			setenv("ethaddr", hwaddr_str);
+			hwaddr_set = true;
 			break;
 		}
+		if(!hwaddr_set)
+			setenv("ethaddr", ENCLUSTRA_ETHADDR_DEFAULT);
 	}
+#else
+	if (getenv("ethaddr") == NULL)
+		setenv("ethaddr", ENCLUSTRA_ETHADDR_DEFAULT);
 #endif
 
 #if defined(CONFIG_ZYNQ_QSPI)
