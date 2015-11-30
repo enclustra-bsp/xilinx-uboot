@@ -222,6 +222,7 @@ int board_late_init(void)
 		break;
 	}
 
+#if defined(CONFIG_MARS_ZX) || defined(CONFIG_MERCURY_ZX)
 #if defined(ENCLUSTRA_EEPROM_ADDR_TAB) && defined(ENCLUSTRA_EEPROM_HWMAC_REG)
 	u8 chip_addr_tab[] = ENCLUSTRA_EEPROM_ADDR_TAB;
 	int i, ret;
@@ -283,7 +284,6 @@ int board_late_init(void)
 #endif
 
 #if defined(CONFIG_ZYNQ_QSPI)
-#if defined(CONFIG_MARS_ZX) || defined(CONFIG_MERCURY_ZX)
 #define xstr(s) str(s)
 #define str(s) #s
 	struct spi_flash *env_flash;
