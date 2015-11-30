@@ -91,6 +91,6 @@ config SYS_CONFIG_NAME
 	default "zynq_mars_zx3" if TARGET_ZYNQ_MARS_ZX3
 	default "zynq_mars_zx3_eb1" if TARGET_ZYNQ_MARS_ZX3_EB1
 	default "zynq_mars_zx2" if TARGET_ZYNQ_MARS_ZX2
-	default "zynq_mars_mercury" if TARGET_ZYNQ_MARS_MERCURY
+	default "zynq_mercury" if TARGET_ZYNQ_MERCURY
 
 endif
