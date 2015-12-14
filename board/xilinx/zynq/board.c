@@ -225,6 +225,11 @@ int board_late_init(void)
 #if defined(CONFIG_MARS_ZX) || defined(CONFIG_MERCURY_ZX)
 #if defined(ENCLUSTRA_EEPROM_ADDR_TAB) && defined(ENCLUSTRA_EEPROM_HWMAC_REG)
 	u8 chip_addr_tab[] = ENCLUSTRA_EEPROM_ADDR_TAB;
+#if defined(ENCLUSTRA_EEPROM_ADDR_WAKEY_TAB)
+	u8 chip_addr_wakey_tab[] = ENCLUSTRA_EEPROM_ADDR_WAKEY_TAB;
+	u8 wake_cmd = 0x0;
+	int j;
+#endif
 	int i, ret;
 	u8 hwaddr[6];
 	u32 hwaddr_h;
@@ -242,6 +247,21 @@ int board_late_init(void)
 			/* Probe the chip */
 			if (i2c_probe(chip_addr_tab[i]) != 0)
 				continue;
+
+#if defined(ENCLUSTRA_EEPROM_ADDR_WAKEY_TAB)
+			for (j = 0; j < ARRAY_SIZE(chip_addr_wakey_tab); j++) {
+				if(chip_addr_tab[i] != chip_addr_wakey_tab[j])
+					continue;
+
+				/* Wake the chip by writing 0x0 to 0x0 reg */
+				i2c_write(chip_addr_tab[i],
+					  ENCLUSTRA_EEPROM_HWMAC_REG,
+					  1,
+					  &wake_cmd,
+					  1);
+				break;
+			}
+#endif
 
 			/* Attempt to read the mac address */
 			ret = i2c_read(chip_addr_tab[i],
