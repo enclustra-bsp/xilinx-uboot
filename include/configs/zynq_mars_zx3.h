@@ -2,14 +2,15 @@
  * (C) Copyright 2013 Xilinx, Inc.
  * (C) Copyright 2015 Antmicro Ltd
  *
- * Configuration for Enclustra Mars ZX3 SOM
+ * Configuration for Enclustra Mars ZX3 SOM on Enclustra MARS EB1 Baseboard
+ *
  * See zynq-common.h for Zynq common configs
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __CONFIG_ZYNQ_MARS_ZX3_H
-#define __CONFIG_ZYNQ_MARS_ZX3_H
+#ifndef __CONFIG_ZYNQ_MARS_ZX3_EB1_H
+#define __CONFIG_ZYNQ_MARS_ZX3_EB1_H
 
 #define CONFIG_MARS_ZX
 
@@ -17,7 +18,7 @@
 
 #define CONFIG_SYS_SDRAM_SIZE		(512 * 1024 * 1024)
 
-#define CONFIG_ZYNQ_SERIAL_UART1
+#define CONFIG_ZYNQ_SERIAL_UART0
 #define CONFIG_ZYNQ_GEM0
 #define CONFIG_ZYNQ_GEM_PHY_ADDR0	0
 
@@ -42,4 +43,4 @@
 #undef CONFIG_PHY_MARVELL
 #endif
 
-#endif /* __CONFIG_ZYNQ_MARS_ZX3_H */
+#endif /* __CONFIG_ZYNQ_MARS_ZX3_EB1_H */

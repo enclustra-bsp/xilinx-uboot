@@ -1,5 +1,5 @@
 /*
- * Enclustra Mars ZX SOM devicetree
+ * Enclustra Mars ZX3 SOM on EB1 devicetree
  *
  * Copyright (C) 2015 Antmicro Ltd
  *
@@ -13,7 +13,7 @@
 	compatible = "xlnx,zynq-7000";
 
 	aliases {
-		serial0 = &uart1;
+		serial0 = &uart0;
 		spi0 = &qspi;
 	};
 
