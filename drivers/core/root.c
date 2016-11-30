@@ -23,6 +23,10 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+struct root_priv {
+	fdt_addr_t translation_offset;	/* optional translation offset */
+};
+
 static const struct driver_info root_info = {
 	.name		= "root_driver",
 };
@@ -35,6 +39,22 @@ struct udevice *dm_root(void)
 	}
 
 	return gd->dm_root;
+}
+
+fdt_addr_t dm_get_translation_offset(void)
+{
+	struct udevice *root = dm_root();
+	struct root_priv *priv = dev_get_priv(root);
+
+	return priv->translation_offset;
+}
+
+void dm_set_translation_offset(fdt_addr_t offs)
+{
+	struct udevice *root = dm_root();
+	struct root_priv *priv = dev_get_priv(root);
+
+	priv->translation_offset = offs;
 }
 
 #if defined(CONFIG_NEEDS_MANUAL_RELOC)
@@ -102,6 +122,20 @@ void fix_uclass(void)
 			entry->ops += gd->reloc_off;
 	}
 }
+
+void fix_devices(void)
+{
+	struct driver_info *dev =
+		ll_entry_start(struct driver_info, driver_info);
+	const int n_ents = ll_entry_count(struct driver_info, driver_info);
+	struct driver_info *entry;
+
+	for (entry = dev; entry != dev + n_ents; entry++) {
+		if (entry->platdata)
+			entry->platdata += gd->reloc_off;
+	}
+}
+
 #endif
 
 int dm_init(void)
@@ -117,12 +151,13 @@ int dm_init(void)
 #if defined(CONFIG_NEEDS_MANUAL_RELOC)
 	fix_drivers();
 	fix_uclass();
+	fix_devices();
 #endif
 
 	ret = device_bind_by_name(NULL, false, &root_info, &DM_ROOT_NON_CONST);
 	if (ret)
 		return ret;
-#ifdef CONFIG_OF_CONTROL
+#if CONFIG_IS_ENABLED(OF_CONTROL)
 	DM_ROOT_NON_CONST->of_offset = 0;
 #endif
 	ret = device_probe(DM_ROOT_NON_CONST);
@@ -153,7 +188,7 @@ int dm_scan_platdata(bool pre_reloc_only)
 	return ret;
 }
 
-#ifdef CONFIG_OF_CONTROL
+#if CONFIG_IS_ENABLED(OF_CONTROL)
 int dm_scan_fdt_node(struct udevice *parent, const void *blob, int offset,
 		     bool pre_reloc_only)
 {
@@ -170,8 +205,11 @@ int dm_scan_fdt_node(struct udevice *parent, const void *blob, int offset,
 			continue;
 		}
 		err = lists_bind_fdt(parent, blob, offset, NULL);
-		if (err && !ret)
+		if (err && !ret) {
 			ret = err;
+			debug("%s: ret=%d\n", fdt_get_name(blob, offset, NULL),
+			      ret);
+		}
 	}
 
 	if (ret)
@@ -206,7 +244,7 @@ int dm_init_and_scan(bool pre_reloc_only)
 		return ret;
 	}
 
-	if (OF_CONTROL) {
+	if (CONFIG_IS_ENABLED(OF_CONTROL)) {
 		ret = dm_scan_fdt(gd->fdt_blob, pre_reloc_only);
 		if (ret) {
 			debug("dm_scan_fdt() failed: %d\n", ret);
@@ -225,6 +263,7 @@ int dm_init_and_scan(bool pre_reloc_only)
 U_BOOT_DRIVER(root_driver) = {
 	.name	= "root_driver",
 	.id	= UCLASS_ROOT,
+	.priv_auto_alloc_size = sizeof(struct root_priv),
 };
 
 /* This is the root uclass */
