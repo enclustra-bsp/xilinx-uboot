@@ -18,7 +18,9 @@
 #define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_PARTITIONS
 #define CONFIG_RBTREE
+#ifndef CONFIG_CMD_ELF
 #define CONFIG_CMD_ELF
+#endif
 /*#define CONFIG_CMD_UBI
  * #define CONFIG_CMD_UBIFS
  * #define CONFIG_LZO*/
