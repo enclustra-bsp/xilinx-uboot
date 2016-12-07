@@ -1,0 +1,1 @@
+run ramdisk_args && usb start && load usb 0 ${kernel_loadaddr} ${kernel_image} && load usb 0 ${devicetree_loadaddr} ${devicetree_image} && load usb 0 ${ramdisk_loadaddr} ${ramdisk_image} && booti ${kernel_loadaddr} ${ramdisk_loadaddr} ${devicetree_loadaddr}

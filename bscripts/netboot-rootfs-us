@@ -1,0 +1,1 @@
+run net_args && tftpboot ${kernel_loadaddr} ${kernel_image} && tftpboot ${devicetree_loadaddr} ${devicetree_image} && booti ${kernel_loadaddr} - ${devicetree_loadaddr}
