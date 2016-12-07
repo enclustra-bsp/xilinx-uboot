@@ -79,6 +79,13 @@
 /* Default MAC address */
 #define ENCLUSTRA_ETHADDR_DEFAULT "00:0A:35:01:02:03"
 
+/* Kernel image name */
+#ifdef CONFIG_ARCH_ZYNQMP
+#define KERNEL_IMAGE_FILE "Image"
+#else
+#define KERNEL_IMAGE_FILE "uImage"
+#endif
+
 #ifdef CONFIG_EXTRA_ENV_SETTINGS
 #undef CONFIG_EXTRA_ENV_SETTINGS
 #endif
@@ -89,7 +96,7 @@
     "serverpath=/srv/nfs/rootfs\0"              \
     "netmask=255.255.255.0\0"                   \
                                                 \
-    "kernel_image=uImage\0"                     \
+    "kernel_image=" KERNEL_IMAGE_FILE "\0"      \
     "ramdisk_image=uramdisk\0"                  \
     "devicetree_image=devicetree.dtb\0"         \
     "bootscript_image=uboot.scr\0"              \
