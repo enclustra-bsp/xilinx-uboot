@@ -20,7 +20,7 @@
 	compatible = "xlnx,zynqmp";
 
 	aliases {
-		ethernet0 = &gem3;
+		ethernet0 = &gem0;
 		gpio0 = &gpio;
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
@@ -117,13 +117,13 @@
 	xlnx,include-sg; /* for testing purpose */
 };
 
-&gem3 {
+&gem0 {
 	status = "okay";
 	local-mac-address = [00 0a 35 00 02 90];
-	phy-handle = <&phyc>;
+	phy-handle = <&phy3>;
 	phy-mode = "rgmii-id";
-	phyc: phy@7 {
-		reg = <0x7>;
+	phy3: phy@3 {
+		reg = <0x3>;
 	};
 };
 
@@ -228,7 +228,7 @@
 	dr_mode = "host";
 	snps,usb3_lpm_capable;
 	phy-names = "usb3-phy";
-	phys = <&lane2 PHY_TYPE_USB3 0 2 26000000>;
+	phys = <&lane2 PHY_TYPE_USB3 0 2 100000000>;
 };
 
 &xilinx_drm {
