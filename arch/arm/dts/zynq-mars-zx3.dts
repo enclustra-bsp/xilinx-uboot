@@ -13,6 +13,8 @@
 	compatible = "xlnx,zynq-7000";
 
 	aliases {
+		ethernet0 = &gem0;
+		mmc0 = &sdhci0;
 		serial0 = &uart0;
 		spi0 = &qspi;
 	};
@@ -23,8 +25,27 @@
 	};
 };
 
+&uart0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
 &qspi {
+	u-boot,dm-pre-reloc;
 	status = "okay";
 	is-dual = <0>;
 	num-cs = <1>;
+};
+
+&sdhci0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&gem0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+	ethernet_phy: ethernet-phy@0 {
+		reg = <0>;
+	};
 };
