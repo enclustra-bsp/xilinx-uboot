@@ -325,7 +325,7 @@ int board_late_init(void)
 
 	if (env_flash) {
 		/* Calculate the size in megabytes */
-		flash_size = env_flash->size / 1024.0 / 1024.0;
+		flash_size = env_flash->size / 1024 / 1024;
 
 		if (flash_size >= 64) {
 			setenv("ramdisk_size",
