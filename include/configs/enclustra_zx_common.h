@@ -154,6 +154,9 @@
                                                 \
     "netboot=echo Booting from TFTP/NFS ...; "  \
         "tftpboot ${bootscript_loadaddr} ${bootscript_image} && "\
-        "source ${bootscript_loadaddr}\0"
-
+        "source ${bootscript_loadaddr}\0"       \
+                                                \
+    "setuptest=mmc rescan && "                  \
+        "load mmc 0 0x1000000 setup_script.img && " \
+        "source 0x1000000\0"
 #endif
