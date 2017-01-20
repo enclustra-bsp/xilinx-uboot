@@ -317,7 +317,6 @@ int board_late_init(void)
 #if defined(CONFIG_ZYNQ_QSPI)
 #define xstr(s) str(s)
 #define str(s) #s
-#error
 	struct spi_flash *env_flash;
 	uint32_t flash_size;
 
