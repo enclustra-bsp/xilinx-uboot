@@ -210,6 +210,197 @@ int board_init(void)
 	return 0;
 }
 
+#define ATSHA204_COMMAND	0x03
+#define ATSHA204_READ_CMD 	0x02
+
+#define ATSHA204_CONFIG_ZONE 	0x00
+#define ATSHA204_OTP_ZONE	0x01
+#define ATSHA204_DATA_ZONE	0x02
+
+#define ATSHA204_READ32_BYTES_FLAG	(1<<7)
+
+u16 atsha204_crc16(const u8 *buf, const u8 len)
+{
+        u8 i;
+        u16 crc16 = 0;
+
+        for (i = 0; i < len; i++) {
+                u8 shift;
+
+                for (shift = 0x01; shift > 0x00; shift <<= 1) {
+                        u8 data_bit = (buf[i] & shift) ? 1 : 0;
+                        u8 crc_bit = crc16 >> 15;
+
+                        crc16 <<= 1;
+
+                        if ((data_bit ^ crc_bit) != 0)
+                                crc16 ^= 0x8005;
+                }
+        }
+
+        return crc16;
+}
+
+struct __attribute__((packed, aligned(1))) atsha204_read_command {
+	u8 count;
+	u8 opcode;
+	u8 param1;
+	u16 param2;
+	u16 checksum;
+};
+
+
+int atsha204_send_read_cmd(u8 i2c_address, u8 zone, u16 address, u8 read_block) {
+
+	int ret;
+	u16 crc;
+	struct atsha204_read_command packet;
+
+	packet.count = sizeof(struct atsha204_read_command);
+	packet.opcode = ATSHA204_READ_CMD;
+	packet.param1 = zone;
+	if(read_block) packet.param1 |= ATSHA204_READ32_BYTES_FLAG;
+	packet.param2 = address;
+
+	crc = atsha204_crc16((u8*)(&packet), sizeof(struct atsha204_read_command) - 2);
+	packet.checksum = crc;
+
+	ret = i2c_write(i2c_address,
+		  ATSHA204_COMMAND,
+		  1,
+		  (u8*)&packet,
+		  sizeof(struct atsha204_read_command));
+	if(ret) {
+		printf("Writing failed \n");
+		return ret;
+	}
+	/* reading may take up to 4 ms */
+	udelay(4000);
+
+	return 0;
+}
+
+int atsha204_wakeup(u8 i2c_address) {
+
+	u8 wake_cmd = 0x0;
+
+	return i2c_write(i2c_address,
+		  0,
+		  0,
+		  &wake_cmd,
+		  1);
+
+}
+
+int atsha204_read_data(u8 i2c_address, u8* buffer, u8 len) {
+
+	int ret = 0;
+	u8 first_word[4];
+	u8 msg_len;
+	u8 i;
+
+	if (len < 4) return -ENOMEM;
+	/* read the first 4 bytes from the device*/
+	ret = i2c_read(i2c_address,
+			0,
+			0,
+			first_word,
+			4);
+
+	if(ret) return ret;
+
+	/* the first transferred byte is total length of the msg */
+	msg_len = first_word[0];
+
+	for(i = 0; i < 3; i++) buffer[i] = first_word[i+1];
+
+	msg_len -= 4;
+
+	if(!msg_len) {
+		buffer[3] = 0xff;
+		return 4;
+	}
+
+	if( (len-3) < msg_len ) return -ENOMEM;
+
+	/* receive the rest of the data */
+
+	ret = i2c_read(i2c_address,
+			0,
+			0,
+			(u8*)(buffer + 3),
+			msg_len);
+	if(ret) return ret;
+	return msg_len + 3;
+}
+
+
+int atsha204_read_otp_register(u8 i2c_address, u8 reg, u8* buffer) {
+
+	u8 data[8];
+	u8 i;
+	int ret;
+
+	ret = atsha204_wakeup(i2c_address);
+	if(ret) return ret;
+
+	ret = atsha204_send_read_cmd(i2c_address, ATSHA204_OTP_ZONE, reg, 0);
+	if(ret) return ret;
+
+	/* Attempt to read the register */
+
+	ret = atsha204_read_data(i2c_address, data, 8);
+	if(ret < 0) return ret;
+
+	for(i = 0; i < 4; i++) buffer[i] = data[i];
+
+	return 0;
+}
+
+int atsha204_get_mac(u8 i2c_address, u8* buffer) {
+
+	int ret;
+	u8 data[4];
+	u8 i;
+
+	ret = atsha204_read_otp_register(i2c_address, 4, data);
+	if(ret)	return ret;
+	else for(i = 0; i < 4; i++) buffer[i] = data[i];
+
+	ret = atsha204_read_otp_register(i2c_address, 5, data);
+	if(ret)	return ret;
+	else {
+		buffer[4] = data[0];
+		buffer[5] = data[1];
+	}
+	return 0;
+}
+
+int ds28_get_mac(u8 i2c_address, u8* buffer) {
+
+	return i2c_read(i2c_address,
+	       0x10,
+	       1,
+	       buffer,
+	       6);
+}
+
+struct eeprom_mem {
+	u8 i2c_addr;
+	int (*mac_reader)(u8 i2c_address, u8* buffer);
+	int (*wakeup)(u8 i2c_address);
+};
+
+static struct eeprom_mem eeproms[] = {
+	{ .i2c_addr = 0x64,
+	  .mac_reader = atsha204_get_mac,
+	  .wakeup = atsha204_wakeup,
+	},
+	{ .i2c_addr = 0x5C,
+	  .mac_reader = ds28_get_mac,
+	  .wakeup = NULL,}
+};
+
 int board_late_init(void)
 {
 	switch ((zynq_slcr_get_boot_mode()) & ZYNQ_BM_MASK) {
@@ -234,15 +425,8 @@ int board_late_init(void)
 	}
 
 #if defined(CONFIG_MARS_ZX) || defined(CONFIG_MARS_ZX2) || defined(CONFIG_MERCURY_ZX)
-#if defined(ENCLUSTRA_EEPROM_ADDR_TAB) && defined(ENCLUSTRA_EEPROM_HWMAC_REG)
-	u8 chip_addr_tab[] = ENCLUSTRA_EEPROM_ADDR_TAB;
-#if defined(ENCLUSTRA_EEPROM_ADDR_WAKEY_TAB)
-	u8 chip_addr_wakey_tab[] = ENCLUSTRA_EEPROM_ADDR_WAKEY_TAB;
-	u8 wake_cmd = 0x0;
-	int j;
-#endif
 	int i, ret;
-	u8 hwaddr[6];
+	u8 hwaddr[6] = {0, 0, 0, 0, 0, 0};
 	u32 hwaddr_h;
 	char hwaddr_str[16];
 	bool hwaddr_set;
@@ -254,41 +438,16 @@ int board_late_init(void)
 		i2c_init(0, 0);
 		i2c_set_bus_num(0);
 
-		for (i = 0; i < ARRAY_SIZE(chip_addr_tab); i++) {
+		for (i = 0; i < ARRAY_SIZE(eeproms); i++) {
+
+			if(eeproms[i].wakeup)
+				eeproms[i].wakeup(eeproms[i].i2c_addr);
+
 			/* Probe the chip */
-			if (i2c_probe(chip_addr_tab[i]) != 0)
-				continue;
+			ret = i2c_probe(eeproms[i].i2c_addr);
+			if (ret != 0) continue;
 
-#if defined(ENCLUSTRA_EEPROM_ADDR_WAKEY_TAB)
-			for (j = 0; j < ARRAY_SIZE(chip_addr_wakey_tab); j++) {
-				if(chip_addr_tab[i] != chip_addr_wakey_tab[j])
-					continue;
-
-				/* Wake the chip by writing 0x0 to 0x0 reg */
-				i2c_write(chip_addr_tab[i],
-					  ENCLUSTRA_EEPROM_HWMAC_REG,
-					  1,
-					  &wake_cmd,
-					  1);
-				break;
-			}
-#endif
-
-			/* Attempt to read the mac address */
-			ret = i2c_read(chip_addr_tab[i],
-				       ENCLUSTRA_EEPROM_HWMAC_REG,
-				       1,
-				       hwaddr,
-				       6);
-
-			/* Do not continue if read failed */
-			if (ret)
-				continue;
-
-			/* Check if the value is a valid mac registered for
-			 * Enclustra  GmbH */
-			hwaddr_h = hwaddr[0] | hwaddr[1] << 8 | hwaddr[2] << 16;
-			if ((hwaddr_h & 0xFFFFFF) != ENCLUSTRA_MAC)
+			if(eeproms[i].mac_reader(eeproms[i].i2c_addr, hwaddr))
 				continue;
 
 			/* Format the address using a string */
@@ -301,6 +460,12 @@ int board_late_init(void)
 				hwaddr[4],
 				hwaddr[5]);
 
+			/* Check if the value is a valid mac registered for
+			 * Enclustra  GmbH */
+			hwaddr_h = hwaddr[0] | hwaddr[1] << 8 | hwaddr[2] << 16;
+			if ((hwaddr_h & 0xFFFFFF) != ENCLUSTRA_MAC)
+				continue;
+
 			/* Set the actual env variable */
 			setenv("ethaddr", hwaddr_str);
 			hwaddr_set = true;
@@ -309,10 +474,6 @@ int board_late_init(void)
 		if(!hwaddr_set)
 			setenv("ethaddr", ENCLUSTRA_ETHADDR_DEFAULT);
 	}
-#else
-	if (getenv("ethaddr") == NULL)
-		setenv("ethaddr", ENCLUSTRA_ETHADDR_DEFAULT);
-#endif
 
 #if defined(CONFIG_ZYNQ_QSPI)
 #define xstr(s) str(s)
