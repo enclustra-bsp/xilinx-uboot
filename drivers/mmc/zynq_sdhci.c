@@ -17,10 +17,19 @@
 # define CONFIG_ZYNQ_SDHCI_MIN_FREQ	0
 #endif
 
+DECLARE_GLOBAL_DATA_PTR;
+
+struct arasan_sdhci_priv {
+	struct sdhci_host *host;
+};
+
 static int arasan_sdhci_probe(struct udevice *dev)
 {
 	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
-	struct sdhci_host *host = dev_get_priv(dev);
+	struct arasan_sdhci_priv *priv = dev_get_priv(dev);
+	struct sdhci_host *host;
+
+	host = priv->host;
 
 	host->quirks = SDHCI_QUIRK_WAIT_SEND_CMD |
 		       SDHCI_QUIRK_BROKEN_R1B;
@@ -42,10 +51,15 @@ static int arasan_sdhci_probe(struct udevice *dev)
 
 static int arasan_sdhci_ofdata_to_platdata(struct udevice *dev)
 {
-	struct sdhci_host *host = dev_get_priv(dev);
+	struct arasan_sdhci_priv *priv = dev_get_priv(dev);
 
-	host->name = dev->name;
-	host->ioaddr = (void *)dev_get_addr(dev);
+	priv->host = calloc(1, sizeof(struct sdhci_host));
+	if (priv->host == NULL)
+		return -1;
+
+	priv->host->name = dev->name;
+	priv->host->ioaddr = (void *)dev_get_addr(dev);
+
 
 	return 0;
 }
