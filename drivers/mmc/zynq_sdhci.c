@@ -21,6 +21,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 struct arasan_sdhci_priv {
 	struct sdhci_host *host;
+	u8 is_emmc;
 };
 
 static int arasan_sdhci_probe(struct udevice *dev)
@@ -37,6 +38,9 @@ static int arasan_sdhci_probe(struct udevice *dev)
 #ifdef CONFIG_ZYNQ_HISPD_BROKEN
 	host->quirks |= SDHCI_QUIRK_NO_HISPD_BIT;
 #endif
+
+	if (priv->is_emmc)
+		host->quirks |= SDHCI_QUIRK_EMMC_INIT;
 
 	host->version = sdhci_readw(host, SDHCI_HOST_VERSION);
 
@@ -60,6 +64,10 @@ static int arasan_sdhci_ofdata_to_platdata(struct udevice *dev)
 	priv->host->name = dev->name;
 	priv->host->ioaddr = (void *)dev_get_addr(dev);
 
+	if (fdt_get_property(gd->fdt_blob, dev->of_offset, "is_emmc", NULL))
+		priv->is_emmc = 1;
+	else
+		priv->is_emmc = 0;
 
 	return 0;
 }

@@ -215,6 +215,7 @@
 #define SDHCI_QUIRK_NO_SIMULT_VDD_AND_POWER (1 << 7)
 #define SDHCI_QUIRK_USE_WIDE8		(1 << 8)
 
+#define SDHCI_QUIRK_EMMC_INIT		(1 << 10)
 /* to make gcc happy */
 struct sdhci_host;
 

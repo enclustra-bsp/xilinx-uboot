@@ -144,6 +144,13 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 	/* Timeout unit - ms */
 	static unsigned int cmd_timeout = CONFIG_SDHCI_CMD_DEFAULT_TIMEOUT;
 
+	/* Some eMMC cards failes to initialize when we issue CMD8 or
+		CMD55 before the end of mmc_start_init function */
+	if ((host->quirks & SDHCI_QUIRK_EMMC_INIT) && (!mmc->has_init && !mmc->init_in_progress)){
+		if ((cmd->cmdidx == SD_CMD_SEND_IF_COND) || (cmd->cmdidx == MMC_CMD_APP_CMD))
+			return TIMEOUT;
+	}
+
 	sdhci_writel(host, SDHCI_INT_ALL_MASK, SDHCI_INT_STATUS);
 	mask = SDHCI_CMD_INHIBIT | SDHCI_DATA_INHIBIT;
 
