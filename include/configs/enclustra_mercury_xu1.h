@@ -25,10 +25,11 @@
 #include <configs/xilinx_zynqmp.h>
 #include <configs/enclustra_zx_common.h>
 
-/*#ifdef CONFIG_ENV_IS_NOWHERE
+#ifdef CONFIG_ENV_IS_NOWHERE
 #undef CONFIG_ENV_IS_NOWHERE
 #endif
 
-#define CONFIG_ENV_IS_IN_SPI_FLASH*/
+#define CONFIG_ENV_SECT_SIZE CONFIG_ENV_SIZE
+#define CONFIG_ENV_IS_IN_SPI_FLASH
 
 #endif /* __CONFIG_ENCLUSTRA_XU1_H */
