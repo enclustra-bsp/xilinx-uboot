@@ -79,8 +79,10 @@
 /* Kernel image name */
 #ifdef CONFIG_ARCH_ZYNQMP
 #define KERNEL_IMAGE_FILE "Image"
+#define DTB_LOADADDR "0x6e00000"
 #else
 #define KERNEL_IMAGE_FILE "uImage"
+#define DTB_LOADADDR "0x6600000"
 #endif
 
 #ifdef CONFIG_EXTRA_ENV_SETTINGS
@@ -103,7 +105,7 @@
     "ubifs_image=rootfs.ubi\0"                  \
                                                 \
     "kernel_loadaddr=0x6000000\0"               \
-    "devicetree_loadaddr=0x6600000\0"           \
+    "devicetree_loadaddr=" DTB_LOADADDR "\0"    \
     "ramdisk_loadaddr=0x2000000\0"              \
     "jffs2_loadaddr=0x2000000\0"                \
     "ubifs_loadaddr=0x2000000\0"                \
