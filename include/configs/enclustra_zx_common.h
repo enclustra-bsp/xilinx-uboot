@@ -29,9 +29,12 @@
 
 /* QSPI Flash Memory Map */
 #define QSPI_BOOT_OFFSET           0x00000000 // Storage for Bootimage
-#define QSPI_BOOTARGS_OFFSET       0x00700000 // Storage for Uboot Environment
 #define QSPI_BOOTARGS_SIZE         0x00080000 // size 512kB
-
+#ifdef CONFIG_ARCH_ZYNQMP
+#define QSPI_BOOTARGS_OFFSET       0x01B00000 // Storage for Uboot Environment
+#else
+#define QSPI_BOOTARGS_OFFSET       0x00700000 // Storage for Uboot Environment
+#endif
 /* 64M QSPI Flash */
 #define QSPI_64M_BOOT_SIZE         0x00700000 // size 7MB
 #define QSPI_64M_LINUX_OFFSET      0x00780000 // Storage for Linux Kernel
