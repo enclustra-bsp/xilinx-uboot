@@ -28,6 +28,13 @@ static struct flash_partition_map flash_maps[] = {
 };
 #endif
 
+static inline int setenv_hex_if_empty(const char *varname, ulong value){
+    if (getenv(varname) == NULL)
+        setenv_hex(varname, value);
+
+    return 0;
+}
+
 static inline int setup_qspi_args(int flash_sz) {
     int i;
     struct flash_partition_map fm;
@@ -41,20 +48,22 @@ static inline int setup_qspi_args(int flash_sz) {
             dtb_off = kern_off + fm.kernel_size;
             bscr_off = dtb_off + fm.devicetree_size;
             rfs_off = bscr_off + fm.bootscr_size;
-            setenv_hex("ramdisk_size", fm.rootfs_size);
-            setenv_hex("jffs2_size", fm.rootfs_size);
-            setenv_hex("ubifs_size", fm.rootfs_size);
-            setenv_hex("kernel_size", fm.kernel_size);
-            setenv_hex("devicetree_size", fm.devicetree_size);
-            setenv_hex("bootscript_size", fm.bootscr_size);
-            setenv_hex("bootimage_size", fm.bootimage_size);
-            setenv_hex("fullboot_size", flash_sz*1024*1024);
-            setenv_hex("qspi_bootimage_offset", boot_off);
-            setenv_hex("qspi_kernel_offset", kern_off);
-            setenv_hex("qspi_ramdisk_offset", rfs_off);
-            setenv_hex("qspi_devicetree_offset", dtb_off);
-            setenv_hex("qspi_bootscript_offset", bscr_off);
+            setenv_hex_if_empty("ramdisk_size", fm.rootfs_size);
+            setenv_hex_if_empty("jffs2_size", fm.rootfs_size);
+            setenv_hex_if_empty("ubifs_size", fm.rootfs_size);
+            setenv_hex_if_empty("kernel_size", fm.kernel_size);
+            setenv_hex_if_empty("devicetree_size", fm.devicetree_size);
+            setenv_hex_if_empty("bootscript_size", fm.bootscr_size);
+            setenv_hex_if_empty("bootimage_size", fm.bootimage_size);
+            setenv_hex_if_empty("fullboot_size", flash_sz*1024*1024);
+            setenv_hex_if_empty("qspi_bootimage_offset", boot_off);
+            setenv_hex_if_empty("qspi_kernel_offset", kern_off);
+            setenv_hex_if_empty("qspi_ramdisk_offset", rfs_off);
+            setenv_hex_if_empty("qspi_devicetree_offset", dtb_off);
+            setenv_hex_if_empty("qspi_bootscript_offset", bscr_off);
             break;
         }
     }
+
+    return 0;
 }
