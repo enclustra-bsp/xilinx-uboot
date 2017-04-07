@@ -324,7 +324,7 @@ int setenv_hex(const char *varname, ulong value)
 {
 	char str[17];
 
-	sprintf(str, "%lx", value);
+	sprintf(str, "0x%lx", value);
 	return setenv(varname, str);
 }
 
