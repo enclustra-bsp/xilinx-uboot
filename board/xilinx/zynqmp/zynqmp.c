@@ -338,7 +338,7 @@ int board_late_init(void)
 	env_flash = spi_flash_probe(0, 0, 1000000, SPI_MODE_3);
 	if (env_flash) {
 		flash_size = env_flash->size / 1024 / 1024;
-		setup_qspi_args(flash_size);
+		setup_qspi_args(flash_size, zynqmp_get_silicon_idcode_name());
 	}
 
 	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
