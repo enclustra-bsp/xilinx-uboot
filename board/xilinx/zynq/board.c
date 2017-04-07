@@ -18,6 +18,7 @@
 #include <i2c.h>
 #include <spi.h>
 #include <spi_flash.h>
+#include <enclustra_qspi.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -151,6 +152,64 @@ int zx_set_storage_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 U_BOOT_CMD(zx_set_storage, 2, 0, zx_set_storage_cmd,
 	"Set non volatile memory access",
 	"<NAND|QSPI> - Set access for the selected memory device");
+
+static const struct {
+	uint32_t id;
+	char *name;
+} zynq_devices[] = {
+	{
+		.id = XILINX_ZYNQ_7007S,
+		.name = "7z007s",
+	},
+	{
+		.id = XILINX_ZYNQ_7010,
+		.name = "7z010",
+	},
+	{
+		.id = XILINX_ZYNQ_7012S,
+		.name = "7z012s",
+	},
+	{
+		.id = XILINX_ZYNQ_7014S,
+		.name = "7z014s",
+	},
+	{
+		.id = XILINX_ZYNQ_7015,
+		.name = "7z015",
+	},
+	{
+		.id = XILINX_ZYNQ_7020,
+		.name = "7z020",
+	},
+	{
+		.id = XILINX_ZYNQ_7030,
+		.name = "7z030",
+	},
+	{
+		.id = XILINX_ZYNQ_7035,
+		.name = "7z035",
+	},
+	{
+		.id = XILINX_ZYNQ_7045,
+		.name = "7z045",
+	},
+	{
+		.id = XILINX_ZYNQ_7100,
+		.name = "7z100",
+	},
+};
+
+static char *zx_get_idcode_name(void)
+{
+	int id, i;
+	char name[10];
+	id = zynq_slcr_get_idcode();
+	for(i = 0; i < ARRAY_SIZE(zynq_devices); i++){
+		if (zynq_devices[i].id == id)
+			return zynq_devices[i].name;
+	}
+	return "unknown";
+}
 #endif
 
 int board_init(void)
@@ -487,62 +546,10 @@ int board_late_init(void)
 	if (env_flash) {
 		/* Calculate the size in megabytes */
 		flash_size = env_flash->size / 1024 / 1024;
-
-		if (flash_size >= 64) {
-			setenv("ramdisk_size",
-			       xstr(QSPI_64M_ROOTFS_SIZE));
-			setenv("jffs2_size",
-			       xstr(QSPI_64M_ROOTFS_SIZE));
-			setenv("ubifs_size",
-			       xstr(QSPI_64M_ROOTFS_SIZE));
-			setenv("kernel_size",
-			       xstr(QSPI_64M_LINUX_SIZE));
-			setenv("devicetree_size",
-			       xstr(QSPI_64M_DTB_SIZE));
-			setenv("bootscript_size",
-			       xstr(QSPI_64M_BOOTSCRIPT_SIZE));
-			setenv("bootimage_size",
-			       xstr(QSPI_64M_BOOT_SIZE));
-			setenv("fullboot_size",
-			       xstr(QSPI_64M_FULLBOOT_SIZE));
-			setenv("qspi_bootimage_offset",
-			       xstr(QSPI_BOOT_OFFSET));
-			setenv("qspi_kernel_offset",
-			       xstr(QSPI_64M_LINUX_OFFSET));
-			setenv("qspi_ramdisk_offset",
-			       xstr(QSPI_64M_ROOTFS_OFFSET));
-			setenv("qspi_devicetree_offset",
-			       xstr(QSPI_64M_DTB_OFFSET));
-			setenv("qspi_bootscript_offset",
-			       xstr(QSPI_64M_BOOTSCRIPT_OFFSET));
-		} else if (flash_size >= 16) {
-			setenv("ramdisk_size",
-			       xstr(QSPI_16M_ROOTFS_SIZE));
-			setenv("jffs2_size",
-			       xstr(QSPI_16M_ROOTFS_SIZE));
-			setenv("ubifs_size",
-			       xstr(QSPI_16M_ROOTFS_SIZE));
-			setenv("kernel_size",
-			       xstr(QSPI_16M_LINUX_SIZE));
-			setenv("devicetree_size",
-			       xstr(QSPI_16M_DTB_SIZE));
-			setenv("bootscript_size",
-			       xstr(QSPI_16M_BOOTSCRIPT_SIZE));
-			setenv("bootimage_size",
-			       xstr(QSPI_16M_BOOT_SIZE));
-			setenv("fullboot_size",
-			       xstr(QSPI_16M_FULLBOOT_SIZE));
-			setenv("qspi_bootimage_offset",
-			       xstr(QSPI_BOOT_OFFSET));
-			setenv("qspi_kernel_offset",
-			       xstr(QSPI_16M_LINUX_OFFSET));
-			setenv("qspi_ramdisk_offset",
-			       xstr(QSPI_16M_ROOTFS_OFFSET));
-			setenv("qspi_devicetree_offset",
-			       xstr(QSPI_16M_DTB_OFFSET));
-			setenv("qspi_bootscript_offset",
-			       xstr(QSPI_16M_BOOTSCRIPT_OFFSET));
-		}
+		if(!fpga.name)
+			setup_qspi_args(flash_size, zx_get_idcode_name());
+		else
+			setup_qspi_args(flash_size, fpga.name);
 	}
 #endif
 #endif
