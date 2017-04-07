@@ -35,31 +35,6 @@
 #else
 #define QSPI_BOOTARGS_OFFSET       0x00700000 // Storage for Uboot Environment
 #endif
-/* 64M QSPI Flash */
-#define QSPI_64M_BOOT_SIZE         0x00700000 // size 7MB
-#define QSPI_64M_LINUX_OFFSET      0x00780000 // Storage for Linux Kernel
-/* env goes here, size 512kB */
-#define QSPI_64M_LINUX_SIZE        0x00500000 // size 5MB
-#define QSPI_64M_DTB_OFFSET        0x00C80000 // Storage for Linux Devicetree
-#define QSPI_64M_DTB_SIZE          0x00080000 // size 512kB
-#define QSPI_64M_BOOTSCRIPT_OFFSET 0x00D00000 // Storage for Uboot boot script
-#define QSPI_64M_BOOTSCRIPT_SIZE   0x00080000 // size 256kB
-#define QSPI_64M_ROOTFS_OFFSET     0x00D80000 // Storage for Linux Root FS
-#define QSPI_64M_ROOTFS_SIZE       0x03280000 // size 50.5MB
-#define QSPI_64M_FULLBOOT_SIZE     0x04000000 // whole 64MB
-
-/* 16M QSPI Flash */
-#define QSPI_16M_BOOT_SIZE         0x00600000 // size 6MB
-#define QSPI_16M_DTB_OFFSET        0x00600000 // Storage for Linux Devicetree
-#define QSPI_16M_DTB_SIZE          0x00080000 // size 512kB
-#define QSPI_16M_BOOTSCRIPT_OFFSET 0x00680000 // Storage for Uboot boot script
-#define QSPI_16M_BOOTSCRIPT_SIZE   0x00080000 // size 512kB
-/* env goes here, size 512kB */
-#define QSPI_16M_LINUX_OFFSET      0x00780000 // Storage for Linux Kernel
-#define QSPI_16M_LINUX_SIZE        0x00500000 // size 5MB
-#define QSPI_16M_ROOTFS_OFFSET     0x00C80000 // Storage for Linux Root FS
-#define QSPI_16M_ROOTFS_SIZE       0x00380000 // size 3.5MB
-#define QSPI_16M_FULLBOOT_SIZE     0x01000000 // whole 16MB
 
 #ifdef CONFIG_ENV_SIZE
 #undef CONFIG_ENV_SIZE
