@@ -341,24 +341,6 @@ int board_late_init(void)
 		setup_qspi_args(flash_size, zynqmp_get_silicon_idcode_name());
 	}
 
-	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
-		debug("Saved variables - Skipping\n");
-		return 0;
-	}
-
-	ver = zynqmp_get_silicon_version();
-
-	switch (ver) {
-	case ZYNQMP_CSU_VERSION_VELOCE:
-		setenv("setup", "setenv baudrate 4800 && setenv bootcmd run veloce");
-	case ZYNQMP_CSU_VERSION_EP108:
-	case ZYNQMP_CSU_VERSION_SILICON:
-		setenv("setup", "setenv partid auto");
-		break;
-	case ZYNQMP_CSU_VERSION_QEMU:
-	default:
-		setenv("setup", "setenv partid 0");
-	}
 
 	reg = readl(&crlapb_base->boot_mode);
 	bootmode = reg & BOOT_MODES_MASK;
@@ -413,6 +395,25 @@ int board_late_init(void)
 		mode = "";
 		printf("Invalid Boot Mode:0x%x\n", bootmode);
 		break;
+	}
+
+	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
+		debug("Saved variables - Skipping\n");
+		return 0;
+	}
+
+	ver = zynqmp_get_silicon_version();
+
+	switch (ver) {
+	case ZYNQMP_CSU_VERSION_VELOCE:
+		setenv("setup", "setenv baudrate 4800 && setenv bootcmd run veloce");
+	case ZYNQMP_CSU_VERSION_EP108:
+	case ZYNQMP_CSU_VERSION_SILICON:
+		setenv("setup", "setenv partid auto");
+		break;
+	case ZYNQMP_CSU_VERSION_QEMU:
+	default:
+		setenv("setup", "setenv partid 0");
 	}
 
 	/*
