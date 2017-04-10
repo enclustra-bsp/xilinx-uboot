@@ -144,4 +144,7 @@ config QFW
 	  Hidden option to enable QEMU fw_cfg interface. This will be selected by
 	  either CONFIG_CMD_QFW or CONFIG_GENERATE_ACPI_TABLE.
 
+config ENCLUSTRA_EEPROM_MAC
+	bool "Enable support for reading MAC address from EEPROM"
+
 endmenu

@@ -10,6 +10,7 @@ obj-$(CONFIG_ALI152X) += ali512x.o
 obj-$(CONFIG_ALTERA_SYSID) += altera_sysid.o
 obj-$(CONFIG_DS4510)  += ds4510.o
 obj-$(CONFIG_CBMEM_CONSOLE) += cbmem_console.o
+obj-$(CONFIG_ENCLUSTRA_EEPROM_MAC) += eeprom-mac.o
 ifndef CONFIG_SPL_BUILD
 obj-$(CONFIG_CROS_EC) += cros_ec.o
 obj-$(CONFIG_CROS_EC_LPC) += cros_ec_lpc.o
