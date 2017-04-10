@@ -22,6 +22,7 @@
 #include <spi.h>
 #include <spi_flash.h>
 #include <enclustra_qspi.h>
+#include <enclustra/eeprom-mac.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -325,14 +326,30 @@ void scsi_init(void)
 }
 #endif
 
+#if defined(CONFIG_ENCLUSTRA_EEPROM_MAC)
+static struct eeprom_mem eeproms[] = {
+	{ .i2c_addr = 0x64,
+	  .mac_reader = atsha204_get_mac,
+	  .wakeup = atsha204_wakeup,
+	},
+	{ .i2c_addr = 0x5C,
+	  .mac_reader = ds28_get_mac,
+	  .wakeup = NULL,}
+};
+#endif
+
 int board_late_init(void)
 {
-	u32 ver, reg = 0;
+	u32 ver, reg, ret, i = 0;
 	u8 bootmode;
 	const char *mode;
 	char *new_targets;
 	struct spi_flash *env_flash;
 	uint32_t flash_size;
+	u8 hwaddr[6] = {0, 0, 0, 0, 0, 0};
+	u32 hwaddr_h;
+	char hwaddr_str[16];
+	bool hwaddr_set;
 
 	/* Probe the QSPI flash */
 	env_flash = spi_flash_probe(0, 0, 1000000, SPI_MODE_3);
@@ -341,6 +358,51 @@ int board_late_init(void)
 		setup_qspi_args(flash_size, zynqmp_get_silicon_idcode_name());
 	}
 
+#if defined(CONFIG_ENCLUSTRA_EEPROM_MAC)
+	/* setup ethaddr */
+	hwaddr_set = false;
+	if (getenv("ethaddr") == NULL) {
+		/* Init i2c */
+		i2c_init(0, 0);
+		i2c_set_bus_num(0);
+
+		for (i = 0; i < ARRAY_SIZE(eeproms); i++) {
+
+			if(eeproms[i].wakeup)
+				eeproms[i].wakeup(eeproms[i].i2c_addr);
+
+			/* Probe the chip */
+			ret = i2c_probe(eeproms[i].i2c_addr);
+			if (ret != 0) continue;
+
+			if(eeproms[i].mac_reader(eeproms[i].i2c_addr, hwaddr))
+				continue;
+
+			/* Format the address using a string */
+			sprintf(hwaddr_str,
+				"%02X:%02X:%02X:%02X:%02X:%02X",
+				hwaddr[0],
+				hwaddr[1],
+				hwaddr[2],
+				hwaddr[3],
+				hwaddr[4],
+				hwaddr[5]);
+
+			/* Check if the value is a valid mac registered for
+			 * Enclustra  GmbH */
+			hwaddr_h = hwaddr[0] | hwaddr[1] << 8 | hwaddr[2] << 16;
+			if ((hwaddr_h & 0xFFFFFF) != ENCLUSTRA_MAC)
+				continue;
+
+			/* Set the actual env variable */
+			setenv("ethaddr", hwaddr_str);
+			hwaddr_set = true;
+			break;
+		}
+		if(!hwaddr_set)
+			setenv("ethaddr", ENCLUSTRA_ETHADDR_DEFAULT);
+	}
+#endif
 
 	reg = readl(&crlapb_base->boot_mode);
 	bootmode = reg & BOOT_MODES_MASK;
