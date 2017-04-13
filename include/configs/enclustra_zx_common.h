@@ -28,13 +28,12 @@
  * #define CONFIG_LZO*/
 
 /* QSPI Flash Memory Map */
+#define QSPI_SIZE                  0x04000000 // We support only 64 MB flashes
 #define QSPI_BOOT_OFFSET           0x00000000 // Storage for Bootimage
 #define QSPI_BOOTARGS_SIZE         0x00080000 // size 512kB
-#ifdef CONFIG_ARCH_ZYNQMP
-#define QSPI_BOOTARGS_OFFSET       0x01B00000 // Storage for Uboot Environment
-#else
-#define QSPI_BOOTARGS_OFFSET       0x00700000 // Storage for Uboot Environment
-#endif
+
+/* U-Boot environment is placed at the end of the flash */
+#define QSPI_BOOTARGS_OFFSET       QSPI_SIZE - QSPI_BOOTARGS_SIZE
 
 #ifdef CONFIG_ENV_SIZE
 #undef CONFIG_ENV_SIZE

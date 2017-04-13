@@ -83,12 +83,14 @@ static inline int setup_qspi_args(int flash_sz, char *chip_name)
 {
     struct flash_partition_map *fm;
     int boot_off, env_off, kern_off, dtb_off, bscr_off, rfs_off;
+    int flash_sz_in_bytes = flash_sz * 1024 * 1024;
 
     fm = match_flash_entry(chip_name, flash_sz);
     if(fm){
        boot_off = QSPI_BOOT_OFFSET;
-       env_off = boot_off + fm->bootimage_size;
-       kern_off = env_off + QSPI_BOOTARGS_SIZE;
+       /* env is at the end of the memory */
+       env_off = flash_sz_in_bytes - QSPI_BOOTARGS_SIZE;
+       kern_off = boot_off + fm->bootimage_size;
        dtb_off = kern_off + fm->kernel_size;
        bscr_off = dtb_off + fm->devicetree_size;
        rfs_off = bscr_off + fm->bootscr_size;
@@ -102,11 +104,13 @@ static inline int setup_qspi_args(int flash_sz, char *chip_name)
        setenv_hex_if_empty("bootscript_size", fm->bootscr_size);
        setenv_hex_if_empty("bootimage_size", fm->bootimage_size);
        setenv_hex_if_empty("fullboot_size", flash_sz*1024*1024);
+       setenv_hex_if_empty("qspi_env_size", QSPI_BOOTARGS_SIZE);
        setenv_hex_if_empty("qspi_bootimage_offset", boot_off);
        setenv_hex_if_empty("qspi_kernel_offset", kern_off);
        setenv_hex_if_empty("qspi_ramdisk_offset", rfs_off);
        setenv_hex_if_empty("qspi_devicetree_offset", dtb_off);
        setenv_hex_if_empty("qspi_bootscript_offset", bscr_off);
+       setenv_hex_if_empty("qspi_env_offset", env_off);
     }
 
     return 0;
