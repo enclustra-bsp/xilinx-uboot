@@ -203,7 +203,6 @@ static const struct {
 static char *zx_get_idcode_name(void)
 {
 	int id, i;
-	char name[10];
 	id = zynq_slcr_get_idcode();
 	for(i = 0; i < ARRAY_SIZE(zynq_devices); i++){
 		if (zynq_devices[i].id == id)
