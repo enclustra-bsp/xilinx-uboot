@@ -85,7 +85,6 @@ static inline int setup_qspi_args(int flash_sz, char *chip_name)
     int boot_off, env_off, kern_off, dtb_off, bscr_off, rfs_off;
 
     fm = match_flash_entry(chip_name, flash_sz);
-    if(fm)
     if(fm){
        boot_off = QSPI_BOOT_OFFSET;
        env_off = boot_off + fm->bootimage_size;
