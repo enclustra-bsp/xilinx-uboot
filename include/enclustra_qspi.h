@@ -28,11 +28,10 @@ static struct flash_partition_map flash_maps[] = {
 };
 #else
 static struct flash_partition_map flash_maps[] = {
-    FLASH_MAP("7z010", 16, 0x00600000, 0x00080000, 0x00080000, 0x00500000, 0x00380000),
-    FLASH_MAP("7z015", 16, 0x00600000, 0x00080000, 0x00080000, 0x00500000, 0x00380000),
-    FLASH_MAP("7z020", 16, 0x00600000, 0x00080000, 0x00080000, 0x00500000, 0x00380000),
-    FLASH_MAP("7z030", 16, 0x00700000, 0x00080000, 0x00080000, 0x00500000, 0x03280000),
-    FLASH_MAP("7z030", 64, 0x00700000, 0x00080000, 0x00080000, 0x00500000, 0x03280000),
+    FLASH_MAP("7z010", 64, 0x00600000, 0x00080000, 0x00080000, 0x00500000, 0),
+    FLASH_MAP("7z015", 64, 0x00600000, 0x00080000, 0x00080000, 0x00500000, 0),
+    FLASH_MAP("7z020", 64, 0x00600000, 0x00080000, 0x00080000, 0x00500000, 0),
+    FLASH_MAP("7z030", 64, 0x00700000, 0x00080000, 0x00080000, 0x00500000, 0),
     FLASH_MAP("7z035", 64, 0x00E00000, 0x00080000, 0x00080000, 0x00500000, 0),
     FLASH_MAP("7z045", 64, 0x00E00000, 0x00080000, 0x00080000, 0x00500000, 0),
     FLASH_MAP("default", 0, 0x00E00000, 0x00080000, 0x00080000, 0x00500000, 0),
@@ -84,6 +83,11 @@ static inline int setup_qspi_args(int flash_sz, char *chip_name)
     struct flash_partition_map *fm;
     int boot_off, env_off, kern_off, dtb_off, bscr_off, rfs_off;
     int flash_sz_in_bytes = flash_sz * 1024 * 1024;
+
+    if(flash_sz != 64){
+	    printf("Warning: partition layout for flash memmories with capacity different than 64MB is not supported!\n");
+	    return 1;
+    }
 
     fm = match_flash_entry(chip_name, flash_sz);
     if(fm){
