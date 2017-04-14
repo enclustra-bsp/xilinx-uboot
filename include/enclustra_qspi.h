@@ -112,6 +112,7 @@ static inline int setup_qspi_args(int flash_sz, char *chip_name)
        setenv_hex_if_empty("qspi_bootimage_offset", boot_off);
        setenv_hex_if_empty("qspi_kernel_offset", kern_off);
        setenv_hex_if_empty("qspi_ramdisk_offset", rfs_off);
+       setenv_hex_if_empty("qspi_rootfs_offset", rfs_off);
        setenv_hex_if_empty("qspi_devicetree_offset", dtb_off);
        setenv_hex_if_empty("qspi_bootscript_offset", bscr_off);
        setenv_hex_if_empty("qspi_env_offset", env_off);
