@@ -344,19 +344,22 @@ int board_late_init(void)
 	u8 bootmode;
 	const char *mode;
 	char *new_targets;
-	struct spi_flash *env_flash;
-	uint32_t flash_size;
 	u8 hwaddr[6] = {0, 0, 0, 0, 0, 0};
 	u32 hwaddr_h;
 	char hwaddr_str[16];
 	bool hwaddr_set;
 
 	/* Probe the QSPI flash */
+#if defined(CONFIG_ENCLUSTRA_QSPI_FLASHMAP) && \
+    !defined(CONFIG_SPL_BUILD)
+	struct spi_flash *env_flash;
+	uint32_t flash_size;
 	env_flash = spi_flash_probe(0, 0, 1000000, SPI_MODE_3);
 	if (env_flash) {
 		flash_size = env_flash->size / 1024 / 1024;
 		setup_qspi_args(flash_size, zynqmp_get_silicon_idcode_name());
 	}
+#endif
 
 #if defined(CONFIG_ENCLUSTRA_EEPROM_MAC)
 	/* setup ethaddr */

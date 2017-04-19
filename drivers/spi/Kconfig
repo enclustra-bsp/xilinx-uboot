@@ -194,4 +194,10 @@ config TI_QSPI
 	  Enable the TI Quad-SPI (QSPI) driver for DRA7xx and AM43xx evms.
 	  This driver support spi flash single, quad and memory reads.
 
+config ENCLUSTRA_QSPI_FLASHMAP
+	bool "Enable flash map calculation for Enclustra modules"
+	depends on ARCH_ZYNQMP
+	help
+	 Enable flash map calculation for Enclustra modules with ZynqMP chips
+
 endmenu # menu "SPI Support"
