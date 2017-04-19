@@ -1,5 +1,5 @@
 /*
- * Configuration for Enclustra Mercury XU1 SOM
+ * Configuration for Enclustra XU* SOMs
  *
  * (C) Copyright 2015 Xilinx, Inc.
  * (C) Copyright 2016 Antmicro Ltd
@@ -7,8 +7,8 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __CONFIG_ENCLUSTRA_XU1_H
-#define __CONFIG_ECNLUSTRA_XU1_H
+#ifndef __CONFIG_ENCLUSTRA_XU_H
+#define __CONFIG_ECNLUSTRA_XU_H
 
 #define CONFIG_ZYNQ_SDHCI1
 #define CONFIG_ZYNQ_I2C0
@@ -32,4 +32,4 @@
 #define CONFIG_ENV_SECT_SIZE CONFIG_ENV_SIZE
 #define CONFIG_ENV_IS_IN_SPI_FLASH
 
-#endif /* __CONFIG_ENCLUSTRA_XU1_H */
+#endif /* __CONFIG_ENCLUSTRA_XU_H */
