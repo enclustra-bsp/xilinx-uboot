@@ -18,7 +18,7 @@
 	compatible = "xlnx,zynqmp";
 
 	aliases {
-		ethernet0 = &gem0;
+		ethernet0 = &gem3;
 		gpio0 = &gpio;
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
@@ -116,7 +116,7 @@
 	xlnx,include-sg; /* for testing purpose */
 };
 
-&gem0 {
+&gem3 {
 	status = "okay";
 	local-mac-address = [00 0a 35 00 02 90];
 	phy-handle = <&phy3>;
