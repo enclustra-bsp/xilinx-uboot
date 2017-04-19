@@ -1,4 +1,5 @@
 #include <common.h>
+#include <linux/compat.h>
 #include <i2c.h>
 #include <enclustra/eeprom-mac.h>
 
