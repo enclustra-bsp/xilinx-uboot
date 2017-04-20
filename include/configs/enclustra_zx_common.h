@@ -65,6 +65,7 @@
         "sf probe && "                          \
         "sf read ${bootscript_loadaddr} ${qspi_bootscript_offset} ${bootscript_size} && "\
         "source ${bootscript_loadaddr}\0"
+#define NANDBOOT_CMD
 #else
 #define QSPIBOOT_CMD \
     "qspiboot=echo Bootinq on QSPI Flash ...; " \
@@ -72,6 +73,11 @@
         "sf probe && "                          \
         "sf read ${bootscript_loadaddr} ${qspi_bootscript_offset} ${bootscript_size} && "\
         "source ${bootscript_loadaddr}\0"
+#define NANDBOOT_CMD \
+    "nandboot=echo Booting on NAND ...; "       \
+        "zx_set_storage NAND && "               \
+        "nand read ${bootscript_loadaddr} nand-bootscript ${bootscript_size} && " \
+        "source ${bootscript_loadaddr} \0"
 #endif
 
 #ifdef CONFIG_EXTRA_ENV_SETTINGS
@@ -127,11 +133,8 @@
         "tftpboot ${bootscript_loadaddr} ${bootscript_image} && "\
         "source ${bootscript_loadaddr}\0"       \
                                                 \
-    "nandboot=echo Booting on NAND ...; "       \
-        "zx_set_storage NAND && "               \
-        "nand read ${bootscript_loadaddr} nand-bootscript ${bootscript_size} && " \
-        "source ${bootscript_loadaddr} \0"	\
-						\
+    NANDBOOT_CMD                               \
+                                               \
     "usbboot=echo Booting on USB ...; "       	\
 	"usb start && "				\
         "load usb 0 ${bootscript_loadaddr} ${bootscript_image} && " \
