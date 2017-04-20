@@ -54,9 +54,11 @@
 #ifdef CONFIG_ARCH_ZYNQMP
 #define KERNEL_IMAGE_FILE "Image"
 #define DTB_LOADADDR "0x6e00000"
+#define QSPI_STRING "/amba/spi@ff0f0000/flash@0/partition"
 #else
 #define KERNEL_IMAGE_FILE "uImage"
 #define DTB_LOADADDR "0x6600000"
+#define QSPI_STRING "/amba/spi@e000d000/flash@0/partition"
 #endif
 
 #ifdef CONFIG_ARCH_ZYNQMP
@@ -146,5 +148,13 @@
                                                 \
     "setuptest=mmc rescan && "                  \
         "load mmc 0 0x1000000 setup_script.img && " \
-        "source 0x1000000\0"
+        "source 0x1000000\0"                    \
+    "setupqspi=echo Setting up QSPI partitions...; " \
+        "fdt addr ${devicetree_loadaddr}; " \
+        "fdt set " QSPI_STRING "@qspi-bootimage reg <0x00000000 ${bootimage_size}>; " \
+        "fdt set " QSPI_STRING "@qspi-kernel reg <${qspi_kernel_offset} ${kernel_size}>; " \
+        "fdt set " QSPI_STRING "@qspi-device-tree reg <${qspi_devicetree_offset} ${devicetree_size}>; " \
+        "fdt set " QSPI_STRING "@qspi-bootargs reg <${qspi_env_offset} ${qspi_env_size}>; " \
+        "fdt set " QSPI_STRING "@qspi-bootscript reg <${qspi_bootscript_offset} ${bootscript_size}>; " \
+        "fdt set " QSPI_STRING "@qspi-rootfs reg <${qspi_rootfs_offset} ${jffs2_size}>;\0"
 #endif
