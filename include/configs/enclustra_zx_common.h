@@ -59,6 +59,21 @@
 #define DTB_LOADADDR "0x6600000"
 #endif
 
+#ifdef CONFIG_ARCH_ZYNQMP
+#define QSPIBOOT_CMD \
+    "qspiboot=echo Bootinq on QSPI Flash ...; " \
+        "sf probe && "                          \
+        "sf read ${bootscript_loadaddr} ${qspi_bootscript_offset} ${bootscript_size} && "\
+        "source ${bootscript_loadaddr}\0"
+#else
+#define QSPIBOOT_CMD \
+    "qspiboot=echo Bootinq on QSPI Flash ...; " \
+        "zx_set_storage QSPI && "               \
+        "sf probe && "                          \
+        "sf read ${bootscript_loadaddr} ${qspi_bootscript_offset} ${bootscript_size} && "\
+        "source ${bootscript_loadaddr}\0"
+#endif
+
 #ifdef CONFIG_EXTRA_ENV_SETTINGS
 #undef CONFIG_EXTRA_ENV_SETTINGS
 #endif
@@ -101,11 +116,7 @@
     "mtdids=" MTDIDS_DEFAULT "\0"               \
     "mtdparts=" MTDPARTS_DEFAULT "\0"           \
                                                 \
-    "qspiboot=echo Bootinq on QSPI Flash ...; " \
-        "zx_set_storage QSPI && "               \
-        "sf probe && "                          \
-        "sf read ${bootscript_loadaddr} ${qspi_bootscript_offset} ${bootscript_size} && "\
-        "source ${bootscript_loadaddr}\0"       \
+    QSPIBOOT_CMD                                \
                                                 \
     "sdboot=echo Booting on SD Card ...; "      \
         "mmc rescan && "                        \
