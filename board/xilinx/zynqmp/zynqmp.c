@@ -399,11 +399,39 @@ int board_late_init(void)
 
 			/* Set the actual env variable */
 			setenv("ethaddr", hwaddr_str);
+
+            /* increment MAC addr */
+            hwaddr_h = (hwaddr[3] << 16) | (hwaddr[4] << 8) | hwaddr[5];
+            hwaddr_h = (hwaddr_h + 1) & 0xFFFFFF;
+            hwaddr[3] = (hwaddr_h >> 16) & 0xFF;
+            hwaddr[4] = (hwaddr_h >> 8) & 0xFF;
+            hwaddr[5] = hwaddr_h & 0xFF;
+
+			/* Format the address using a string */
+			sprintf(hwaddr_str,
+				"%02X:%02X:%02X:%02X:%02X:%02X",
+				hwaddr[0],
+				hwaddr[1],
+				hwaddr[2],
+				hwaddr[3],
+				hwaddr[4],
+				hwaddr[5]);
+
+			/* Check if the value is a valid mac registered for
+			 * Enclustra  GmbH */
+			hwaddr_h = hwaddr[0] | hwaddr[1] << 8 | hwaddr[2] << 16;
+			if ((hwaddr_h & 0xFFFFFF) != ENCLUSTRA_MAC)
+				continue;
+
+			/* Set the actual env variable */
+			setenv("eth1addr", hwaddr_str);
 			hwaddr_set = true;
 			break;
 		}
-		if(!hwaddr_set)
+		if(!hwaddr_set){
 			setenv("ethaddr", ENCLUSTRA_ETHADDR_DEFAULT);
+			setenv("eth1addr", ENCLUSTRA_ETH1ADDR_DEFAULT);
+		}
 	}
 #endif
 

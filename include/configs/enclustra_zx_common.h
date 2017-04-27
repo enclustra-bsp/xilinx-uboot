@@ -49,6 +49,7 @@
 
 /* Default MAC address */
 #define ENCLUSTRA_ETHADDR_DEFAULT "00:0A:35:01:02:03"
+#define ENCLUSTRA_ETH1ADDR_DEFAULT "00:0A:35:01:02:04"
 
 /* Kernel image name */
 #ifdef CONFIG_ARCH_ZYNQMP
