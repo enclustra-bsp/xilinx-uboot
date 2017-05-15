@@ -24,6 +24,7 @@ struct flash_partition_map {
 #ifdef CONFIG_ARCH_ZYNQMP
 static struct flash_partition_map flash_maps[] = {
     FLASH_MAP("15eg", 64, 0x01b00000, 0x00080000, 0x00080000, 0x00e00000, 0),
+    FLASH_MAP("3eg", 64, 0x00900000, 0x00080000, 0x00080000, 0x00e00000, 0),
     FLASH_MAP("default", 0, 0x01b00000, 0x00080000, 0x00080000, 0x00e00000, 0),
 };
 #else
