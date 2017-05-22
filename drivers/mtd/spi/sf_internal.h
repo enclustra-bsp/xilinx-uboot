@@ -161,11 +161,12 @@ int sst_write_bp(struct spi_flash *flash, u32 offset, size_t len,
 struct spi_flash_params {
 	const char *name;
 	u32 jedec;
-	u16 ext_jedec;
+	u32 ext_jedec;
 	u32 sector_size;
 	u32 nr_sectors;
 	u8 e_rd_cmd;
 	u16 flags;
+	u8 id_len;
 };
 
 extern const struct spi_flash_params spi_flash_params_table[];

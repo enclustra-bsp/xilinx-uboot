@@ -1223,7 +1223,8 @@ int spi_flash_scan(struct spi_flash *flash)
 {
 	struct spi_slave *spi = flash->spi;
 	const struct spi_flash_params *params;
-	u16 jedec, ext_jedec;
+	u16 jedec;
+	u32 ext_jedec, ext_shift;
 	u8 idcode[6];
 #ifdef CONFIG_SPI_GENERIC
 	u8 idcode_up[6];
@@ -1268,24 +1269,27 @@ int spi_flash_scan(struct spi_flash *flash)
 #endif
 
 	jedec = idcode[1] << 8 | idcode[2];
-	ext_jedec = idcode[3] << 8 | idcode[4];
+	ext_jedec = idcode[3] << 16 | idcode[4] << 8 | idcode[5];
 
 	/* Validate params from spi_flash_params table */
 	params = spi_flash_params_table;
 	for (; params->name != NULL; params++) {
 		if ((params->jedec >> 16) == idcode[0]) {
 			if ((params->jedec & 0xFFFF) == jedec) {
-				if (params->ext_jedec == 0)
+				if (params->ext_jedec == 0 || !params->id_len)
 					break;
-				else if (params->ext_jedec == ext_jedec)
-					break;
+				else {
+					ext_shift = 8 * (params->id_len == 5 ? 1 : 0);
+					if (params->ext_jedec == (ext_jedec >> ext_shift))
+						break;
+				}
 			}
 		}
 	}
 
 	if (!params->name) {
 		printf("SF: Unsupported flash IDs: ");
-		printf("manuf %02x, jedec %04x, ext_jedec %04x\n",
+		printf("manuf %02x, jedec %04x, ext_jedec %06x\n",
 		       idcode[0], jedec, ext_jedec);
 		return -EPROTONOSUPPORT;
 	}
