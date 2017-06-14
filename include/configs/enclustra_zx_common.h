@@ -51,6 +51,12 @@
 #define ENCLUSTRA_ETHADDR_DEFAULT "00:0A:35:01:02:03"
 #define ENCLUSTRA_ETH1ADDR_DEFAULT "00:0A:35:01:02:04"
 
+/* Only one USB controller supported  */
+#ifdef CONFIG_USB_MAX_CONTROLLER_COUNT
+#undef CONFIG_USB_MAX_CONTROLLER_COUNT
+#endif
+#define CONFIG_USB_MAX_CONTROLLER_COUNT 1
+
 /* Kernel image name */
 #ifdef CONFIG_ARCH_ZYNQMP
 #define KERNEL_IMAGE_FILE "Image"
