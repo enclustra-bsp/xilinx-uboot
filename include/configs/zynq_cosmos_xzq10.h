@@ -1,16 +1,16 @@
 /*
  * (C) Copyright 2013 Xilinx, Inc.
- * (C) Copyright 2015 Antmicro Ltd
+ * (C) Copyright 2017 Antmicro Ltd
  *
- * Configuration for Enclustra Cosmos Board
+ * Configuration for Enclustra Cosmos XZQ10 Board
  *
  * See zynq-common.h for Zynq common configs
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#ifndef __CONFIG_ZYNQ_COSMOS_H
-#define __CONFIG_ZYNQ_COSMOS_H
+#ifndef __CONFIG_ZYNQ_COSMOS_XZQ10_H
+#define __CONFIG_ZYNQ_COSMOS_XZQ10_H
 
 #define CONFIG_MARS_ZX
 #define CONFIG_CPU_FREQ_HZ		666666666
@@ -29,4 +29,4 @@
 #undef CONFIG_PHY_MARVELL
 #endif
 
-#endif /* __CONFIG_ZYNQ_COSMOS_H */
+#endif /* __CONFIG_ZYNQ_COSMOS_XZQ10_H */

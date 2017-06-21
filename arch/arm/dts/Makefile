@@ -102,7 +102,7 @@ dtb-$(CONFIG_ARCH_ZYNQ) += zynq-zc702.dtb \
 	zynq-mars-zx3-sta.dtb \
 	zynq-mars-zx2.dtb \
 	zynq-mercury.dtb \
-	zynq-cosmos.dtb
+	zynq-cosmos-xzq10.dtb
 dtb-$(CONFIG_ARCH_ZYNQMP) += \
 	zynqmp-ep108.dtb			\
 	zynqmp-zcu100.dtb			\
