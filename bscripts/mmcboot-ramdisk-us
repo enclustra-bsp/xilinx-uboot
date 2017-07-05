@@ -1,1 +1,1 @@
-run ramdisk_args && mmc rescan && load mmc 0 ${kernel_loadaddr} ${kernel_image} && load mmc 0 ${devicetree_loadaddr} ${devicetree_image} && load mmc 0 ${ramdisk_loadaddr} ${ramdisk_image} && run setupqspi && booti ${kernel_loadaddr} ${ramdisk_loadaddr} ${devicetree_loadaddr}
+run ramdisk_args && mmc rescan ; load mmc ${mmcdev} ${kernel_loadaddr} ${kernel_image} && load mmc ${mmcdev} ${devicetree_loadaddr} ${devicetree_image} && load mmc ${mmcdev} ${ramdisk_loadaddr} ${ramdisk_image} && run setupqspi && booti ${kernel_loadaddr} ${ramdisk_loadaddr} ${devicetree_loadaddr}

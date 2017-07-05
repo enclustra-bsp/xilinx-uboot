@@ -120,8 +120,7 @@
                                                 \
     "def_args=console=ttyPS0,115200 rw earlyprintk\0"\
     "ramdisk_args=setenv bootargs ${def_args} root=/dev/ram\0"\
-    "mmc_args=setenv bootargs ${def_args} rootwait root=/dev/mmcblk0p2\0"\
-    "mmc1_args=setenv bootargs ${def_args} rootwait root=/dev/mmcblk1p2\0"\
+    "mmc_args=setenv bootargs ${def_args} rootwait root=/dev/mmcblk${mmcdev}p2\0"\
     "nand_args=setenv bootargs ${def_args} rootwait=1 ubi.mtd=3 rootfstype=ubifs root=ubi0:rootfs\0"\
     "qspi_args=setenv bootargs ${def_args} root=/dev/mtdblock5 rootfstype=jffs2 rootwait\0"\
     "net_args=setenv bootargs ${def_args} rootwait root=/dev/nfs nfsroot=${serverip}:${serverpath},v3 ip=dhcp\0"\
@@ -133,9 +132,19 @@
                                                 \
     QSPIBOOT_CMD                                \
                                                 \
-    "sdboot=echo Booting on SD Card ...; "      \
-        "mmc rescan && "                        \
-        "load mmc 0 ${bootscript_loadaddr} ${bootscript_image} && "\
+    "mmcdev=0\0"                                \
+                                                \
+    "sdboot="                                   \
+        "setenv mmcdev 0;"                      \
+        "run mmcboot\0"                         \
+                                                \
+    "emmcboot="                                 \
+        "setenv mmcdev 1;"                      \
+        "run mmcboot\0"                         \
+                                                \
+    "mmcboot="                                  \
+        "mmc rescan ; "                         \
+        "load mmc ${mmcdev} ${bootscript_loadaddr} ${bootscript_image} && "\
         "source ${bootscript_loadaddr}\0"       \
                                                 \
     "jtagboot=echo Booting on TFTP ...; "       \

@@ -1,1 +1,1 @@
-run mmc1_args && mmc rescan && load mmc 0 ${kernel_loadaddr} ${kernel_image} && load mmc 0 ${devicetree_loadaddr} ${devicetree_image} && run setupqspi && booti ${kernel_loadaddr} - ${devicetree_loadaddr}
+run mmc_args && mmc rescan ; load mmc ${mmcdev} ${kernel_loadaddr} ${kernel_image} && load mmc ${mmcdev} ${devicetree_loadaddr} ${devicetree_image} && run setupqspi && booti ${kernel_loadaddr} - ${devicetree_loadaddr}
