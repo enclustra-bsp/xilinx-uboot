@@ -1,1 +1,29 @@
-run mmc_args && mmc rescan ; load mmc ${mmcdev} ${kernel_loadaddr} ${kernel_image} && load mmc ${mmcdev} ${devicetree_loadaddr} ${devicetree_image} && run setupqspi && booti ${kernel_loadaddr} - ${devicetree_loadaddr}
+# first load all the images from current mmcdev
+load mmc ${mmcdev} ${kernel_loadaddr} ${kernel_image} || exit;
+load mmc ${mmcdev} ${devicetree_loadaddr} ${devicetree_image} || exit;
+
+# run qspi setup
+run setupqspi || exit;
+
+# linux has a different ordering of mmc devices on us+, we have to take
+# that into account.
+# emmc is always 0 and should always be present, sd is either 1 or it doesn't
+# exist at all - so what we have to do is always switch the device numbers
+# before we generate bootargs
+
+setexpr mmcdev ${mmcdev} + 1 || exit;
+setexpr mmcdev ${mmcdev} % 2;
+setexpr mmcdev sub 0x '';
+
+# setup mmc bootargs now as we have updated the mmcdev value
+run mmc_args;
+
+# now attempt to boot
+booti ${kernel_loadaddr} - ${devicetree_loadaddr};
+
+# this code will be executed only if boot failed,
+# we have to restore the mmcdev here
+
+setexpr mmcdev ${mmcdev} + 1;
+setexpr mmcdev ${mmcdev} % 2;
+setexpr mmcdev sub 0x '';
