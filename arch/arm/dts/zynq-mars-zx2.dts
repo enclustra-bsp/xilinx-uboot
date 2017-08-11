@@ -45,7 +45,9 @@
 &gem0 {
 	u-boot,dm-pre-reloc;
 	status = "okay";
-	ethernet_phy: ethernet-phy@0 {
-		reg = <0>;
+	phy-handle = <&ethernet_phy>;
+	phy-mode = "rgmii-id";
+	ethernet_phy: ethernet-phy@3 {
+		reg = <3>;
 	};
 };
