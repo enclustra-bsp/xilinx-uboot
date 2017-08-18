@@ -6,6 +6,7 @@
 #
 
 obj-y	:= board.o
+obj-$(CONFIG_COSMOS_XZQ10) += board_cosmos.o
 
 hw-platform-y :=$(shell echo $(CONFIG_DEFAULT_DEVICE_TREE))
 
