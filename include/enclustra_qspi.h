@@ -23,7 +23,8 @@ struct flash_partition_map {
 /* Last array item should contain default offset map in case of missing chip name */
 #ifdef CONFIG_ARCH_ZYNQMP
 static struct flash_partition_map flash_maps[] = {
-    FLASH_MAP("15eg", 64, 0x01b00000, 0x00080000, 0x00080000, 0x00e00000, 0),
+    FLASH_MAP("15eg", 64, 0x01f00000, 0x00080000, 0x00080000, 0x00e00000, 0),
+    FLASH_MAP("9eg", 64, 0x01d00000, 0x00080000, 0x00080000, 0x00e00000, 0),
     FLASH_MAP("6eg", 64, 0x01d00000, 0x00080000, 0x00080000, 0x00e00000, 0),
     FLASH_MAP("3eg", 64, 0x00900000, 0x00080000, 0x00080000, 0x00e00000, 0),
     FLASH_MAP("default", 0, 0x01b00000, 0x00080000, 0x00080000, 0x00e00000, 0),
