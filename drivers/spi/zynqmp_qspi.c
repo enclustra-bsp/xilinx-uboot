@@ -416,20 +416,18 @@ static int zynqmp_qspi_fill_tx_fifo(struct zynqmp_qspi_priv *priv, u32 size)
 			} else {
 				switch (size) {
 				case 1:
-					data = *((u8 *)buf);
-					buf += 1;
+					data  = ((u8 *)buf)[0];
 					data |= 0xFFFFFF00;
 					break;
 				case 2:
-					data = *((u16 *)buf);
-					buf += 2;
+					data  = ((u8 *)buf)[0];
+					data |= ((u8 *)buf)[1] << 8;
 					data |= 0xFFFF0000;
 					break;
 				case 3:
-					data = *((u16 *)buf);
-					buf += 2;
-					data |= (*((u8 *)buf) << 16);
-					buf += 1;
+					data  = ((u8 *)buf)[0];
+					data |= ((u8 *)buf)[1] << 8;
+					data |= ((u8 *)buf)[2] << 16;
 					data |= 0xFF000000;
 					break;
 				}
