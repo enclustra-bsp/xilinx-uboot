@@ -46,8 +46,8 @@ int last_stage_init(void)
 #define MGT_CROSS5_CTRL 0x07
 #define MGT_SW_CTRL     0x08
 
-#define MGT_PASS  (1 << 0)
-#define MGT_CROSS (1 << 1)
+#define MGT_PASS  0
+#define MGT_CROSS 1
 
 #define MGT_SWITCH_EN (1 << 7)
 
@@ -170,7 +170,7 @@ static int mgt_set_routing(uint8_t mgt_dev, uint8_t mgt_input,
 	/* Enable configuration registers in SW_CTRL register */
 	i2c_buf = (1 << (mgt_output - 1));
 
-	if (cross)
+	if (mgt_outputs[mgt_output - 1].cross == MGT_CROSS_ENABLED)
 		i2c_buf |= (1 << 5);
 
 	i2c_write(mgt_devices[mgt_dev].i2c_addr, MGT_SW_CTRL, 1, &i2c_buf, 1);
