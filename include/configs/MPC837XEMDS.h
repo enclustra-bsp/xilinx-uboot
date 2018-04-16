@@ -8,8 +8,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_DISPLAY_BOARDINFO
-
 /*
  * High Level Configuration Options
  */
@@ -99,7 +97,6 @@
  */
 #define CONFIG_SYS_OBIR		0x31100000
 
-#define CONFIG_BOARD_EARLY_INIT_F /* call board_pre_init */
 #define CONFIG_BOARD_EARLY_INIT_R
 #define CONFIG_HWCONFIG
 
@@ -200,7 +197,7 @@
 #endif
 
 /* CONFIG_SYS_MONITOR_LEN must be a multiple of CONFIG_ENV_SECT_SIZE */
-#define CONFIG_SYS_MONITOR_LEN	(384 * 1024) /* Reserve 384 kB for Mon */
+#define CONFIG_SYS_MONITOR_LEN	(512 * 1024) /* Reserve 512 kB for Mon */
 #define CONFIG_SYS_MALLOC_LEN	(512 * 1024) /* Reserved for malloc */
 
 /*
@@ -281,7 +278,6 @@
 /*
  * NAND Flash on the Local Bus
  */
-#define CONFIG_CMD_NAND		1
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_NAND_FSL_ELBC	1
 
@@ -379,12 +375,8 @@ extern int board_pci_host_broken(void);
 #define CONFIG_PQ_MDS_PIB	1 /* PQ MDS Platform IO Board */
 
 #define CONFIG_HAS_FSL_DR_USB	1 /* fixup device tree for the DR USB */
-#define CONFIG_USB_STORAGE
-#define CONFIG_USB_EHCI
 #define CONFIG_USB_EHCI_FSL
 #define CONFIG_EHCI_HCD_INIT_AFTER_RESET
-
-#define CONFIG_PCI_PNP		/* do pci plug-and-play */
 
 #undef CONFIG_EEPRO100
 #undef CONFIG_PCI_SCAN_SHOW	/* show pci devices on startup */
@@ -428,9 +420,6 @@ extern int board_pci_host_broken(void);
 /*
  * SATA
  */
-#define CONFIG_LIBATA
-#define CONFIG_FSL_SATA
-
 #define CONFIG_SYS_SATA_MAX_DEVICE	2
 #define CONFIG_SATA1
 #define CONFIG_SYS_SATA1_OFFSET	0x18000
@@ -443,22 +432,17 @@ extern int board_pci_host_broken(void);
 
 #ifdef CONFIG_FSL_SATA
 #define CONFIG_LBA48
-#define CONFIG_CMD_SATA
-#define CONFIG_DOS_PARTITION
 #endif
 
 /*
  * Environment
  */
 #ifndef CONFIG_SYS_RAMBOOT
-	#define CONFIG_ENV_IS_IN_FLASH	1
 	#define CONFIG_ENV_ADDR		\
 			(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)
 	#define CONFIG_ENV_SECT_SIZE	0x20000 /* 128K(one sector) for env */
 	#define CONFIG_ENV_SIZE		0x2000
 #else
-	#define CONFIG_SYS_NO_FLASH	1	/* Flash is not usable now */
-	#define CONFIG_ENV_IS_NOWHERE	1	/* Store ENV in memory only */
 	#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - 0x1000)
 	#define CONFIG_ENV_SIZE		0x2000
 #endif
@@ -477,25 +461,16 @@ extern int board_pci_host_broken(void);
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_DATE
-
-#if defined(CONFIG_PCI)
-    #define CONFIG_CMD_PCI
-#endif
 
 #define CONFIG_CMDLINE_EDITING	1	/* add command line history */
 #define CONFIG_AUTO_COMPLETE		/* add autocompletion support   */
 
 #undef CONFIG_WATCHDOG		/* watchdog disabled */
 
-#define CONFIG_MMC     1
-
 #ifdef CONFIG_MMC
 #define CONFIG_FSL_ESDHC
 #define CONFIG_FSL_ESDHC_PIN_MUX
 #define CONFIG_SYS_FSL_ESDHC_ADDR	CONFIG_SYS_MPC83xx_ESDHC_ADDR
-#define CONFIG_GENERIC_MMC
-#define CONFIG_DOS_PARTITION
 #endif
 
 /*
@@ -504,24 +479,13 @@ extern int board_pci_host_broken(void);
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
 #define CONFIG_SYS_LOAD_ADDR		0x2000000 /* default load address */
 
-#if defined(CONFIG_CMD_KGDB)
-	#define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size */
-#else
-	#define CONFIG_SYS_CBSIZE	256 /* Console I/O Buffer Size */
-#endif
-
-				/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
-#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
-				/* Boot Argument Buffer Size */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
-
 /*
  * For booting Linux, the board info and command line data
  * have to be in the first 256 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define CONFIG_SYS_BOOTMAPSZ	(256 << 20) /* Initial Memory map for Linux */
+#define CONFIG_SYS_BOOTM_LEN	(64 << 20)	/* Increase max gunzip size */
 
 /*
  * Core HID Setup
@@ -655,11 +619,7 @@ extern int board_pci_host_broken(void);
 #define CONFIG_HAS_ETH1
 #endif
 
-#define CONFIG_BAUDRATE 115200
-
 #define CONFIG_LOADADDR 800000	/* default location for tftp and bootm */
-
-#undef CONFIG_BOOTARGS		/* the boot command will set bootargs */
 
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"netdev=eth0\0"							\

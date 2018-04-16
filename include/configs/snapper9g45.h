@@ -26,9 +26,6 @@
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
 #define CONFIG_SKIP_LOWLEVEL_INIT_ONLY
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_BOARD_EARLY_INIT_F
-#define CONFIG_BOARD_LATE_INIT
 
 /* SDRAM */
 #define CONFIG_NR_DRAM_BANKS		1
@@ -45,7 +42,6 @@
 #define CONFIG_NAND_ATMEL
 #define CONFIG_ATMEL_NAND_HWECC
 #define CONFIG_SYS_NAND_ECC_BASE	ATMEL_BASE_ECC
-#define CONFIG_SYS_NO_FLASH
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		ATMEL_BASE_CS3
 #define CONFIG_SYS_NAND_DBW_8
@@ -63,23 +59,11 @@
 #define CONFIG_TFTP_PORT
 #define CONFIG_TFTP_TSIZE
 
-/* USB */
-#define CONFIG_USB_EHCI
-#define CONFIG_USB_EHCI_ATMEL
-#define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS	2
-#define CONFIG_DOS_PARTITION
-#define CONFIG_USB_STORAGE
-#define CONFIG_PARTITION_UUIDS
-
 /* MMC */
-#define CONFIG_MMC
-#define CONFIG_GENERIC_MMC
 #define CONFIG_GENERIC_ATMEL_MCI
 
 /* LCD */
 #define CONFIG_ATMEL_LCD
-#define CONFIG_CONSOLE_MUX
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV
 #define CONFIG_GURNARD_SPLASH
 
 #define CONFIG_ATMEL_SPI
@@ -91,7 +75,6 @@
 
 /* UARTs/Serial console */
 #define CONFIG_ATMEL_USART
-#define CONFIG_BAUDRATE			115200
 
 /* Boot options */
 #define CONFIG_SYS_LOAD_ADDR		0x23000000
@@ -102,7 +85,6 @@
 #define CONFIG_BOOTP_HOSTNAME
 
 /* Environment settings */
-#define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_OFFSET		(512 << 10)
 #define CONFIG_ENV_SIZE			(256 << 10)
 #define CONFIG_ENV_OVERWRITE
@@ -128,10 +110,6 @@
 	"altbootcmd=run boot_mmc ; run boot_usb ; run boot_safe ; run boot_working\0"
 
 /* Console settings */
-#define CONFIG_SYS_CBSIZE		256
-#define CONFIG_SYS_MAXARGS		16
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE +		\
-					 sizeof(CONFIG_SYS_PROMPT) + 16)
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_AUTO_COMPLETE
@@ -142,12 +120,8 @@
 /* Command line configuration */
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_DHCP
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_USB
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_MMC
-#define CONFIG_CMD_NAND
 #define CONFIG_CMD_CACHE
-#define CONFIG_CMD_PART
 
 #endif /* __CONFIG_H */

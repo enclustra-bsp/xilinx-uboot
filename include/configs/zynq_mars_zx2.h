@@ -11,28 +11,12 @@
 #ifndef __CONFIG_ZYNQ_MARS_ZX2_H
 #define __CONFIG_ZYNQ_MARS_ZX2_H
 
-#define CONFIG_MARS_ZX2
+#define ENCLUSTRA_MARS_ZX2
 
 #define CONFIG_CPU_FREQ_HZ		666666666
 
-
-
-#define CONFIG_ZYNQ_GEM_PHY_ADDR0	0
-
-
-#define CONFIG_ZYNQ_USB
 #define CONFIG_ZYNQ_I2C0
-
-
-/* select Micrel PHY */
-#define CONFIG_PHY_MICREL
 
 #include <configs/zynq-common.h>
 #include <configs/enclustra_zx_common.h>
-
-/* Unselect Marvell PHY (selected by zynq-common) */
-#ifdef CONFIG_PHY_MARVELL
-#undef CONFIG_PHY_MARVELL
-#endif
-
 #endif /* __CONFIG_ZYNQ_MARS_ZX2_H */

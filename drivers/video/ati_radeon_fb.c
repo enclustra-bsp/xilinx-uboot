@@ -22,7 +22,7 @@
 #include <bios_emul.h>
 #include <pci.h>
 #include <asm/processor.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <malloc.h>
 #include <video_fb.h>
@@ -637,7 +637,8 @@ void *video_hw_init(void)
 
 	videomode = CONFIG_SYS_DEFAULT_VIDEO_MODE;
 	/* get video mode via environment */
-	if ((penv = getenv ("videomode")) != NULL) {
+	penv = env_get("videomode");
+	if (penv) {
 		/* deceide if it is a string */
 		if (penv[0] <= '9') {
 			videomode = (int) simple_strtoul (penv, NULL, 16);

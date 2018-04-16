@@ -311,7 +311,7 @@ l2_disabled:
 #endif
 	mtspr	HID0,r0
 
-#if !defined(CONFIG_E500MC) && !defined(CONFIG_QEMU_E500)
+#if !defined(CONFIG_E500MC) && !defined(CONFIG_ARCH_QEMU_E500)
 	li	r0,(HID1_ASTME|HID1_ABE)@l	/* Addr streaming & broadcast */
 	mfspr	r3,PVR
 	andi.	r3,r3, 0xff
@@ -345,7 +345,7 @@ l2_disabled:
 	mtspr	DBCR0,r0
 #endif
 
-#ifdef CONFIG_MPC8569
+#ifdef CONFIG_ARCH_MPC8569
 #define CONFIG_SYS_LBC_ADDR (CONFIG_SYS_CCSRBAR_DEFAULT + 0x5000)
 #define CONFIG_SYS_LBCR_ADDR (CONFIG_SYS_LBC_ADDR + 0xd0)
 
@@ -376,7 +376,7 @@ l2_disabled:
 	tlbivax	0,r4
 	isync
 
-#endif /* CONFIG_MPC8569 */
+#endif /* CONFIG_ARCH_MPC8569 */
 
 /*
  * Search for the TLB that covers the code we're executing, and shrink it
@@ -1069,17 +1069,23 @@ create_init_ram_area:
 #elif !defined(CONFIG_SYS_RAMBOOT) && defined(CONFIG_SECURE_BOOT)
 	/* create a temp mapping in AS = 1 for Flash mapping
 	 * created by PBL for ISBC code
-	*/
+	 */
 	create_tlb1_entry 15, \
 		1, BOOKE_PAGESZ_1M, \
 		CONFIG_SYS_MONITOR_BASE & 0xfff00000, MAS2_I|MAS2_G, \
 		CONFIG_SYS_PBI_FLASH_WINDOW & 0xfff00000, MAS3_SX|MAS3_SW|MAS3_SR, \
 		0, r6
 
-#elif defined(CONFIG_RAMBOOT_PBL) && defined(CONFIG_SECURE_BOOT)
+/*
+ * For Targets without CONFIG_SPL like P3, P5
+ * and for targets with CONFIG_SPL like T1, T2, T4, only for
+ * u-boot-spl i.e. CONFIG_SPL_BUILD
+ */
+#elif defined(CONFIG_RAMBOOT_PBL) && defined(CONFIG_SECURE_BOOT) && \
+	(!defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD))
 	/* create a temp mapping in AS = 1 for mapping CONFIG_SYS_MONITOR_BASE
 	 * to L3 Address configured by PBL for ISBC code
-	*/
+	 */
 	create_tlb1_entry 15, \
 		1, BOOKE_PAGESZ_1M, \
 		CONFIG_SYS_MONITOR_BASE & 0xfff00000, MAS2_I|MAS2_G, \
@@ -1139,8 +1145,9 @@ switch_as:
 	li	r0,0
 1:
 	dcbz	r0,r3
-#ifdef CONFIG_E6500	/* Lock/unlock L2 cache instead of L1 */
+#ifdef CONFIG_E6500	/* Lock/unlock L2 cache long with L1 */
 	dcbtls	2, r0, r3
+	dcbtls	0, r0, r3
 #else
 	dcbtls	0, r0, r3
 #endif
@@ -1176,14 +1183,13 @@ _start_cont:
 	lis	r3,(CONFIG_SYS_INIT_RAM_ADDR)@h
 	ori	r3,r3,((CONFIG_SYS_INIT_SP_OFFSET-16)&~0xf)@l /* Align to 16 */
 
-#ifdef CONFIG_SYS_MALLOC_F_LEN
-
-#if CONFIG_SYS_MALLOC_F_LEN + GENERATED_GBL_DATA_SIZE > CONFIG_SYS_INIT_RAM_SIZE
-#error "CONFIG_SYS_MALLOC_F_LEN too large to fit into initial RAM."
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+#if CONFIG_VAL(SYS_MALLOC_F_LEN) + GENERATED_GBL_DATA_SIZE > CONFIG_SYS_INIT_RAM_SIZE
+#error "SYS_MALLOC_F_LEN too large to fit into initial RAM."
 #endif
 
 	/* Leave 16+ byte for back chain termination and NULL return address */
-	subi	r3,r3,((CONFIG_SYS_MALLOC_F_LEN+16+15)&~0xf)
+	subi	r3,r3,((CONFIG_VAL(SYS_MALLOC_F_LEN)+16+15)&~0xf)
 #endif
 
 	/* End of RAM */
@@ -1197,7 +1203,7 @@ _start_cont:
 	cmplw 	r4,r3
 	bne	1b
 
-#ifdef CONFIG_SYS_MALLOC_F_LEN
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
 	lis	r4,(CONFIG_SYS_INIT_RAM_ADDR)@h
 	ori	r4,r4,(CONFIG_SYS_GBL_DATA_OFFSET)@l
 
@@ -1367,8 +1373,8 @@ icache_enable:
 	mtlr	r8
 	isync
 	mfspr	r4,L1CSR1
-	ori	r4,r4,0x0001
-	oris	r4,r4,0x0001
+	ori	r4,r4,(L1CSR1_CPE | L1CSR1_ICE)@l
+	oris	r4,r4,(L1CSR1_CPE | L1CSR1_ICE)@h
 	mtspr	L1CSR1,r4
 	isync
 	blr
@@ -1396,8 +1402,8 @@ dcache_enable:
 	mtlr	r8
 	isync
 	mfspr	r0,L1CSR0
-	ori	r0,r0,0x0001
-	oris	r0,r0,0x0001
+	ori	r0,r0,(L1CSR0_CPE |  L1CSR0_DCE)@l
+	oris	r0,r0,(L1CSR0_CPE |  L1CSR0_DCE)@h
 	msync
 	isync
 	mtspr	L1CSR0,r0
@@ -1418,16 +1424,6 @@ dcache_disable:
 dcache_status:
 	mfspr	r3,L1CSR0
 	andi.	r3,r3,L1CSR0_DCE
-	blr
-
-	.globl get_pvr
-get_pvr:
-	mfspr	r3,PVR
-	blr
-
-	.globl get_svr
-get_svr:
-	mfspr	r3,SVR
 	blr
 
 /*------------------------------------------------------------------------------- */
@@ -1784,8 +1780,9 @@ unlock_ram_in_cache:
 	slwi	r4,r4,(10 - 1 - L1_CACHE_SHIFT)
 	mtctr	r4
 1:	dcbi	r0,r3
-#ifdef CONFIG_E6500	/* lock/unlock L2 cache instead of L1 */
+#ifdef CONFIG_E6500	/* lock/unlock L2 cache long with L1 */
 	dcblc	2, r0, r3
+	dcblc	0, r0, r3
 #else
 	dcblc	r0,r3
 #endif

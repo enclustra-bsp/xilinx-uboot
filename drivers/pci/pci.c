@@ -427,7 +427,7 @@ int pci_hose_scan(struct pci_controller *hose)
 
 	if (!gd->pcidelay_done) {
 		/* wait "pcidelay" ms (if defined)... */
-		s = getenv("pcidelay");
+		s = env_get("pcidelay");
 		if (s) {
 			int val = simple_strtoul(s, NULL, 10);
 			for (i = 0; i < val; i++)
@@ -457,6 +457,10 @@ int pci_hose_scan(struct pci_controller *hose)
 void pci_init(void)
 {
 	hose_head = NULL;
+
+	/* allow env to disable pci init/enum */
+	if (env_get("pcidisable") != NULL)
+		return;
 
 	/* now call board specific pci_init()... */
 	pci_init_board();

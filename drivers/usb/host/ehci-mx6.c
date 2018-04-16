@@ -14,9 +14,15 @@
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
-#include <asm/imx-common/iomux-v3.h>
+#include <asm/mach-imx/iomux-v3.h>
+#include <asm/mach-imx/sys_proto.h>
+#include <dm.h>
+#include <asm/mach-types.h>
+#include <power/regulator.h>
 
 #include "ehci.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define USB_OTGREGS_OFFSET	0x000
 #define USB_H1REGS_OFFSET	0x200
@@ -47,9 +53,10 @@
 #define ANADIG_USB2_PLL_480_CTRL_EN_USB_CLKS	0x00000040
 
 #define USBNC_OFFSET		0x200
+#define USBNC_PHY_STATUS_OFFSET	0x23C
 #define USBNC_PHYSTATUS_ID_DIG	(1 << 4) /* otg_id status */
 #define USBNC_PHYCFG2_ACAENB	(1 << 4) /* otg_id detection enable */
-#define UCTRL_PM                (1 << 9) /* OTG Power Mask */
+#define UCTRL_PWR_POL		(1 << 9) /* OTG Polarity of Power Pin */
 #define UCTRL_OVER_CUR_POL	(1 << 8) /* OTG Polarity of Overcurrent */
 #define UCTRL_OVER_CUR_DIS	(1 << 7) /* Disable OTG Overcurrent Detection */
 
@@ -207,12 +214,20 @@ static void usb_power_config(int index)
 	struct usbnc_regs *usbnc = (struct usbnc_regs *)(USB_BASE_ADDR +
 			(0x10000 * index) + USBNC_OFFSET);
 	void __iomem *phy_cfg2 = (void __iomem *)(&usbnc->phy_cfg2);
+	void __iomem *ctrl = (void __iomem *)(&usbnc->ctrl1);
 
 	/*
 	 * Clear the ACAENB to enable usb_otg_id detection,
 	 * otherwise it is the ACA detection enabled.
 	 */
 	clrbits_le32(phy_cfg2, USBNC_PHYCFG2_ACAENB);
+
+	/* Set power polarity to high active */
+#ifdef CONFIG_MXC_USB_OTG_HACTIVE
+	setbits_le32(ctrl, UCTRL_PWR_POL);
+#else
+	clrbits_le32(ctrl, UCTRL_PWR_POL);
+#endif
 }
 
 int usb_phy_mode(int port)
@@ -250,11 +265,7 @@ static void usb_oc_config(int index)
 	setbits_le32(ctrl, UCTRL_OVER_CUR_POL);
 #endif
 
-#if defined(CONFIG_MX6)
 	setbits_le32(ctrl, UCTRL_OVER_CUR_DIS);
-#elif defined(CONFIG_MX7)
-	setbits_le32(ctrl, UCTRL_OVER_CUR_DIS | UCTRL_PM);
-#endif
 }
 
 /**
@@ -303,21 +314,10 @@ int __weak board_ehci_power(int port, int on)
 	return 0;
 }
 
-int ehci_hcd_init(int index, enum usb_init_type init,
-		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
+int ehci_mx6_common_init(struct usb_ehci *ehci, int index)
 {
-	enum usb_init_type type;
-#if defined(CONFIG_MX6)
-	u32 controller_spacing = 0x200;
-#elif defined(CONFIG_MX7)
-	u32 controller_spacing = 0x10000;
-#endif
-	struct usb_ehci *ehci = (struct usb_ehci *)(USB_BASE_ADDR +
-		(controller_spacing * index));
 	int ret;
 
-	if (index > 3)
-		return -EINVAL;
 	enable_usboh3_clk(1);
 	mdelay(1);
 
@@ -333,11 +333,38 @@ int ehci_hcd_init(int index, enum usb_init_type init,
 	usb_internal_phy_clock_gate(index, 1);
 	usb_phy_enable(index, ehci);
 #endif
+
+	return 0;
+}
+
+#ifndef CONFIG_DM_USB
+int ehci_hcd_init(int index, enum usb_init_type init,
+		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
+{
+	enum usb_init_type type;
+#if defined(CONFIG_MX6)
+	u32 controller_spacing = 0x200;
+#elif defined(CONFIG_MX7)
+	u32 controller_spacing = 0x10000;
+#endif
+	struct usb_ehci *ehci = (struct usb_ehci *)(USB_BASE_ADDR +
+		(controller_spacing * index));
+	int ret;
+
+	if (index > 3)
+		return -EINVAL;
+
+	ret = ehci_mx6_common_init(ehci, index);
+	if (ret)
+		return ret;
+
 	type = board_usb_phy_mode(index);
 
-	*hccr = (struct ehci_hccr *)((uint32_t)&ehci->caplength);
-	*hcor = (struct ehci_hcor *)((uint32_t)*hccr +
-			HC_LENGTH(ehci_readl(&(*hccr)->cr_capbase)));
+	if (hccr && hcor) {
+		*hccr = (struct ehci_hccr *)((uint32_t)&ehci->caplength);
+		*hcor = (struct ehci_hcor *)((uint32_t)*hccr +
+				HC_LENGTH(ehci_readl(&(*hccr)->cr_capbase)));
+	}
 
 	if ((type == init) || (type == USB_INIT_DEVICE))
 		board_ehci_power(index, (type == USB_INIT_DEVICE) ? 0 : 1);
@@ -359,3 +386,185 @@ int ehci_hcd_stop(int index)
 {
 	return 0;
 }
+#else
+struct ehci_mx6_priv_data {
+	struct ehci_ctrl ctrl;
+	struct usb_ehci *ehci;
+	struct udevice *vbus_supply;
+	enum usb_init_type init_type;
+	int portnr;
+};
+
+static int mx6_init_after_reset(struct ehci_ctrl *dev)
+{
+	struct ehci_mx6_priv_data *priv = dev->priv;
+	enum usb_init_type type = priv->init_type;
+	struct usb_ehci *ehci = priv->ehci;
+	int ret;
+
+	ret = ehci_mx6_common_init(priv->ehci, priv->portnr);
+	if (ret)
+		return ret;
+
+	if (priv->vbus_supply) {
+		ret = regulator_set_enable(priv->vbus_supply,
+					   (type == USB_INIT_DEVICE) ?
+					   false : true);
+		if (ret) {
+			puts("Error enabling VBUS supply\n");
+			return ret;
+		}
+	}
+
+	if (type == USB_INIT_DEVICE)
+		return 0;
+
+	setbits_le32(&ehci->usbmode, CM_HOST);
+	writel(CONFIG_MXC_USB_PORTSC, &ehci->portsc);
+	setbits_le32(&ehci->portsc, USB_EN);
+
+	mdelay(10);
+
+	return 0;
+}
+
+static const struct ehci_ops mx6_ehci_ops = {
+	.init_after_reset = mx6_init_after_reset
+};
+
+static int ehci_usb_phy_mode(struct udevice *dev)
+{
+	struct usb_platdata *plat = dev_get_platdata(dev);
+	void *__iomem addr = (void *__iomem)devfdt_get_addr(dev);
+	void *__iomem phy_ctrl, *__iomem phy_status;
+	const void *blob = gd->fdt_blob;
+	int offset = dev_of_offset(dev), phy_off;
+	u32 val;
+
+	/*
+	 * About fsl,usbphy, Refer to
+	 * Documentation/devicetree/bindings/usb/ci-hdrc-usb2.txt.
+	 */
+	if (is_mx6()) {
+		phy_off = fdtdec_lookup_phandle(blob,
+						offset,
+						"fsl,usbphy");
+		if (phy_off < 0)
+			return -EINVAL;
+
+		addr = (void __iomem *)fdtdec_get_addr(blob, phy_off,
+						       "reg");
+		if ((fdt_addr_t)addr == FDT_ADDR_T_NONE)
+			return -EINVAL;
+
+		phy_ctrl = (void __iomem *)(addr + USBPHY_CTRL);
+		val = readl(phy_ctrl);
+
+		if (val & USBPHY_CTRL_OTG_ID)
+			plat->init_type = USB_INIT_DEVICE;
+		else
+			plat->init_type = USB_INIT_HOST;
+	} else if (is_mx7()) {
+		phy_status = (void __iomem *)(addr +
+					      USBNC_PHY_STATUS_OFFSET);
+		val = readl(phy_status);
+
+		if (val & USBNC_PHYSTATUS_ID_DIG)
+			plat->init_type = USB_INIT_DEVICE;
+		else
+			plat->init_type = USB_INIT_HOST;
+	} else {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int ehci_usb_ofdata_to_platdata(struct udevice *dev)
+{
+	struct usb_platdata *plat = dev_get_platdata(dev);
+	const char *mode;
+
+	mode = fdt_getprop(gd->fdt_blob, dev_of_offset(dev), "dr_mode", NULL);
+	if (mode) {
+		if (strcmp(mode, "peripheral") == 0)
+			plat->init_type = USB_INIT_DEVICE;
+		else if (strcmp(mode, "host") == 0)
+			plat->init_type = USB_INIT_HOST;
+		else if (strcmp(mode, "otg") == 0)
+			return ehci_usb_phy_mode(dev);
+		else
+			return -EINVAL;
+
+		return 0;
+	}
+
+	return ehci_usb_phy_mode(dev);
+}
+
+static int ehci_usb_probe(struct udevice *dev)
+{
+	struct usb_platdata *plat = dev_get_platdata(dev);
+	struct usb_ehci *ehci = (struct usb_ehci *)devfdt_get_addr(dev);
+	struct ehci_mx6_priv_data *priv = dev_get_priv(dev);
+	enum usb_init_type type = plat->init_type;
+	struct ehci_hccr *hccr;
+	struct ehci_hcor *hcor;
+	int ret;
+
+	priv->ehci = ehci;
+	priv->portnr = dev->seq;
+	priv->init_type = type;
+
+	ret = device_get_supply_regulator(dev, "vbus-supply",
+					  &priv->vbus_supply);
+	if (ret)
+		debug("%s: No vbus supply\n", dev->name);
+
+	ret = ehci_mx6_common_init(ehci, priv->portnr);
+	if (ret)
+		return ret;
+
+	if (priv->vbus_supply) {
+		ret = regulator_set_enable(priv->vbus_supply,
+					   (type == USB_INIT_DEVICE) ?
+					   false : true);
+		if (ret) {
+			puts("Error enabling VBUS supply\n");
+			return ret;
+		}
+	}
+
+	if (priv->init_type == USB_INIT_HOST) {
+		setbits_le32(&ehci->usbmode, CM_HOST);
+		writel(CONFIG_MXC_USB_PORTSC, &ehci->portsc);
+		setbits_le32(&ehci->portsc, USB_EN);
+	}
+
+	mdelay(10);
+
+	hccr = (struct ehci_hccr *)((uint32_t)&ehci->caplength);
+	hcor = (struct ehci_hcor *)((uint32_t)hccr +
+			HC_LENGTH(ehci_readl(&(hccr)->cr_capbase)));
+
+	return ehci_register(dev, hccr, hcor, &mx6_ehci_ops, 0, priv->init_type);
+}
+
+static const struct udevice_id mx6_usb_ids[] = {
+	{ .compatible = "fsl,imx27-usb" },
+	{ }
+};
+
+U_BOOT_DRIVER(usb_mx6) = {
+	.name	= "ehci_mx6",
+	.id	= UCLASS_USB,
+	.of_match = mx6_usb_ids,
+	.ofdata_to_platdata = ehci_usb_ofdata_to_platdata,
+	.probe	= ehci_usb_probe,
+	.remove = ehci_deregister,
+	.ops	= &ehci_usb_ops,
+	.platdata_auto_alloc_size = sizeof(struct usb_platdata),
+	.priv_auto_alloc_size = sizeof(struct ehci_mx6_priv_data),
+	.flags	= DM_FLAG_ALLOC_PRIV_DMA,
+};
+#endif

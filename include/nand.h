@@ -28,10 +28,11 @@
 #endif
 
 extern void nand_init(void);
+unsigned long nand_size(void);
 
 #include <linux/compat.h>
 #include <linux/mtd/mtd.h>
-#include <linux/mtd/nand.h>
+#include <linux/mtd/rawnand.h>
 
 int nand_mtd_to_devnum(struct mtd_info *mtd);
 
@@ -43,7 +44,6 @@ extern int board_nand_init(struct nand_chip *nand);
 #endif
 
 extern int nand_curr_device;
-extern struct mtd_info *nand_info[];
 
 static inline int nand_read(struct mtd_info *info, loff_t ofs, size_t *len,
 			    u_char *buf)
@@ -122,6 +122,7 @@ int nand_unlock(struct mtd_info *mtd, loff_t start, size_t length,
 int nand_get_lock_status(struct mtd_info *mtd, loff_t offset);
 
 int nand_spl_load_image(uint32_t offs, unsigned int size, void *dst);
+int nand_spl_read_block(int block, int offset, int len, void *dst);
 void nand_deselect(void);
 
 #ifdef CONFIG_SYS_NAND_SELECT_DEVICE
@@ -129,8 +130,6 @@ void board_nand_select_device(struct nand_chip *nand, int chip);
 #endif
 
 __attribute__((noreturn)) void nand_boot(void);
-
-#endif
 
 #ifdef CONFIG_ENV_OFFSET_OOB
 #define ENV_OOB_MARKER 0x30425645 /*"EVB0" in little-endian -- offset is stored
@@ -141,3 +140,17 @@ __attribute__((noreturn)) void nand_boot(void);
 int get_nand_env_oob(struct mtd_info *mtd, unsigned long *result);
 #endif
 int spl_nand_erase_one(int block, int page);
+
+/* platform specific init functions */
+void sunxi_nand_init(void);
+
+/*
+ * get_nand_dev_by_index - Get the nand info based in index.
+ *
+ * @dev - index to the nand device.
+ *
+ * returns pointer to the nand device info structure or NULL on failure.
+ */
+struct mtd_info *get_nand_dev_by_index(int dev);
+
+#endif /* _NAND_H_ */

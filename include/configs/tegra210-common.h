@@ -10,9 +10,6 @@
 
 #include "tegra-common.h"
 
-/* Cortex-A57 uses a cache line size of 64 bytes */
-#define CONFIG_SYS_CACHELINE_SIZE	64
-
 /*
  * NS16550 Configuration
  */
@@ -71,7 +68,6 @@
 /* For USB EHCI controller */
 #define CONFIG_EHCI_IS_TDI
 #define CONFIG_USB_EHCI_TXFIFO_THRESH	0x10
-#define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS 1
 
 /* GPU needs setup */
 #define CONFIG_TEGRA_GPU

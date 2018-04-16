@@ -125,7 +125,16 @@ def set_var(state_test_env, var, value):
         Nothing.
     """
 
-    state_test_env.u_boot_console.run_command('setenv %s "%s"' % (var, value))
+    bc = state_test_env.u_boot_console.config.buildconfig
+    if bc.get('config_hush_parser', None):
+        quote = '"'
+    else:
+        quote = ''
+        if ' ' in value:
+            pytest.skip('Space in variable value on non-Hush shell')
+
+    state_test_env.u_boot_console.run_command(
+        'setenv %s %s%s%s' % (var, quote, value, quote))
     state_test_env.env[var] = value
 
 def validate_empty(state_test_env, var):
@@ -164,6 +173,7 @@ def test_env_echo_exists(state_test_env):
     value = state_test_env.env[var]
     validate_set(state_test_env, var, value)
 
+@pytest.mark.buildconfigspec('cmd_echo')
 def test_env_echo_non_existent(state_test_env):
     """Test echoing a variable that doesn't exist."""
 
@@ -179,6 +189,7 @@ def test_env_printenv_non_existent(state_test_env):
         response = c.run_command('printenv %s' % var)
     assert(response == '## Error: "%s" not defined' % var)
 
+@pytest.mark.buildconfigspec('cmd_echo')
 def test_env_unset_non_existent(state_test_env):
     """Test unsetting a nonexistent variable."""
 
@@ -202,6 +213,7 @@ def test_env_set_existing(state_test_env):
     set_var(state_test_env, var, value)
     validate_set(state_test_env, var, value)
 
+@pytest.mark.buildconfigspec('cmd_echo')
 def test_env_unset_existing(state_test_env):
     """Test unsetting a variable."""
 

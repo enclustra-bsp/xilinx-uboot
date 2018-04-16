@@ -5,6 +5,7 @@
 # Utility code shared across multiple tests.
 
 import hashlib
+import inspect
 import os
 import os.path
 import pytest
@@ -158,19 +159,47 @@ def run_and_log(u_boot_console, cmd, ignore_errors=False):
 
     Args:
         u_boot_console: A console connection to U-Boot.
-        cmd: The command to run, as an array of argv[].
+        cmd: The command to run, as an array of argv[], or a string.
+            If a string, note that it is split up so that quoted spaces
+            will not be preserved. E.g. "fred and" becomes ['"fred', 'and"']
         ignore_errors: Indicate whether to ignore errors. If True, the function
             will simply return if the command cannot be executed or exits with
             an error code, otherwise an exception will be raised if such
             problems occur.
 
     Returns:
-        Nothing.
+        The output as a string.
     """
-
+    if isinstance(cmd, str):
+        cmd = cmd.split()
     runner = u_boot_console.log.get_runner(cmd[0], sys.stdout)
-    runner.run(cmd, ignore_errors=ignore_errors)
+    output = runner.run(cmd, ignore_errors=ignore_errors)
     runner.close()
+    return output
+
+def run_and_log_expect_exception(u_boot_console, cmd, retcode, msg):
+    """Run a command that is expected to fail.
+
+    This runs a command and checks that it fails with the expected return code
+    and exception method. If not, an exception is raised.
+
+    Args:
+        u_boot_console: A console connection to U-Boot.
+        cmd: The command to run, as an array of argv[].
+        retcode: Expected non-zero return code from the command.
+        msg: String that should be contained within the command's output.
+    """
+    try:
+        runner = u_boot_console.log.get_runner(cmd[0], sys.stdout)
+        runner.run(cmd)
+    except Exception as e:
+        assert(retcode == runner.exit_status)
+        assert(msg in runner.output)
+    else:
+        raise Exception("Expected an exception with retcode %d message '%s',"
+                        "but it was not raised" % (retcode, msg))
+    finally:
+        runner.close()
 
 ram_base = None
 def find_ram_base(u_boot_console):
@@ -209,3 +238,76 @@ def find_ram_base(u_boot_console):
             raise Exception('Failed to find RAM bank start in `bdinfo`')
 
     return ram_base
+
+class PersistentFileHelperCtxMgr(object):
+    """A context manager for Python's "with" statement, which ensures that any
+    generated file is deleted (and hence regenerated) if its mtime is older
+    than the mtime of the Python module which generated it, and gets an mtime
+    newer than the mtime of the Python module which generated after it is
+    generated. Objects of this type should be created by factory function
+    persistent_file_helper rather than directly."""
+
+    def __init__(self, log, filename):
+        """Initialize a new object.
+
+        Args:
+            log: The Logfile object to log to.
+            filename: The filename of the generated file.
+
+        Returns:
+            Nothing.
+        """
+
+        self.log = log
+        self.filename = filename
+
+    def __enter__(self):
+        frame = inspect.stack()[1]
+        module = inspect.getmodule(frame[0])
+        self.module_filename = module.__file__
+        self.module_timestamp = os.path.getmtime(self.module_filename)
+
+        if os.path.exists(self.filename):
+            filename_timestamp = os.path.getmtime(self.filename)
+            if filename_timestamp < self.module_timestamp:
+                self.log.action('Removing stale generated file ' +
+                    self.filename)
+                os.unlink(self.filename)
+
+    def __exit__(self, extype, value, traceback):
+        if extype:
+            try:
+                os.path.unlink(self.filename)
+            except:
+                pass
+            return
+        logged = False
+        for i in range(20):
+            filename_timestamp = os.path.getmtime(self.filename)
+            if filename_timestamp > self.module_timestamp:
+                break
+            if not logged:
+                self.log.action(
+                    'Waiting for generated file timestamp to increase')
+                logged = True
+            os.utime(self.filename)
+            time.sleep(0.1)
+
+def persistent_file_helper(u_boot_log, filename):
+    """Manage the timestamps and regeneration of a persistent generated
+    file. This function creates a context manager for Python's "with"
+    statement
+
+    Usage:
+        with persistent_file_helper(u_boot_console.log, filename):
+            code to generate the file, if it's missing.
+
+    Args:
+        u_boot_log: u_boot_console.log.
+        filename: The filename of the generated file.
+
+    Returns:
+        A context manager object.
+    """
+
+    return PersistentFileHelperCtxMgr(u_boot_log, filename)

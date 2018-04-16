@@ -9,8 +9,6 @@
 
 #define ARCH_MXC
 
-#define CONFIG_SYS_CACHELINE_SIZE	64
-
 #define ROM_SW_INFO_ADDR                0x000001E8
 #define ROMCP_ARB_BASE_ADDR             0x00000000
 #define ROMCP_ARB_END_ADDR              0x00017FFF
@@ -226,7 +224,7 @@
 					 CONFIG_SYS_FSL_JR0_OFFSET)
 #define CONFIG_SYS_FSL_MAX_NUM_OF_SEC   1
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
-#include <asm/imx-common/regs-lcdif.h>
+#include <asm/mach-imx/regs-lcdif.h>
 #include <asm/types.h>
 
 extern void imx_get_mac_from_fuse(int dev_id, unsigned char *mac);
@@ -270,6 +268,8 @@ struct src {
 #define SRC_M4RCR_M4C_NON_SCLR_RST_MASK		(1 << 0)
 #define SRC_M4RCR_ENABLE_M4_OFFSET		3
 #define SRC_M4RCR_ENABLE_M4_MASK		(1 << 3)
+#define SRC_DDRC_RCR_DDRC_CORE_RST_OFFSET	1
+#define SRC_DDRC_RCR_DDRC_CORE_RST_MASK		(1 << 1)
 
 /* GPR0 Bit Fields */
 #define IOMUXC_GPR_GPR0_DMAREQ_MUX_SEL0_MASK     0x1u

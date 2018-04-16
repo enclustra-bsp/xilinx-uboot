@@ -80,11 +80,10 @@ int cmd_process_error(cmd_tbl_t *cmdtp, int err);
  * void function (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
  */
 
-#if defined(CONFIG_CMD_MEMORY)		\
-	|| defined(CONFIG_CMD_I2C)	\
-	|| defined(CONFIG_CMD_ITEST)	\
-	|| defined(CONFIG_CMD_PCI)	\
-	|| defined(CONFIG_CMD_PORTIO)
+#if defined(CONFIG_CMD_MEMORY) || \
+	defined(CONFIG_CMD_I2C) || \
+	defined(CONFIG_CMD_ITEST) || \
+	defined(CONFIG_CMD_PCI)
 #define CMD_DATA_SIZE
 extern int cmd_get_data_size(char* arg, int default_size);
 #endif
@@ -112,6 +111,8 @@ extern int common_diskboot(cmd_tbl_t *cmdtp, const char *intf, int argc,
 extern int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 extern int do_poweroff(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 
+extern unsigned long do_go_exec(ulong (*entry)(int, char * const []), int argc,
+				char * const argv[]);
 /*
  * Error codes that commands return to cmd_process(). We use the standard 0
  * and 1 for success and failure, but add one more case - failure with a

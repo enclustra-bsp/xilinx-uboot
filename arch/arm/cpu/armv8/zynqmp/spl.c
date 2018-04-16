@@ -17,7 +17,7 @@
 
 void board_init_f(ulong dummy)
 {
-	psu_init();
+	board_early_init_f();
 	board_early_init_r();
 
 #ifdef CONFIG_DEBUG_UART
@@ -69,26 +69,43 @@ u32 spl_boot_device(void)
 
 #if defined(CONFIG_SPL_ZYNQMP_ALT_BOOTMODE_ENABLED)
 	/* Change default boot mode at run-time */
-	writel(BOOT_MODE_USE_ALT |
-	       CONFIG_SPL_ZYNQMP_ALT_BOOTMODE << BOOT_MODE_ALT_SHIFT,
+	writel(CONFIG_SPL_ZYNQMP_ALT_BOOTMODE << BOOT_MODE_ALT_SHIFT,
 	       &crlapb_base->boot_mode);
 #endif
 
 	reg = readl(&crlapb_base->boot_mode);
+	if (reg >> BOOT_MODE_ALT_SHIFT)
+		reg >>= BOOT_MODE_ALT_SHIFT;
+
 	bootmode = reg & BOOT_MODES_MASK;
 
 	switch (bootmode) {
 	case JTAG_MODE:
 		return BOOT_DEVICE_RAM;
 #ifdef CONFIG_SPL_MMC_SUPPORT
-	case EMMC_MODE:
-	case SD_MODE:
 	case SD_MODE1:
+	case SD1_LSHFT_MODE: /* not working on silicon v1 */
+/* if both controllers enabled, then these two are the second controller */
+#if defined(CONFIG_ZYNQ_SDHCI0) && defined(CONFIG_ZYNQ_SDHCI1)
+		return BOOT_DEVICE_MMC2;
+/* else, fall through, the one SDHCI controller that is enabled is number 1 */
+#endif
+	case SD_MODE:
+	case EMMC_MODE:
 		return BOOT_DEVICE_MMC1;
 #endif
 #ifdef CONFIG_SPL_DFU_SUPPORT
 	case USB_MODE:
 		return BOOT_DEVICE_DFU;
+#endif
+#ifdef CONFIG_SPL_SATA_SUPPORT
+	case SW_SATA_MODE:
+		return BOOT_DEVICE_SATA;
+#endif
+#ifdef CONFIG_SPL_SPI_SUPPORT
+	case QSPI_MODE_24BIT:
+	case QSPI_MODE_32BIT:
+		return BOOT_DEVICE_SPI;
 #endif
 	default:
 		printf("Invalid Boot Mode:0x%x\n", bootmode);
@@ -100,10 +117,11 @@ u32 spl_boot_device(void)
 
 u32 spl_boot_mode(const u32 boot_device)
 {
-	switch (spl_boot_device()) {
+	switch (boot_device) {
 	case BOOT_DEVICE_RAM:
 		return 0;
 	case BOOT_DEVICE_MMC1:
+	case BOOT_DEVICE_MMC2:
 		return MMCSD_MODE_FS;
 	default:
 		puts("spl: error: unsupported device\n");
@@ -111,17 +129,11 @@ u32 spl_boot_mode(const u32 boot_device)
 	}
 }
 
-__weak void psu_init(void)
-{
-	 /*
-	  * This function is overridden by the one in
-	  * board/xilinx/zynqmp/(platform)/psu_init_gpl.c, if it exists.
-	  */
-}
-
 #ifdef CONFIG_SPL_OS_BOOT
 int spl_start_uboot(void)
 {
+	handoff_setup();
+
 	return 0;
 }
 #endif

@@ -7,9 +7,11 @@
 #include <common.h>
 #include <asm/arch/clock.h>
 #include <asm/io.h>
+#include <asm/arch/fsl_serdes.h>
 #include <asm/arch/immap_ls102xa.h>
 #include <asm/arch/ls102xa_soc.h>
 #include <asm/arch/ls102xa_stream_id.h>
+#include <fsl_csu.h>
 
 struct liodn_id_table sec_liodn_tbl[] = {
 	SET_SEC_JR_LIODN_ENTRY(0, 0x10, 0x10),
@@ -58,17 +60,83 @@ unsigned int get_soc_major_rev(void)
 	return major;
 }
 
+static void erratum_a009008(void)
+{
+#ifdef CONFIG_SYS_FSL_ERRATUM_A009008
+	u32 __iomem *scfg = (u32 __iomem *)SCFG_BASE;
+
+	clrsetbits_be32(scfg + SCFG_USB3PRM1CR / 4,
+			0xF << 6,
+			SCFG_USB_TXVREFTUNE << 6);
+#endif /* CONFIG_SYS_FSL_ERRATUM_A009008 */
+}
+
+static void erratum_a009798(void)
+{
+#ifdef CONFIG_SYS_FSL_ERRATUM_A009798
+	u32 __iomem *scfg = (u32 __iomem *)SCFG_BASE;
+
+	clrbits_be32(scfg + SCFG_USB3PRM1CR / 4,
+			SCFG_USB_SQRXTUNE_MASK << 23);
+#endif /* CONFIG_SYS_FSL_ERRATUM_A009798 */
+}
+
+static void erratum_a008997(void)
+{
+#ifdef CONFIG_SYS_FSL_ERRATUM_A008997
+	u32 __iomem *scfg = (u32 __iomem *)SCFG_BASE;
+
+	clrsetbits_be32(scfg + SCFG_USB3PRM2CR / 4,
+			SCFG_USB_PCSTXSWINGFULL_MASK,
+			SCFG_USB_PCSTXSWINGFULL_VAL);
+#endif /* CONFIG_SYS_FSL_ERRATUM_A008997 */
+}
+
+static void erratum_a009007(void)
+{
+#ifdef CONFIG_SYS_FSL_ERRATUM_A009007
+	void __iomem *usb_phy = (void __iomem *)USB_PHY_BASE;
+
+	out_le16(usb_phy + USB_PHY_RX_OVRD_IN_HI, USB_PHY_RX_EQ_VAL_1);
+	out_le16(usb_phy + USB_PHY_RX_OVRD_IN_HI, USB_PHY_RX_EQ_VAL_2);
+	out_le16(usb_phy + USB_PHY_RX_OVRD_IN_HI, USB_PHY_RX_EQ_VAL_3);
+	out_le16(usb_phy + USB_PHY_RX_OVRD_IN_HI, USB_PHY_RX_EQ_VAL_4);
+#endif /* CONFIG_SYS_FSL_ERRATUM_A009007 */
+}
+
+void s_init(void)
+{
+}
+
+#ifdef CONFIG_SYS_FSL_ERRATUM_A010315
+void erratum_a010315(void)
+{
+	int i;
+
+	for (i = PCIE1; i <= PCIE2; i++)
+		if (!is_serdes_configured(i)) {
+			debug("PCIe%d: disabled all R/W permission!\n", i);
+			set_pcie_ns_access(i, 0);
+		}
+}
+#endif
+
 int arch_soc_init(void)
 {
 	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
-	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)CONFIG_SYS_CCI400_ADDR;
+	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)(CONFIG_SYS_IMMR +
+					CONFIG_SYS_CCI400_OFFSET);
 	unsigned int major;
+
+#ifdef CONFIG_LAYERSCAPE_NS_ACCESS
+	enable_layerscape_ns_access();
+#endif
 
 #ifdef CONFIG_FSL_QSPI
 	out_be32(&scfg->qspi_cfg, SCFG_QSPI_CLKSEL);
 #endif
 
-#ifdef CONFIG_FSL_DCU_FB
+#ifdef CONFIG_VIDEO_FSL_DCU_FB
 	out_be32(&scfg->pixclkcr, SCFG_PIXCLKCR_PXCKEN);
 #endif
 
@@ -122,6 +190,12 @@ int arch_soc_init(void)
 	 * Workaround: Write a value of 63b2_0042h to address: 157_020Ch.
 	 */
 	out_be32(&scfg->eddrtqcfg, 0x63b20042);
+
+	/* Erratum */
+	erratum_a009008();
+	erratum_a009798();
+	erratum_a008997();
+	erratum_a009007();
 
 	return 0;
 }

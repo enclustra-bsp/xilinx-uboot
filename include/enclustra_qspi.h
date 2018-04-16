@@ -42,10 +42,10 @@ static struct flash_partition_map flash_maps[] = {
 };
 #endif
 
-static inline int setenv_hex_if_empty(const char *varname, ulong value)
+static inline int env_set_hex_if_empty(const char *varname, ulong value)
 {
-    if (getenv(varname) == NULL)
-        setenv_hex(varname, value);
+    if (env_get(varname) == NULL)
+        env_set_hex(varname, value);
 
     return 0;
 }
@@ -104,22 +104,22 @@ static inline int setup_qspi_args(int flash_sz, char *chip_name)
        rfs_off = bscr_off + fm->bootscr_size;
        if(fm->rootfs_size == 0)
             fm->rootfs_size = calculate_rootfs_size(fm, flash_sz);
-       setenv_hex_if_empty("ramdisk_size", fm->rootfs_size);
-       setenv_hex_if_empty("jffs2_size", fm->rootfs_size);
-       setenv_hex_if_empty("ubifs_size", fm->rootfs_size);
-       setenv_hex_if_empty("kernel_size", fm->kernel_size);
-       setenv_hex_if_empty("devicetree_size", fm->devicetree_size);
-       setenv_hex_if_empty("bootscript_size", fm->bootscr_size);
-       setenv_hex_if_empty("bootimage_size", fm->bootimage_size);
-       setenv_hex_if_empty("fullboot_size", flash_sz*1024*1024);
-       setenv_hex_if_empty("qspi_env_size", QSPI_BOOTARGS_SIZE);
-       setenv_hex_if_empty("qspi_bootimage_offset", boot_off);
-       setenv_hex_if_empty("qspi_kernel_offset", kern_off);
-       setenv_hex_if_empty("qspi_ramdisk_offset", rfs_off);
-       setenv_hex_if_empty("qspi_rootfs_offset", rfs_off);
-       setenv_hex_if_empty("qspi_devicetree_offset", dtb_off);
-       setenv_hex_if_empty("qspi_bootscript_offset", bscr_off);
-       setenv_hex_if_empty("qspi_env_offset", env_off);
+       env_set_hex_if_empty("ramdisk_size", fm->rootfs_size);
+       env_set_hex_if_empty("jffs2_size", fm->rootfs_size);
+       env_set_hex_if_empty("ubifs_size", fm->rootfs_size);
+       env_set_hex_if_empty("kernel_size", fm->kernel_size);
+       env_set_hex_if_empty("devicetree_size", fm->devicetree_size);
+       env_set_hex_if_empty("bootscript_size", fm->bootscr_size);
+       env_set_hex_if_empty("bootimage_size", fm->bootimage_size);
+       env_set_hex_if_empty("fullboot_size", flash_sz*1024*1024);
+       env_set_hex_if_empty("qspi_env_size", QSPI_BOOTARGS_SIZE);
+       env_set_hex_if_empty("qspi_bootimage_offset", boot_off);
+       env_set_hex_if_empty("qspi_kernel_offset", kern_off);
+       env_set_hex_if_empty("qspi_ramdisk_offset", rfs_off);
+       env_set_hex_if_empty("qspi_rootfs_offset", rfs_off);
+       env_set_hex_if_empty("qspi_devicetree_offset", dtb_off);
+       env_set_hex_if_empty("qspi_bootscript_offset", bscr_off);
+       env_set_hex_if_empty("qspi_env_offset", env_off);
     }
 
     return 0;

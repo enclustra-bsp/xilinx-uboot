@@ -17,6 +17,7 @@
 #include <asm/arch/sys_proto.h>
 
 #define DEVCFG_CTRL_PCFG_PROG_B		0x40000000
+#define DEVCFG_CTRL_PCFG_AES_EFUSE_MASK	0x00001000
 #define DEVCFG_CTRL_PCAP_RATE_EN_MASK	0x02000000
 #define DEVCFG_ISR_FATAL_ERROR_MASK	0x00740040
 #define DEVCFG_ISR_ERROR_FLAGS_MASK	0x00340840
@@ -38,11 +39,6 @@
 #ifndef CONFIG_SYS_FPGA_PROG_TIME
 #define CONFIG_SYS_FPGA_PROG_TIME	(CONFIG_SYS_HZ * 4) /* 4 s */
 #endif
-
-static int zynq_info(xilinx_desc *desc)
-{
-	return FPGA_SUCCESS;
-}
 
 #define DUMMY_WORD	0xffffffff
 
@@ -211,8 +207,23 @@ static int zynq_dma_xfer_init(bitstream_type bstype)
 		/* Setting PCFG_PROG_B signal to high */
 		control = readl(&devcfg_base->ctrl);
 		writel(control | DEVCFG_CTRL_PCFG_PROG_B, &devcfg_base->ctrl);
+
+		/*
+		 * Delay is required if AES efuse is selected as
+		 * key source.
+		 */
+		if (control & DEVCFG_CTRL_PCFG_AES_EFUSE_MASK)
+			mdelay(5);
+
 		/* Setting PCFG_PROG_B signal to low */
 		writel(control & ~DEVCFG_CTRL_PCFG_PROG_B, &devcfg_base->ctrl);
+
+		/*
+		 * Delay is required if AES efuse is selected as
+		 * key source.
+		 */
+		if (control & DEVCFG_CTRL_PCFG_AES_EFUSE_MASK)
+			mdelay(5);
 
 		/* Polling the PCAP_INIT status for Reset */
 		ts = get_timer(0);
@@ -482,18 +493,11 @@ static int zynq_loadfs(xilinx_desc *desc, const void *buf, size_t bsize,
 }
 #endif
 
-static int zynq_dump(xilinx_desc *desc, const void *buf, size_t bsize)
-{
-	return FPGA_FAIL;
-}
-
 struct xilinx_fpga_op zynq_op = {
 	.load = zynq_load,
 #if defined(CONFIG_CMD_FPGA_LOADFS) && !defined(CONFIG_SPL_BUILD)
 	.loadfs = zynq_loadfs,
 #endif
-	.dump = zynq_dump,
-	.info = zynq_info,
 };
 
 #ifdef CONFIG_CMD_ZYNQ_AES
@@ -504,6 +508,8 @@ struct xilinx_fpga_op zynq_op = {
 int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen,
 		      u8 bstype)
 {
+	u32 isr_status, ts;
+
 	if ((srcaddr < SZ_1M) || (dstaddr < SZ_1M)) {
 		printf("%s: src and dst addr should be > 1M\n",
 		       __func__);
@@ -521,12 +527,38 @@ int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen,
 	debug("%s: Source = 0x%08X\n", __func__, (u32)srcaddr);
 	debug("%s: Size = %zu\n", __func__, srclen);
 
-	dcache_disable();
-	if (zynq_dma_transfer(srcaddr | 1, srclen, dstaddr | 1, dstlen)) {
-		dcache_enable();
+	/* flush(clean & invalidate) d-cache range buf */
+	flush_dcache_range((u32)srcaddr, (u32)srcaddr +
+			   roundup(srclen << 2, ARCH_DMA_MINALIGN));
+	/*
+	 * Flush destination address range only if image is not
+	 * bitstream.
+	 */
+	if (bstype == BIT_NONE)
+		flush_dcache_range((u32)dstaddr, (u32)dstaddr +
+				   roundup(dstlen << 2, ARCH_DMA_MINALIGN));
+
+	if (zynq_dma_transfer(srcaddr | 1, srclen, dstaddr | 1, dstlen))
 		return FPGA_FAIL;
+
+	if (bstype == BIT_FULL) {
+		isr_status = readl(&devcfg_base->int_sts);
+		/* Check FPGA configuration completion */
+		ts = get_timer(0);
+		while (!(isr_status & DEVCFG_ISR_PCFG_DONE)) {
+			if (get_timer(ts) > CONFIG_SYS_FPGA_WAIT) {
+				printf("%s: Timeout wait for FPGA to config\n",
+				       __func__);
+				return FPGA_FAIL;
+			}
+			isr_status = readl(&devcfg_base->int_sts);
+		}
+
+		printf("%s: FPGA config done\n", __func__);
+
+		if (bstype != BIT_PARTIAL)
+			zynq_slcr_devcfg_enable();
 	}
-	dcache_enable();
 
 	return FPGA_SUCCESS;
 }
@@ -584,7 +616,17 @@ static int do_zynq_decrypt_image(cmd_tbl_t *cmdtp, int flag, int argc,
 		goto usage;
 	}
 
-	status = zynq_decrypt_load(srcaddr, srclen, dstaddr, dstlen, imgtype);
+	/*
+	 * Roundup source and destination lengths to
+	 * word size
+	 */
+	if (srclen % 4)
+		srclen = roundup(srclen, 4);
+	if (dstlen % 4)
+		dstlen = roundup(dstlen, 4);
+
+	status = zynq_decrypt_load(srcaddr, srclen >> 2, dstaddr, dstlen >> 2,
+				   imgtype);
 	if (status != 0)
 		return -1;
 

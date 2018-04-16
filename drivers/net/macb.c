@@ -4,6 +4,7 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
+#include <clk.h>
 #include <dm.h>
 
 /*
@@ -39,9 +40,11 @@
 #include <asm/io.h>
 #include <asm/dma-mapping.h>
 #include <asm/arch/clk.h>
-#include <asm-generic/errno.h>
+#include <linux/errno.h>
 
 #include "macb.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #define MACB_RX_BUFFER_SIZE		4096
 #define MACB_RX_RING_SIZE		(MACB_RX_BUFFER_SIZE / 128)
@@ -108,6 +111,16 @@ struct macb_device {
 #endif
 	unsigned short		phy_addr;
 	struct mii_dev		*bus;
+#ifdef CONFIG_PHYLIB
+	struct phy_device	*phydev;
+#endif
+
+#ifdef CONFIG_DM_ETH
+#ifdef CONFIG_CLK
+	unsigned long		pclk_rate;
+#endif
+	phy_interface_t		phy_interface;
+#endif
 };
 #ifndef CONFIG_DM_ETH
 #define to_macb(_nd) container_of(_nd, struct macb_device, netdev)
@@ -199,39 +212,41 @@ void __weak arch_get_mdio_control(const char *name)
 
 #if defined(CONFIG_CMD_MII) || defined(CONFIG_PHYLIB)
 
-int macb_miiphy_read(const char *devname, u8 phy_adr, u8 reg, u16 *value)
+int macb_miiphy_read(struct mii_dev *bus, int phy_adr, int devad, int reg)
 {
+	u16 value = 0;
 #ifdef CONFIG_DM_ETH
-	struct udevice *dev = eth_get_dev_by_name(devname);
+	struct udevice *dev = eth_get_dev_by_name(bus->name);
 	struct macb_device *macb = dev_get_priv(dev);
 #else
-	struct eth_device *dev = eth_get_dev_by_name(devname);
+	struct eth_device *dev = eth_get_dev_by_name(bus->name);
 	struct macb_device *macb = to_macb(dev);
 #endif
 
 	if (macb->phy_addr != phy_adr)
 		return -1;
 
-	arch_get_mdio_control(devname);
-	*value = macb_mdio_read(macb, reg);
+	arch_get_mdio_control(bus->name);
+	value = macb_mdio_read(macb, reg);
 
-	return 0;
+	return value;
 }
 
-int macb_miiphy_write(const char *devname, u8 phy_adr, u8 reg, u16 value)
+int macb_miiphy_write(struct mii_dev *bus, int phy_adr, int devad, int reg,
+		      u16 value)
 {
 #ifdef CONFIG_DM_ETH
-	struct udevice *dev = eth_get_dev_by_name(devname);
+	struct udevice *dev = eth_get_dev_by_name(bus->name);
 	struct macb_device *macb = dev_get_priv(dev);
 #else
-	struct eth_device *dev = eth_get_dev_by_name(devname);
+	struct eth_device *dev = eth_get_dev_by_name(bus->name);
 	struct macb_device *macb = to_macb(dev);
 #endif
 
 	if (macb->phy_addr != phy_adr)
 		return -1;
 
-	arch_get_mdio_control(devname);
+	arch_get_mdio_control(bus->name);
 	macb_mdio_write(macb, reg, value);
 
 	return 0;
@@ -243,33 +258,35 @@ int macb_miiphy_write(const char *devname, u8 phy_adr, u8 reg, u16 value)
 static inline void macb_invalidate_ring_desc(struct macb_device *macb, bool rx)
 {
 	if (rx)
-		invalidate_dcache_range(macb->rx_ring_dma, macb->rx_ring_dma +
-			MACB_RX_DMA_DESC_SIZE);
+		invalidate_dcache_range(macb->rx_ring_dma,
+			ALIGN(macb->rx_ring_dma + MACB_RX_DMA_DESC_SIZE,
+			      PKTALIGN));
 	else
-		invalidate_dcache_range(macb->tx_ring_dma, macb->tx_ring_dma +
-			MACB_TX_DMA_DESC_SIZE);
+		invalidate_dcache_range(macb->tx_ring_dma,
+			ALIGN(macb->tx_ring_dma + MACB_TX_DMA_DESC_SIZE,
+			      PKTALIGN));
 }
 
 static inline void macb_flush_ring_desc(struct macb_device *macb, bool rx)
 {
 	if (rx)
 		flush_dcache_range(macb->rx_ring_dma, macb->rx_ring_dma +
-			MACB_RX_DMA_DESC_SIZE);
+				   ALIGN(MACB_RX_DMA_DESC_SIZE, PKTALIGN));
 	else
 		flush_dcache_range(macb->tx_ring_dma, macb->tx_ring_dma +
-			MACB_TX_DMA_DESC_SIZE);
+				   ALIGN(MACB_TX_DMA_DESC_SIZE, PKTALIGN));
 }
 
 static inline void macb_flush_rx_buffer(struct macb_device *macb)
 {
 	flush_dcache_range(macb->rx_buffer_dma, macb->rx_buffer_dma +
-				MACB_RX_BUFFER_SIZE);
+			   ALIGN(MACB_RX_BUFFER_SIZE, PKTALIGN));
 }
 
 static inline void macb_invalidate_rx_buffer(struct macb_device *macb)
 {
 	invalidate_dcache_range(macb->rx_buffer_dma, macb->rx_buffer_dma +
-				MACB_RX_BUFFER_SIZE);
+				ALIGN(MACB_RX_BUFFER_SIZE, PKTALIGN));
 }
 
 #if defined(CONFIG_CMD_NET)
@@ -433,8 +450,7 @@ static void macb_phy_reset(struct macb_device *macb, const char *name)
 		       name, status);
 }
 
-#ifdef CONFIG_MACB_SEARCH_PHY
-static int macb_phy_find(struct macb_device *macb)
+static int macb_phy_find(struct macb_device *macb, const char *name)
 {
 	int i;
 	u16 phy_id;
@@ -444,23 +460,25 @@ static int macb_phy_find(struct macb_device *macb)
 		macb->phy_addr = i;
 		phy_id = macb_mdio_read(macb, MII_PHYSID1);
 		if (phy_id != 0xffff) {
-			printf("%s: PHY present at %d\n", macb->netdev.name, i);
+			printf("%s: PHY present at %d\n", name, i);
 			return 1;
 		}
 	}
 
 	/* PHY isn't up to snuff */
-	printf("%s: PHY not found\n", macb->netdev.name);
+	printf("%s: PHY not found\n", name);
 
 	return 0;
 }
-#endif /* CONFIG_MACB_SEARCH_PHY */
 
-
+#ifdef CONFIG_DM_ETH
+static int macb_phy_init(struct udevice *dev, const char *name)
+#else
 static int macb_phy_init(struct macb_device *macb, const char *name)
+#endif
 {
-#ifdef CONFIG_PHYLIB
-	struct phy_device *phydev;
+#ifdef CONFIG_DM_ETH
+	struct macb_device *macb = dev_get_priv(dev);
 #endif
 	u32 ncfgr;
 	u16 phy_id, status, adv, lpa;
@@ -468,11 +486,9 @@ static int macb_phy_init(struct macb_device *macb, const char *name)
 	int i;
 
 	arch_get_mdio_control(name);
-#ifdef CONFIG_MACB_SEARCH_PHY
 	/* Auto-detect phy_addr */
-	if (!macb_phy_find(macb))
+	if (!macb_phy_find(macb, name))
 		return 0;
-#endif /* CONFIG_MACB_SEARCH_PHY */
 
 	/* Check if the PHY is up to snuff... */
 	phy_id = macb_mdio_read(macb, MII_PHYSID1);
@@ -482,15 +498,20 @@ static int macb_phy_init(struct macb_device *macb, const char *name)
 	}
 
 #ifdef CONFIG_PHYLIB
+#ifdef CONFIG_DM_ETH
+	macb->phydev = phy_connect(macb->bus, macb->phy_addr, dev,
+			     macb->phy_interface);
+#else
 	/* need to consider other phy interface mode */
-	phydev = phy_connect(macb->bus, macb->phy_addr, &macb->netdev,
+	macb->phydev = phy_connect(macb->bus, macb->phy_addr, &macb->netdev,
 			     PHY_INTERFACE_MODE_RGMII);
-	if (!phydev) {
+#endif
+	if (!macb->phydev) {
 		printf("phy_connect failed\n");
 		return -ENODEV;
 	}
 
-	phy_config(phydev);
+	phy_config(macb->phydev);
 #endif
 
 	status = macb_mdio_read(macb, MII_BMSR);
@@ -577,7 +598,7 @@ static int gmac_init_multi_queues(struct macb_device *macb)
 	macb->dummy_desc->ctrl = TXBUF_USED;
 	macb->dummy_desc->addr = 0;
 	flush_dcache_range(macb->dummy_desc_dma, macb->dummy_desc_dma +
-			MACB_TX_DUMMY_DMA_DESC_SIZE);
+			ALIGN(MACB_TX_DUMMY_DMA_DESC_SIZE, PKTALIGN));
 
 	for (i = 1; i < num_queues; i++)
 		gem_writel_queue_TBQP(macb, macb->dummy_desc_dma, i - 1);
@@ -585,8 +606,15 @@ static int gmac_init_multi_queues(struct macb_device *macb)
 	return 0;
 }
 
+#ifdef CONFIG_DM_ETH
+static int _macb_init(struct udevice *dev, const char *name)
+#else
 static int _macb_init(struct macb_device *macb, const char *name)
+#endif
 {
+#ifdef CONFIG_DM_ETH
+	struct macb_device *macb = dev_get_priv(dev);
+#endif
 	unsigned long paddr;
 	int i;
 
@@ -634,13 +662,36 @@ static int _macb_init(struct macb_device *macb, const char *name)
 		 * When the GMAC IP without GE feature, this bit is used
 		 * to select interface between RMII and MII.
 		 */
+#ifdef CONFIG_DM_ETH
+		if ((macb->phy_interface == PHY_INTERFACE_MODE_RMII) ||
+		    (macb->phy_interface == PHY_INTERFACE_MODE_RGMII))
+			gem_writel(macb, UR, GEM_BIT(RGMII));
+		else
+			gem_writel(macb, UR, 0);
+#else
 #if defined(CONFIG_RGMII) || defined(CONFIG_RMII)
 		gem_writel(macb, UR, GEM_BIT(RGMII));
 #else
 		gem_writel(macb, UR, 0);
 #endif
+#endif
 	} else {
 	/* choose RMII or MII mode. This depends on the board */
+#ifdef CONFIG_DM_ETH
+#ifdef CONFIG_AT91FAMILY
+		if (macb->phy_interface == PHY_INTERFACE_MODE_RMII) {
+			macb_writel(macb, USRIO,
+				    MACB_BIT(RMII) | MACB_BIT(CLKEN));
+		} else {
+			macb_writel(macb, USRIO, MACB_BIT(CLKEN));
+		}
+#else
+		if (macb->phy_interface == PHY_INTERFACE_MODE_RMII)
+			macb_writel(macb, USRIO, 0);
+		else
+			macb_writel(macb, USRIO, MACB_BIT(MII));
+#endif
+#else
 #ifdef CONFIG_RMII
 #ifdef CONFIG_AT91FAMILY
 	macb_writel(macb, USRIO, MACB_BIT(RMII) | MACB_BIT(CLKEN));
@@ -654,9 +705,14 @@ static int _macb_init(struct macb_device *macb, const char *name)
 	macb_writel(macb, USRIO, MACB_BIT(MII));
 #endif
 #endif /* CONFIG_RMII */
+#endif
 	}
 
+#ifdef CONFIG_DM_ETH
+	if (!macb_phy_init(dev, name))
+#else
 	if (!macb_phy_init(macb, name))
+#endif
 		return -1;
 
 	/* Enable TX and RX */
@@ -699,7 +755,11 @@ static int _macb_write_hwaddr(struct macb_device *macb, unsigned char *enetaddr)
 static u32 macb_mdc_clk_div(int id, struct macb_device *macb)
 {
 	u32 config;
+#if defined(CONFIG_DM_ETH) && defined(CONFIG_CLK)
+	unsigned long macb_hz = macb->pclk_rate;
+#else
 	unsigned long macb_hz = get_macb_pclk_rate(id);
+#endif
 
 	if (macb_hz < 20000000)
 		config = MACB_BF(CLK, MACB_CLK_DIV8);
@@ -716,7 +776,12 @@ static u32 macb_mdc_clk_div(int id, struct macb_device *macb)
 static u32 gem_mdc_clk_div(int id, struct macb_device *macb)
 {
 	u32 config;
+
+#if defined(CONFIG_DM_ETH) && defined(CONFIG_CLK)
+	unsigned long macb_hz = macb->pclk_rate;
+#else
 	unsigned long macb_hz = get_macb_pclk_rate(id);
+#endif
 
 	if (macb_hz < 20000000)
 		config = GEM_BF(CLK, GEM_CLK_DIV8);
@@ -862,7 +927,17 @@ int macb_eth_initialize(int id, void *regs, unsigned int phy_addr)
 	eth_register(netdev);
 
 #if defined(CONFIG_CMD_MII) || defined(CONFIG_PHYLIB)
-	miiphy_register(netdev->name, macb_miiphy_read, macb_miiphy_write);
+	int retval;
+	struct mii_dev *mdiodev = mdio_alloc();
+	if (!mdiodev)
+		return -ENOMEM;
+	strncpy(mdiodev->name, netdev->name, MDIO_NAME_LEN);
+	mdiodev->read = macb_miiphy_read;
+	mdiodev->write = macb_miiphy_write;
+
+	retval = mdio_register(mdiodev);
+	if (retval < 0)
+		return retval;
 	macb->bus = miiphy_get_dev_by_name(netdev->name);
 #endif
 	return 0;
@@ -873,9 +948,7 @@ int macb_eth_initialize(int id, void *regs, unsigned int phy_addr)
 
 static int macb_start(struct udevice *dev)
 {
-	struct macb_device *macb = dev_get_priv(dev);
-
-	return _macb_init(macb, dev->name);
+	return _macb_init(dev, dev->name);
 }
 
 static int macb_send(struct udevice *dev, void *packet, int length)
@@ -928,18 +1001,84 @@ static const struct eth_ops macb_eth_ops = {
 	.write_hwaddr	= macb_write_hwaddr,
 };
 
+#ifdef CONFIG_CLK
+static int macb_enable_clk(struct udevice *dev)
+{
+	struct macb_device *macb = dev_get_priv(dev);
+	struct clk clk;
+	ulong clk_rate;
+	int ret;
+
+	ret = clk_get_by_index(dev, 0, &clk);
+	if (ret)
+		return -EINVAL;
+
+	ret = clk_enable(&clk);
+	if (ret)
+		return ret;
+
+	clk_rate = clk_get_rate(&clk);
+	if (!clk_rate)
+		return -EINVAL;
+
+	macb->pclk_rate = clk_rate;
+
+	return 0;
+}
+#endif
+
 static int macb_eth_probe(struct udevice *dev)
 {
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 	struct macb_device *macb = dev_get_priv(dev);
+	const char *phy_mode;
+	__maybe_unused int ret;
+
+	phy_mode = fdt_getprop(gd->fdt_blob, dev_of_offset(dev), "phy-mode",
+			       NULL);
+	if (phy_mode)
+		macb->phy_interface = phy_get_interface_by_name(phy_mode);
+	if (macb->phy_interface == -1) {
+		debug("%s: Invalid PHY interface '%s'\n", __func__, phy_mode);
+		return -EINVAL;
+	}
 
 	macb->regs = (void *)pdata->iobase;
 
+#ifdef CONFIG_CLK
+	ret = macb_enable_clk(dev);
+	if (ret)
+		return ret;
+#endif
+
 	_macb_eth_initialize(macb);
+
 #if defined(CONFIG_CMD_MII) || defined(CONFIG_PHYLIB)
-	miiphy_register(dev->name, macb_miiphy_read, macb_miiphy_write);
+	macb->bus = mdio_alloc();
+	if (!macb->bus)
+		return -ENOMEM;
+	strncpy(macb->bus->name, dev->name, MDIO_NAME_LEN);
+	macb->bus->read = macb_miiphy_read;
+	macb->bus->write = macb_miiphy_write;
+
+	ret = mdio_register(macb->bus);
+	if (ret < 0)
+		return ret;
 	macb->bus = miiphy_get_dev_by_name(dev->name);
 #endif
+
+	return 0;
+}
+
+static int macb_eth_remove(struct udevice *dev)
+{
+	struct macb_device *macb = dev_get_priv(dev);
+
+#ifdef CONFIG_PHYLIB
+	free(macb->phydev);
+#endif
+	mdio_unregister(macb->bus);
+	mdio_free(macb->bus);
 
 	return 0;
 }
@@ -948,12 +1087,16 @@ static int macb_eth_ofdata_to_platdata(struct udevice *dev)
 {
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 
-	pdata->iobase = dev_get_addr(dev);
+	pdata->iobase = devfdt_get_addr(dev);
 	return 0;
 }
 
 static const struct udevice_id macb_eth_ids[] = {
 	{ .compatible = "cdns,macb" },
+	{ .compatible = "cdns,at91sam9260-macb" },
+	{ .compatible = "atmel,sama5d2-gem" },
+	{ .compatible = "atmel,sama5d3-gem" },
+	{ .compatible = "atmel,sama5d4-gem" },
 	{ }
 };
 
@@ -963,6 +1106,7 @@ U_BOOT_DRIVER(eth_macb) = {
 	.of_match = macb_eth_ids,
 	.ofdata_to_platdata = macb_eth_ofdata_to_platdata,
 	.probe	= macb_eth_probe,
+	.remove	= macb_eth_remove,
 	.ops	= &macb_eth_ops,
 	.priv_auto_alloc_size = sizeof(struct macb_device),
 	.platdata_auto_alloc_size = sizeof(struct eth_pdata),

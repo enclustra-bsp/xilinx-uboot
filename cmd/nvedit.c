@@ -15,7 +15,7 @@
  *
  * The "environment" is stored on external storage as a list of '\0'
  * terminated "name=value" strings. The end of the list is marked by
- * a double '\0'. The environment is preceeded by a 32 bit CRC over
+ * a double '\0'. The environment is preceded by a 32 bit CRC over
  * the data part and, in case of redundant environment, a byte of
  * flags.
  *
@@ -42,7 +42,6 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #if	!defined(CONFIG_ENV_IS_IN_EEPROM)	&& \
 	!defined(CONFIG_ENV_IS_IN_FLASH)	&& \
-	!defined(CONFIG_ENV_IS_IN_DATAFLASH)	&& \
 	!defined(CONFIG_ENV_IS_IN_MMC)		&& \
 	!defined(CONFIG_ENV_IS_IN_FAT)		&& \
 	!defined(CONFIG_ENV_IS_IN_EXT4)		&& \
@@ -54,8 +53,8 @@ DECLARE_GLOBAL_DATA_PTR;
 	!defined(CONFIG_ENV_IS_IN_REMOTE)	&& \
 	!defined(CONFIG_ENV_IS_IN_UBI)		&& \
 	!defined(CONFIG_ENV_IS_NOWHERE)
-# error Define one of CONFIG_ENV_IS_IN_{EEPROM|FLASH|DATAFLASH|ONENAND|\
-SATA|SPI_FLASH|NVRAM|MMC|FAT|EXT4|REMOTE|UBI} or CONFIG_ENV_IS_NOWHERE
+# error Define one of CONFIG_ENV_IS_IN_{EEPROM|FLASH|MMC|FAT|EXT4|\
+NAND|NVRAM|ONENAND|SATA|SPI_FLASH|REMOTE|UBI} or CONFIG_ENV_IS_NOWHERE
 #endif
 
 /*
@@ -234,7 +233,6 @@ static int _do_env_set(int flag, int argc, char * const argv[], int env_flag)
 	}
 	debug("Final value for argc=%d\n", argc);
 	name = argv[1];
-	value = argv[2];
 
 	if (strchr(name, '=')) {
 		printf("## Error: illegal character '='"
@@ -284,7 +282,7 @@ static int _do_env_set(int flag, int argc, char * const argv[], int env_flag)
 	return 0;
 }
 
-int setenv(const char *varname, const char *varvalue)
+int env_set(const char *varname, const char *varvalue)
 {
 	const char * const argv[4] = { "setenv", varname, varvalue, NULL };
 
@@ -305,12 +303,12 @@ int setenv(const char *varname, const char *varvalue)
  * @param value		Value to set it to
  * @return 0 if ok, 1 on error
  */
-int setenv_ulong(const char *varname, ulong value)
+int env_set_ulong(const char *varname, ulong value)
 {
 	/* TODO: this should be unsigned */
 	char *str = simple_itoa(value);
 
-	return setenv(varname, str);
+	return env_set(varname, str);
 }
 
 /**
@@ -320,21 +318,21 @@ int setenv_ulong(const char *varname, ulong value)
  * @param value		Value to set it to
  * @return 0 if ok, 1 on error
  */
-int setenv_hex(const char *varname, ulong value)
+int env_set_hex(const char *varname, ulong value)
 {
 	char str[17];
 
 	sprintf(str, "0x%lx", value);
-	return setenv(varname, str);
+	return env_set(varname, str);
 }
 
-ulong getenv_hex(const char *varname, ulong default_val)
+ulong env_get_hex(const char *varname, ulong default_val)
 {
 	const char *s;
 	ulong value;
 	char *endp;
 
-	s = getenv(varname);
+	s = env_get(varname);
 	if (s)
 		value = simple_strtoul(s, &endp, 16);
 	if (!s || endp == s)
@@ -394,15 +392,18 @@ int do_env_ask(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		sprintf(message, "Please enter '%s': ", argv[1]);
 	} else {
 		/* env_ask envname message1 ... messagen [size] */
-		for (i = 2, pos = 0; i < argc; i++) {
+		for (i = 2, pos = 0; i < argc && pos+1 < sizeof(message); i++) {
 			if (pos)
 				message[pos++] = ' ';
 
-			strcpy(message + pos, argv[i]);
+			strncpy(message + pos, argv[i], sizeof(message) - pos);
 			pos += strlen(argv[i]);
 		}
-		message[pos++] = ' ';
-		message[pos] = '\0';
+		if (pos < sizeof(message) - 1) {
+			message[pos++] = ' ';
+			message[pos] = '\0';
+		} else
+			message[CONFIG_SYS_CBSIZE - 1] = '\0';
 	}
 
 	if (size >= CONFIG_SYS_CBSIZE)
@@ -595,7 +596,7 @@ static int do_env_edit(cmd_tbl_t *cmdtp, int flag, int argc,
 		return 1;
 
 	/* Set read buffer to initial value or empty sting */
-	init_val = getenv(argv[1]);
+	init_val = env_get(argv[1]);
 	if (init_val)
 		snprintf(buffer, CONFIG_SYS_CBSIZE, "%s", init_val);
 	else
@@ -623,7 +624,7 @@ static int do_env_edit(cmd_tbl_t *cmdtp, int flag, int argc,
  * return address of storage for that variable,
  * or NULL if not found
  */
-char *getenv(const char *name)
+char *env_get(const char *name)
 {
 	if (gd->flags & GD_FLG_ENV_READY) { /* after import into hashtable */
 		ENTRY e, *ep;
@@ -638,7 +639,7 @@ char *getenv(const char *name)
 	}
 
 	/* restricted capabilities before import */
-	if (getenv_f(name, (char *)(gd->env_buf), sizeof(gd->env_buf)) > 0)
+	if (env_get_f(name, (char *)(gd->env_buf), sizeof(gd->env_buf)) > 0)
 		return (char *)(gd->env_buf);
 
 	return NULL;
@@ -647,7 +648,7 @@ char *getenv(const char *name)
 /*
  * Look up variable from environment for restricted C runtime env.
  */
-int getenv_f(const char *name, char *buf, unsigned len)
+int env_get_f(const char *name, char *buf, unsigned len)
 {
 	int i, nxt;
 
@@ -691,13 +692,13 @@ int getenv_f(const char *name, char *buf, unsigned len)
  *			found
  * @return the decoded value, or default_val if not found
  */
-ulong getenv_ulong(const char *name, int base, ulong default_val)
+ulong env_get_ulong(const char *name, int base, ulong default_val)
 {
 	/*
-	 * We can use getenv() here, even before relocation, since the
+	 * We can use env_get() here, even before relocation, since the
 	 * environment variable value is an integer and thus short.
 	 */
-	const char *str = getenv(name);
+	const char *str = env_get(name);
 
 	return str ? simple_strtoul(str, NULL, base) : default_val;
 }
@@ -707,9 +708,11 @@ ulong getenv_ulong(const char *name, int base, ulong default_val)
 static int do_env_save(cmd_tbl_t *cmdtp, int flag, int argc,
 		       char * const argv[])
 {
-	printf("Saving Environment to %s...\n", env_name_spec);
+	struct env_driver *env = env_driver_lookup_default();
 
-	return saveenv() ? 1 : 0;
+	printf("Saving Environment to %s...\n", env->name);
+
+	return env_save() ? 1 : 0;
 }
 
 U_BOOT_CMD(
@@ -838,7 +841,7 @@ static int do_env_delete(cmd_tbl_t *cmdtp, int flag,
  * With "-c" and size is NOT given, then the export command will
  * format the data as currently used for the persistent storage,
  * i. e. it will use CONFIG_ENV_SECT_SIZE as output block size and
- * prepend a valid CRC32 checksum and, in case of resundant
+ * prepend a valid CRC32 checksum and, in case of redundant
  * environment, a "current" redundancy flag. If size is given, this
  * value will be used instead of CONFIG_ENV_SECT_SIZE; again, CRC32
  * checksum and redundancy flag will be inserted.
@@ -847,12 +850,12 @@ static int do_env_delete(cmd_tbl_t *cmdtp, int flag,
  * terminating '\0' byte) will be written; here the optional size
  * argument will be used to make sure not to overflow the user
  * provided buffer; the command will abort if the size is not
- * sufficient. Any remainign space will be '\0' padded.
+ * sufficient. Any remaining space will be '\0' padded.
  *
  * On successful return, the variable "filesize" will be set.
  * Note that filesize includes the trailing/terminating '\0' byte(s).
  *
- * Usage szenario:  create a text snapshot/backup of the current settings:
+ * Usage scenario:  create a text snapshot/backup of the current settings:
  *
  *	=> env export -t 100000
  *	=> era ${backup_addr} +${filesize}
@@ -926,11 +929,11 @@ NXTARG:		;
 				H_MATCH_KEY | H_MATCH_IDENT,
 				&ptr, size, argc, argv);
 		if (len < 0) {
-			error("Cannot export environment: errno = %d\n", errno);
+			pr_err("Cannot export environment: errno = %d\n", errno);
 			return 1;
 		}
 		sprintf(buf, "%zX", (size_t)len);
-		setenv("filesize", buf);
+		env_set("filesize", buf);
 
 		return 0;
 	}
@@ -946,7 +949,7 @@ NXTARG:		;
 			H_MATCH_KEY | H_MATCH_IDENT,
 			&res, ENV_SIZE, argc, argv);
 	if (len < 0) {
-		error("Cannot export environment: errno = %d\n", errno);
+		pr_err("Cannot export environment: errno = %d\n", errno);
 		return 1;
 	}
 
@@ -956,7 +959,7 @@ NXTARG:		;
 		envp->flags = ACTIVE_FLAG;
 #endif
 	}
-	setenv_hex("filesize", len + offsetof(env_t, data));
+	env_set_hex("filesize", len + offsetof(env_t, data));
 
 	return 0;
 
@@ -970,7 +973,7 @@ sep_err:
 /*
  * env import [-d] [-t [-r] | -b | -c] addr [size]
  *	-d:	delete existing environment before importing;
- *		otherwise overwrite / append to existion definitions
+ *		otherwise overwrite / append to existing definitions
  *	-t:	assume text format; either "size" must be given or the
  *		text data must be '\0' terminated
  *	-r:	handle CRLF like LF, that means exported variables with
@@ -1081,7 +1084,7 @@ static int do_env_import(cmd_tbl_t *cmdtp, int flag,
 
 	if (himport_r(&env_htab, ptr, size, sep, del ? 0 : H_NOCLEAR,
 			crlf_is_lf, 0, NULL) == 0) {
-		error("Environment import failed: errno = %d\n", errno);
+		pr_err("Environment import failed: errno = %d\n", errno);
 		return 1;
 	}
 	gd->flags |= GD_FLG_ENV_READY;

@@ -26,8 +26,6 @@
 #define MV88F78X60 /* for the DDR training bin_hdr code */
 #endif
 
-#define CONFIG_SYS_CACHELINE_SIZE	32
-
 #define CONFIG_SYS_L2_PL310
 
 #ifdef CONFIG_SPL_BUILD
@@ -78,12 +76,7 @@
  */
 #ifdef CONFIG_CMD_NET
 #define CONFIG_MII		/* expose smi ove miiphy interface */
-#if !defined(CONFIG_ARMADA_375)
-#define CONFIG_MVNETA		/* Enable Marvell Gbe Controller Driver */
-#define CONFIG_PHYLIB
-#endif
 #define CONFIG_ENV_OVERWRITE	/* ethaddr can be reprogrammed */
-#define CONFIG_PHY_GIGE		/* GbE speed/duplex detect */
 #define CONFIG_ARP_TIMEOUT	200
 #define CONFIG_NET_RETRY_COUNT	50
 #endif /* CONFIG_CMD_NET */

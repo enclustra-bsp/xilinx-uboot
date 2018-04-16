@@ -17,15 +17,26 @@
 #include <asm/gic.h>
 #include <asm/io.h>
 #include <asm/psci.h>
+#include <asm/secure.h>
 #include <asm/system.h>
 
 #include <linux/bitops.h>
 
-#define __secure	__attribute__ ((section ("._secure.text")))
 #define __irq		__attribute__ ((interrupt ("IRQ")))
 
 #define	GICD_BASE	(SUNXI_GIC400_BASE + GIC_DIST_OFFSET)
 #define	GICC_BASE	(SUNXI_GIC400_BASE + GIC_CPU_OFFSET_A15)
+
+/*
+ * R40 is different from other single cluster SoCs.
+ *
+ * The power clamps are located in the unused space after the per-core
+ * reset controls for core 3. The secondary core entry address register
+ * is in the SRAM controller address range.
+ */
+#define SUN8I_R40_PWROFF			(0x110)
+#define SUN8I_R40_PWR_CLAMP(cpu)		(0x120 + (cpu) * 0x4)
+#define SUN8I_R40_SRAMC_SOFT_ENTRY_REG0		(0xbc)
 
 static void __secure cp15_write_cntp_tval(u32 tval)
 {
@@ -46,29 +57,30 @@ static u32 __secure cp15_read_cntp_ctl(void)
 	return val;
 }
 
-#define ONE_MS (CONFIG_TIMER_CLK_FREQ / 1000)
+#define ONE_MS (COUNTER_FREQUENCY / 1000)
 
 static void __secure __mdelay(u32 ms)
 {
 	u32 reg = ONE_MS * ms;
 
 	cp15_write_cntp_tval(reg);
-	ISB;
+	isb();
 	cp15_write_cntp_ctl(3);
 
 	do {
-		ISB;
+		isb();
 		reg = cp15_read_cntp_ctl();
 	} while (!(reg & BIT(2)));
 
 	cp15_write_cntp_ctl(0);
-	ISB;
+	isb();
 }
 
 static void __secure clamp_release(u32 __maybe_unused *clamp)
 {
 #if defined(CONFIG_MACH_SUN6I) || defined(CONFIG_MACH_SUN7I) || \
-	defined(CONFIG_MACH_SUN8I_H3)
+	defined(CONFIG_MACH_SUN8I_H3) || \
+	defined(CONFIG_MACH_SUN8I_R40)
 	u32 tmp = 0x1ff;
 	do {
 		tmp >>= 1;
@@ -82,7 +94,8 @@ static void __secure clamp_release(u32 __maybe_unused *clamp)
 static void __secure clamp_set(u32 __maybe_unused *clamp)
 {
 #if defined(CONFIG_MACH_SUN6I) || defined(CONFIG_MACH_SUN7I) || \
-	defined(CONFIG_MACH_SUN8I_H3)
+	defined(CONFIG_MACH_SUN8I_H3) || \
+	defined(CONFIG_MACH_SUN8I_R40)
 	writel(0xff, clamp);
 #endif
 }
@@ -105,6 +118,23 @@ static void __secure sunxi_power_switch(u32 *clamp, u32 *pwroff, bool on,
 	}
 }
 
+#ifdef CONFIG_MACH_SUN8I_R40
+/* secondary core entry address is programmed differently on R40 */
+static void __secure sunxi_set_entry_address(void *entry)
+{
+	writel((u32)entry,
+	       SUNXI_SRAMC_BASE + SUN8I_R40_SRAMC_SOFT_ENTRY_REG0);
+}
+#else
+static void __secure sunxi_set_entry_address(void *entry)
+{
+	struct sunxi_cpucfg_reg *cpucfg =
+		(struct sunxi_cpucfg_reg *)SUNXI_CPUCFG_BASE;
+
+	writel((u32)entry, &cpucfg->priv0);
+}
+#endif
+
 #ifdef CONFIG_MACH_SUN7I
 /* sun7i (A20) is different from other single cluster SoCs */
 static void __secure sunxi_cpu_set_power(int __always_unused cpu, bool on)
@@ -115,7 +145,17 @@ static void __secure sunxi_cpu_set_power(int __always_unused cpu, bool on)
 	sunxi_power_switch(&cpucfg->cpu1_pwr_clamp, &cpucfg->cpu1_pwroff,
 			   on, 0);
 }
-#else /* ! CONFIG_MACH_SUN7I */
+#elif defined CONFIG_MACH_SUN8I_R40
+static void __secure sunxi_cpu_set_power(int cpu, bool on)
+{
+	struct sunxi_cpucfg_reg *cpucfg =
+		(struct sunxi_cpucfg_reg *)SUNXI_CPUCFG_BASE;
+
+	sunxi_power_switch((void *)cpucfg + SUN8I_R40_PWR_CLAMP(cpu),
+			   (void *)cpucfg + SUN8I_R40_PWROFF,
+			   on, 0);
+}
+#else /* ! CONFIG_MACH_SUN7I && ! CONFIG_MACH_SUN8I_R40 */
 static void __secure sunxi_cpu_set_power(int cpu, bool on)
 {
 	struct sunxi_prcm_reg *prcm =
@@ -164,7 +204,7 @@ static u32 __secure cp15_read_scr(void)
 static void __secure cp15_write_scr(u32 scr)
 {
 	asm volatile ("mcr p15, 0, %0, c1, c1, 0" : : "r" (scr));
-	ISB;
+	isb();
 }
 
 /*
@@ -190,7 +230,7 @@ void __secure __irq psci_fiq_enter(void)
 
 	/* End of interrupt */
 	writel(reg, GICC_BASE + GICC_EOIR);
-	DSB;
+	dsb();
 
 	/* Get CPU number */
 	cpu = (reg >> 10) & 0x7;
@@ -209,12 +249,11 @@ int __secure psci_cpu_on(u32 __always_unused unused, u32 mpidr, u32 pc)
 		(struct sunxi_cpucfg_reg *)SUNXI_CPUCFG_BASE;
 	u32 cpu = (mpidr & 0x3);
 
-	/* store target PC at target CPU stack top */
-	writel(pc, psci_get_cpu_stack_top(cpu));
-	DSB;
+	/* store target PC */
+	psci_save_target_pc(cpu, pc);
 
 	/* Set secondary core power on PC */
-	writel((u32)&psci_cpu_entry, &cpucfg->priv0);
+	sunxi_set_entry_address(&psci_cpu_entry);
 
 	/* Assert reset on target CPU */
 	writel(0, &cpucfg->cpu[cpu].rst);
@@ -243,14 +282,14 @@ void __secure psci_cpu_off(void)
 
 	/* Ask CPU0 via SGI15 to pull the rug... */
 	writel(BIT(16) | 15, GICD_BASE + GICD_SGIR);
-	DSB;
+	dsb();
 
 	/* Wait to be turned off */
 	while (1)
 		wfi();
 }
 
-void __secure sunxi_gic_init(void)
+void __secure psci_arch_init(void)
 {
 	u32 reg;
 

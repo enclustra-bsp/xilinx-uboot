@@ -15,14 +15,6 @@
 #include <status_led.h>
 #endif
 
-#ifdef CONFIG_HAS_DATAFLASH
-#include <dataflash.h>
-#endif
-
-#ifdef CONFIG_LOGBUFFER
-#include <logbuff.h>
-#endif
-
 #include <rtc.h>
 
 #include <environment.h>
@@ -38,7 +30,7 @@
 
 #include <u-boot/md5.h>
 #include <u-boot/sha1.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 
 #ifdef CONFIG_CMD_BDI
@@ -69,7 +61,7 @@ static const image_header_t *image_get_ramdisk(ulong rd_addr, uint8_t arch,
 #endif
 
 static const table_entry_t uimage_arch[] = {
-	{	IH_ARCH_INVALID,	NULL,		"Invalid ARCH",	},
+	{	IH_ARCH_INVALID,	"invalid",	"Invalid ARCH",	},
 	{	IH_ARCH_ALPHA,		"alpha",	"Alpha",	},
 	{	IH_ARCH_ARM,		"arm",		"ARM",		},
 	{	IH_ARCH_I386,		"x86",		"Intel x86",	},
@@ -93,11 +85,13 @@ static const table_entry_t uimage_arch[] = {
 	{	IH_ARCH_ARM64,		"arm64",	"AArch64",	},
 	{	IH_ARCH_ARC,		"arc",		"ARC",		},
 	{	IH_ARCH_X86_64,		"x86_64",	"AMD x86_64",	},
+	{	IH_ARCH_XTENSA,		"xtensa",	"Xtensa",	},
 	{	-1,			"",		"",		},
 };
 
 static const table_entry_t uimage_os[] = {
-	{	IH_OS_INVALID,	NULL,		"Invalid OS",		},
+	{	IH_OS_INVALID,	"invalid",	"Invalid OS",		},
+	{       IH_OS_ARM_TRUSTED_FIRMWARE, "arm-trusted-firmware", "ARM Trusted Firmware"  },
 	{	IH_OS_LINUX,	"linux",	"Linux",		},
 #if defined(CONFIG_LYNXKDI) || defined(USE_HOSTCC)
 	{	IH_OS_LYNXOS,	"lynxos",	"LynxOS",		},
@@ -144,7 +138,7 @@ static const table_entry_t uimage_type[] = {
 	{	IH_TYPE_KERNEL_NOLOAD, "kernel_noload",  "Kernel Image (no loading done)", },
 	{	IH_TYPE_KWBIMAGE,   "kwbimage",   "Kirkwood Boot Image",},
 	{	IH_TYPE_IMXIMAGE,   "imximage",   "Freescale i.MX Boot Image",},
-	{	IH_TYPE_INVALID,    NULL,	  "Invalid Image",	},
+	{	IH_TYPE_INVALID,    "invalid",	  "Invalid Image",	},
 	{	IH_TYPE_MULTI,	    "multi",	  "Multi-File Image",	},
 	{	IH_TYPE_OMAPIMAGE,  "omapimage",  "TI OMAP SPL With GP CH",},
 	{	IH_TYPE_PBLIMAGE,   "pblimage",   "Freescale PBL Boot Image",},
@@ -160,9 +154,13 @@ static const table_entry_t uimage_type[] = {
 	{	IH_TYPE_RKIMAGE,    "rkimage",    "Rockchip Boot Image" },
 	{	IH_TYPE_RKSD,       "rksd",       "Rockchip SD Boot Image" },
 	{	IH_TYPE_RKSPI,      "rkspi",      "Rockchip SPI Boot Image" },
+	{	IH_TYPE_VYBRIDIMAGE, "vybridimage",  "Vybrid Boot Image", },
 	{	IH_TYPE_ZYNQIMAGE,  "zynqimage",  "Xilinx Zynq Boot Image" },
 	{	IH_TYPE_ZYNQMPIMAGE, "zynqmpimage", "Xilinx ZynqMP Boot Image" },
 	{	IH_TYPE_FPGA,       "fpga",       "FPGA Image" },
+	{       IH_TYPE_TEE,        "tee",        "Trusted Execution Environment Image",},
+	{	IH_TYPE_FIRMWARE_IVT, "firmware_ivt", "Firmware with HABv4 IVT" },
+	{       IH_TYPE_PMMC,        "pmmc",        "TI Power Management Micro-Controller Firmware",},
 	{	-1,		    "",		  "",			},
 };
 
@@ -174,6 +172,19 @@ static const table_entry_t uimage_comp[] = {
 	{	IH_COMP_LZO,	"lzo",		"lzo compressed",	},
 	{	IH_COMP_LZ4,	"lz4",		"lz4 compressed",	},
 	{	-1,		"",		"",			},
+};
+
+struct table_info {
+	const char *desc;
+	int count;
+	const table_entry_t *table;
+};
+
+static const struct table_info table_info[IH_COUNT] = {
+	{ "architecture", IH_ARCH_COUNT, uimage_arch },
+	{ "compression", IH_COMP_COUNT, uimage_comp },
+	{ "operating system", IH_OS_COUNT, uimage_os },
+	{ "image type", IH_TYPE_COUNT, uimage_type },
 };
 
 /*****************************************************************************/
@@ -349,6 +360,11 @@ void image_print_contents(const void *ptr)
 				printf("%s    Offset = 0x%08lx\n", p, data);
 			}
 		}
+	} else if (image_check_type(hdr, IH_TYPE_FIRMWARE_IVT)) {
+		printf("HAB Blocks:   0x%08x   0x0000   0x%08x\n",
+				image_get_load(hdr) - image_get_header_size(),
+				image_get_size(hdr) + image_get_header_size()
+						- 0x1FE0);
 	}
 }
 
@@ -365,9 +381,6 @@ void image_print_contents(const void *ptr)
  * header. Routine receives image start address and expected architecture
  * flag. Verification done covers data and header integrity and os/type/arch
  * fields checking.
- *
- * If dataflash support is enabled routine checks for dataflash addresses
- * and handles required dataflash reads.
  *
  * returns:
  *     pointer to a ramdisk image header, if image was found and valid
@@ -443,9 +456,9 @@ static int on_loadaddr(const char *name, const char *value, enum env_op op,
 }
 U_BOOT_ENV_CALLBACK(loadaddr, on_loadaddr);
 
-ulong getenv_bootm_low(void)
+ulong env_get_bootm_low(void)
 {
-	char *s = getenv("bootm_low");
+	char *s = env_get("bootm_low");
 	if (s) {
 		ulong tmp = simple_strtoul(s, NULL, 16);
 		return tmp;
@@ -460,11 +473,11 @@ ulong getenv_bootm_low(void)
 #endif
 }
 
-phys_size_t getenv_bootm_size(void)
+phys_size_t env_get_bootm_size(void)
 {
 	phys_size_t tmp, size;
 	phys_addr_t start;
-	char *s = getenv("bootm_size");
+	char *s = env_get("bootm_size");
 	if (s) {
 		tmp = (phys_size_t)simple_strtoull(s, NULL, 16);
 		return tmp;
@@ -478,7 +491,7 @@ phys_size_t getenv_bootm_size(void)
 	size = gd->bd->bi_memsize;
 #endif
 
-	s = getenv("bootm_low");
+	s = env_get("bootm_low");
 	if (s)
 		tmp = (phys_size_t)simple_strtoull(s, NULL, 16);
 	else
@@ -487,10 +500,10 @@ phys_size_t getenv_bootm_size(void)
 	return size - (tmp - start);
 }
 
-phys_size_t getenv_bootm_mapsize(void)
+phys_size_t env_get_bootm_mapsize(void)
 {
 	phys_size_t tmp;
-	char *s = getenv("bootm_mapsize");
+	char *s = env_get("bootm_mapsize");
 	if (s) {
 		tmp = (phys_size_t)simple_strtoull(s, NULL, 16);
 		return tmp;
@@ -499,7 +512,7 @@ phys_size_t getenv_bootm_mapsize(void)
 #if defined(CONFIG_SYS_BOOTMAPSZ)
 	return CONFIG_SYS_BOOTMAPSZ;
 #else
-	return getenv_bootm_size();
+	return env_get_bootm_size();
 #endif
 }
 
@@ -539,7 +552,7 @@ void genimg_print_size(uint32_t size)
 	printf("%d Bytes = ", size);
 	print_size(size, "\n");
 #else
-	printf("%d Bytes = %.2f kB = %.2f MB\n",
+	printf("%d Bytes = %.2f KiB = %.2f MiB\n",
 			size, (double)size / 1.024e3,
 			(double)size / 1.048576e6);
 #endif
@@ -568,6 +581,76 @@ const table_entry_t *get_table_entry(const table_entry_t *table, int id)
 			return table;
 	}
 	return NULL;
+}
+
+static const char *unknown_msg(enum ih_category category)
+{
+	static const char unknown_str[] = "Unknown ";
+	static char msg[30];
+
+	strcpy(msg, unknown_str);
+	strncat(msg, table_info[category].desc,
+		sizeof(msg) - sizeof(unknown_str));
+
+	return msg;
+}
+
+/**
+ * get_cat_table_entry_name - translate entry id to long name
+ * @category: category to look up (enum ih_category)
+ * @id: entry id to be translated
+ *
+ * This will scan the translation table trying to find the entry that matches
+ * the given id.
+ *
+ * @retur long entry name if translation succeeds; error string on failure
+ */
+const char *genimg_get_cat_name(enum ih_category category, uint id)
+{
+	const table_entry_t *entry;
+
+	entry = get_table_entry(table_info[category].table, id);
+	if (!entry)
+		return unknown_msg(category);
+#if defined(USE_HOSTCC) || !defined(CONFIG_NEEDS_MANUAL_RELOC)
+	return entry->lname;
+#else
+	return entry->lname + gd->reloc_off;
+#endif
+}
+
+/**
+ * get_cat_table_entry_short_name - translate entry id to short name
+ * @category: category to look up (enum ih_category)
+ * @id: entry id to be translated
+ *
+ * This will scan the translation table trying to find the entry that matches
+ * the given id.
+ *
+ * @retur short entry name if translation succeeds; error string on failure
+ */
+const char *genimg_get_cat_short_name(enum ih_category category, uint id)
+{
+	const table_entry_t *entry;
+
+	entry = get_table_entry(table_info[category].table, id);
+	if (!entry)
+		return unknown_msg(category);
+#if defined(USE_HOSTCC) || !defined(CONFIG_NEEDS_MANUAL_RELOC)
+	return entry->sname;
+#else
+	return entry->sname + gd->reloc_off;
+#endif
+}
+
+int genimg_get_cat_count(enum ih_category category)
+{
+	return table_info[category].count;
+}
+
+const char *genimg_get_cat_desc(enum ih_category category)
+{
+	return table_info[category].desc;
 }
 
 /**
@@ -797,81 +880,6 @@ int genimg_get_format(const void *img_addr)
 }
 
 /**
- * genimg_get_image - get image from special storage (if necessary)
- * @img_addr: image start address
- *
- * genimg_get_image() checks if provided image start address is located
- * in a dataflash storage. If so, image is moved to a system RAM memory.
- *
- * returns:
- *     image start address after possible relocation from special storage
- */
-ulong genimg_get_image(ulong img_addr)
-{
-	ulong ram_addr = img_addr;
-
-#ifdef CONFIG_HAS_DATAFLASH
-	ulong h_size, d_size;
-
-	if (addr_dataflash(img_addr)) {
-		void *buf;
-
-		/* ger RAM address */
-		ram_addr = CONFIG_SYS_LOAD_ADDR;
-
-		/* get header size */
-		h_size = image_get_header_size();
-#if IMAGE_ENABLE_FIT
-		if (sizeof(struct fdt_header) > h_size)
-			h_size = sizeof(struct fdt_header);
-#endif
-
-		/* read in header */
-		debug("   Reading image header from dataflash address "
-			"%08lx to RAM address %08lx\n", img_addr, ram_addr);
-
-		buf = map_sysmem(ram_addr, 0);
-		read_dataflash(img_addr, h_size, buf);
-
-		/* get data size */
-		switch (genimg_get_format(buf)) {
-#if defined(CONFIG_IMAGE_FORMAT_LEGACY)
-		case IMAGE_FORMAT_LEGACY:
-			d_size = image_get_data_size(buf);
-			debug("   Legacy format image found at 0x%08lx, "
-					"size 0x%08lx\n",
-					ram_addr, d_size);
-			break;
-#endif
-#if IMAGE_ENABLE_FIT
-		case IMAGE_FORMAT_FIT:
-			d_size = fit_get_size(buf) - h_size;
-			debug("   FIT/FDT format image found at 0x%08lx, "
-					"size 0x%08lx\n",
-					ram_addr, d_size);
-			break;
-#endif
-		default:
-			printf("   No valid image found at 0x%08lx\n",
-				img_addr);
-			return ram_addr;
-		}
-
-		/* read in image data */
-		debug("   Reading image remaining data from dataflash address "
-			"%08lx to RAM address %08lx\n", img_addr + h_size,
-			ram_addr + h_size);
-
-		read_dataflash(img_addr + h_size, d_size,
-				(char *)(buf + h_size));
-
-	}
-#endif /* CONFIG_HAS_DATAFLASH */
-
-	return ram_addr;
-}
-
-/**
  * fit_has_config - check if there is a valid FIT configuration
  * @images: pointer to the bootm command headers structure
  *
@@ -996,15 +1004,12 @@ int boot_get_ramdisk(int argc, char * const argv[], bootm_headers_t *images,
 			rd_addr = map_to_sysmem(images->fit_hdr_os);
 			rd_noffset = fit_get_node_from_config(images,
 					FIT_RAMDISK_PROP, rd_addr);
-			if (rd_noffset == -ENOLINK)
+			if (rd_noffset == -ENOENT)
 				return 0;
 			else if (rd_noffset < 0)
 				return 1;
 		}
 #endif
-
-		/* copy from dataflash if needed */
-		rd_addr = genimg_get_image(rd_addr);
 
 		/*
 		 * Check if there is an initrd image at the
@@ -1132,7 +1137,8 @@ int boot_ramdisk_high(struct lmb *lmb, ulong rd_data, ulong rd_len,
 	ulong	initrd_high;
 	int	initrd_copy_to_ram = 1;
 
-	if ((s = getenv("initrd_high")) != NULL) {
+	s = env_get("initrd_high");
+	if (s) {
 		/* a value of "no" or a similar string will act like 0,
 		 * turning the "load high" feature off. This is intentional.
 		 */
@@ -1140,14 +1146,9 @@ int boot_ramdisk_high(struct lmb *lmb, ulong rd_data, ulong rd_len,
 		if (initrd_high == ~0)
 			initrd_copy_to_ram = 0;
 	} else {
-		initrd_high = getenv_bootm_mapsize() + getenv_bootm_low();
+		initrd_high = env_get_bootm_mapsize() + env_get_bootm_low();
 	}
 
-
-#ifdef CONFIG_LOGBUFFER
-	/* Prevent initrd from overwriting logbuffer */
-	lmb_reserve(lmb, logbuffer_base() - LOGBUFF_OVERHEAD, LOGBUFF_RESERVE);
-#endif
 
 	debug("## initrd_high = 0x%08lx, copy_to_ram = %d\n",
 			initrd_high, initrd_copy_to_ram);
@@ -1185,7 +1186,8 @@ int boot_ramdisk_high(struct lmb *lmb, ulong rd_data, ulong rd_len,
 			 * AMP boot scenarios in which we might not be
 			 * HW cache coherent
 			 */
-			flush_cache((unsigned long)*initrd_start, rd_len);
+			flush_cache((unsigned long)*initrd_start,
+				    ALIGN(rd_len, ARCH_DMA_MINALIGN));
 #endif
 			puts("OK\n");
 		}
@@ -1214,7 +1216,7 @@ int boot_get_setup(bootm_headers_t *images, uint8_t arch,
 }
 
 #if IMAGE_ENABLE_FIT
-#if defined(CONFIG_FPGA) && defined(CONFIG_FPGA_XILINX)
+#if defined(CONFIG_FPGA)
 int boot_get_fpga(int argc, char * const argv[], bootm_headers_t *images,
 		  uint8_t arch, const ulong *ld_start, ulong * const ld_len)
 {
@@ -1222,11 +1224,9 @@ int boot_get_fpga(int argc, char * const argv[], bootm_headers_t *images,
 	void *buf;
 	int conf_noffset;
 	int fit_img_result;
-	char *uname, *name;
+	const char *uname, *name;
 	int err;
 	int devnum = 0; /* TODO support multi fpga platforms */
-	const fpga_desc * const desc = fpga_get_desc(devnum);
-	xilinx_desc *desc_xilinx = desc->devdesc;
 
 	/* Check to see if the images struct has a FIT configuration */
 	if (!genimg_has_config(images)) {
@@ -1236,10 +1236,8 @@ int boot_get_fpga(int argc, char * const argv[], bootm_headers_t *images,
 
 	/*
 	 * Obtain the os FIT header from the images struct
-	 * copy from dataflash if needed
 	 */
 	tmp_img_addr = map_to_sysmem(images->fit_hdr_os);
-	tmp_img_addr = genimg_get_image(tmp_img_addr);
 	buf = map_sysmem(tmp_img_addr, 0);
 	/*
 	 * Check image type. For FIT images get FIT node
@@ -1249,9 +1247,9 @@ int boot_get_fpga(int argc, char * const argv[], bootm_headers_t *images,
 	case IMAGE_FORMAT_FIT:
 		conf_noffset = fit_conf_get_node(buf, images->fit_uname_cfg);
 
-		err = fdt_get_string_index(buf, conf_noffset, FIT_FPGA_PROP, 0,
-					   (const char **)&uname);
-		if (err < 0) {
+		uname = fdt_stringlist_get(buf, conf_noffset, FIT_FPGA_PROP, 0,
+					   NULL);
+		if (!uname) {
 			debug("## FPGA image is not specified\n");
 			return 0;
 		}
@@ -1273,7 +1271,7 @@ int boot_get_fpga(int argc, char * const argv[], bootm_headers_t *images,
 			return fit_img_result;
 		}
 
-		if (img_len >= desc_xilinx->size) {
+		if (!fpga_is_partial_data(devnum, img_len)) {
 			name = "full";
 			err = fpga_loadbitstream(devnum, (char *)img_data,
 						 img_len, BIT_FULL);
@@ -1289,11 +1287,10 @@ int boot_get_fpga(int argc, char * const argv[], bootm_headers_t *images,
 						img_len, BIT_PARTIAL);
 		}
 
-		printf("   Programming %s bitstream... ", name);
 		if (err)
-			printf("failed\n");
-		else
-			printf("OK\n");
+			return err;
+
+		printf("   Programming %s bitstream... OK\n", name);
 		break;
 	default:
 		printf("The given image format is not supported (corrupt?)\n");
@@ -1303,6 +1300,23 @@ int boot_get_fpga(int argc, char * const argv[], bootm_headers_t *images,
 	return 0;
 }
 #endif
+
+static void fit_loadable_process(uint8_t img_type,
+				 ulong img_data,
+				 ulong img_len)
+{
+	int i;
+	const unsigned int count =
+			ll_entry_count(struct fit_loadable_tbl, fit_loadable);
+	struct fit_loadable_tbl *fit_loadable_handler =
+			ll_entry_start(struct fit_loadable_tbl, fit_loadable);
+	/* For each loadable handler */
+	for (i = 0; i < count; i++, fit_loadable_handler++)
+		/* matching this type */
+		if (fit_loadable_handler->type == img_type)
+			/* call that handler with this image data */
+			fit_loadable_handler->handler(img_data, img_len);
+}
 
 int boot_get_loadable(int argc, char * const argv[], bootm_headers_t *images,
 		uint8_t arch, const ulong *ld_start, ulong * const ld_len)
@@ -1321,7 +1335,8 @@ int boot_get_loadable(int argc, char * const argv[], bootm_headers_t *images,
 	int loadables_index;
 	int conf_noffset;
 	int fit_img_result;
-	char *uname;
+	const char *uname;
+	uint8_t img_type;
 
 	/* Check to see if the images struct has a FIT configuration */
 	if (!genimg_has_config(images)) {
@@ -1331,10 +1346,8 @@ int boot_get_loadable(int argc, char * const argv[], bootm_headers_t *images,
 
 	/*
 	 * Obtain the os FIT header from the images struct
-	 * copy from dataflash if needed
 	 */
 	tmp_img_addr = map_to_sysmem(images->fit_hdr_os);
-	tmp_img_addr = genimg_get_image(tmp_img_addr);
 	buf = map_sysmem(tmp_img_addr, 0);
 	/*
 	 * Check image type. For FIT images get FIT node
@@ -1345,15 +1358,14 @@ int boot_get_loadable(int argc, char * const argv[], bootm_headers_t *images,
 		conf_noffset = fit_conf_get_node(buf, images->fit_uname_cfg);
 
 		for (loadables_index = 0;
-		     fdt_get_string_index(buf, conf_noffset,
-				FIT_LOADABLE_PROP,
-				loadables_index,
-				(const char **)&uname) == 0;
+		     uname = fdt_stringlist_get(buf, conf_noffset,
+					FIT_LOADABLE_PROP, loadables_index,
+					NULL), uname;
 		     loadables_index++)
 		{
 			fit_img_result = fit_image_load(images,
 				tmp_img_addr,
-				(const char **)&uname,
+				&uname,
 				&(images->fit_uname_cfg), arch,
 				IH_TYPE_LOADABLE,
 				BOOTSTAGE_ID_FIT_LOADABLE_START,
@@ -1363,6 +1375,21 @@ int boot_get_loadable(int argc, char * const argv[], bootm_headers_t *images,
 				/* Something went wrong! */
 				return fit_img_result;
 			}
+
+			fit_img_result = fit_image_get_node(buf, uname);
+			if (fit_img_result < 0) {
+				/* Something went wrong! */
+				return fit_img_result;
+			}
+			fit_img_result = fit_image_get_type(buf,
+							    fit_img_result,
+							    &img_type);
+			if (fit_img_result < 0) {
+				/* Something went wrong! */
+				return fit_img_result;
+			}
+
+			fit_loadable_process(img_type, img_data, img_len);
 		}
 		break;
 	default:
@@ -1382,7 +1409,7 @@ int boot_get_loadable(int argc, char * const argv[], bootm_headers_t *images,
  * @cmd_end: pointer to a ulong variable, will hold cmdline end
  *
  * boot_get_cmdline() allocates space for kernel command line below
- * BOOTMAPSZ + getenv_bootm_low() address. If "bootargs" U-Boot environemnt
+ * BOOTMAPSZ + env_get_bootm_low() address. If "bootargs" U-Boot environemnt
  * variable is present its contents is copied to allocated kernel
  * command line.
  *
@@ -1396,12 +1423,13 @@ int boot_get_cmdline(struct lmb *lmb, ulong *cmd_start, ulong *cmd_end)
 	char *s;
 
 	cmdline = (char *)(ulong)lmb_alloc_base(lmb, CONFIG_SYS_BARGSIZE, 0xf,
-				getenv_bootm_mapsize() + getenv_bootm_low());
+				env_get_bootm_mapsize() + env_get_bootm_low());
 
 	if (cmdline == NULL)
 		return -1;
 
-	if ((s = getenv("bootargs")) == NULL)
+	s = env_get("bootargs");
+	if (!s)
 		s = "";
 
 	strcpy(cmdline, s);
@@ -1422,7 +1450,7 @@ int boot_get_cmdline(struct lmb *lmb, ulong *cmd_start, ulong *cmd_end)
  * @kbd: double pointer to board info data
  *
  * boot_get_kbd() allocates space for kernel copy of board info data below
- * BOOTMAPSZ + getenv_bootm_low() address and kernel board info is initialized
+ * BOOTMAPSZ + env_get_bootm_low() address and kernel board info is initialized
  * with the current u-boot board info data.
  *
  * returns:
@@ -1432,7 +1460,7 @@ int boot_get_cmdline(struct lmb *lmb, ulong *cmd_start, ulong *cmd_end)
 int boot_get_kbd(struct lmb *lmb, bd_t **kbd)
 {
 	*kbd = (bd_t *)(ulong)lmb_alloc_base(lmb, sizeof(bd_t), 0xf,
-				getenv_bootm_mapsize() + getenv_bootm_low());
+				env_get_bootm_mapsize() + env_get_bootm_low());
 	if (*kbd == NULL)
 		return -1;
 
@@ -1453,10 +1481,7 @@ int image_setup_linux(bootm_headers_t *images)
 {
 	ulong of_size = images->ft_len;
 	char **of_flat_tree = &images->ft_addr;
-	ulong *initrd_start = &images->initrd_start;
-	ulong *initrd_end = &images->initrd_end;
 	struct lmb *lmb = &images->lmb;
-	ulong rd_len;
 	int ret;
 
 	if (IMAGE_ENABLE_OF_LIBFDT)
@@ -1469,13 +1494,6 @@ int image_setup_linux(bootm_headers_t *images)
 			puts("ERROR with allocation of cmdline\n");
 			return ret;
 		}
-	}
-	if (IMAGE_ENABLE_RAMDISK_HIGH) {
-		rd_len = images->rd_end - images->rd_start;
-		ret = boot_ramdisk_high(lmb, images->rd_start, rd_len,
-				initrd_start, initrd_end);
-		if (ret)
-			return ret;
 	}
 
 	if (IMAGE_ENABLE_OF_LIBFDT) {

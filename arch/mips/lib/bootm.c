@@ -42,7 +42,7 @@ void arch_lmb_reserve(struct lmb *lmb)
 
 	/* adjust sp by 4K to be safe */
 	sp -= 4096;
-	lmb_reserve(lmb, sp, CONFIG_SYS_SDRAM_BASE + gd->ram_size - sp);
+	lmb_reserve(lmb, sp, gd->ram_top - sp);
 }
 
 static void linux_cmdline_init(void)
@@ -80,7 +80,7 @@ static void linux_cmdline_legacy(bootm_headers_t *images)
 
 	linux_cmdline_init();
 
-	bootargs = getenv("bootargs");
+	bootargs = env_get("bootargs");
 	if (!bootargs)
 		return;
 
@@ -202,11 +202,11 @@ static void linux_env_legacy(bootm_headers_t *images)
 	sprintf(env_buf, "0x%X", (uint) (gd->bd->bi_flashsize));
 	linux_env_set("flash_size", env_buf);
 
-	cp = getenv("ethaddr");
+	cp = env_get("ethaddr");
 	if (cp)
 		linux_env_set("ethaddr", cp);
 
-	cp = getenv("eth1addr");
+	cp = env_get("eth1addr");
 	if (cp)
 		linux_env_set("eth1addr", cp);
 
@@ -253,7 +253,6 @@ static int boot_reloc_fdt(bootm_headers_t *images)
 #endif
 }
 
-#ifdef CONFIG_ARCH_FIXUP_FDT
 int arch_fixup_fdt(void *blob)
 {
 #if CONFIG_IS_ENABLED(MIPS_BOOT_FDT) && CONFIG_IS_ENABLED(OF_LIBFDT)
@@ -265,7 +264,6 @@ int arch_fixup_fdt(void *blob)
 	return 0;
 #endif
 }
-#endif
 
 static int boot_setup_fdt(bootm_headers_t *images)
 {
@@ -281,17 +279,17 @@ static void boot_prep_linux(bootm_headers_t *images)
 		boot_reloc_fdt(images);
 		boot_setup_fdt(images);
 	} else {
-		if (CONFIG_IS_ENABLED(CONFIG_MIPS_BOOT_ENV_LEGACY))
-			linux_env_legacy(images);
-
 		if (CONFIG_IS_ENABLED(MIPS_BOOT_CMDLINE_LEGACY)) {
 			linux_cmdline_legacy(images);
 
-			if (!CONFIG_IS_ENABLED(CONFIG_MIPS_BOOT_ENV_LEGACY))
+			if (!CONFIG_IS_ENABLED(MIPS_BOOT_ENV_LEGACY))
 				linux_cmdline_append(images);
 
 			linux_cmdline_dump();
 		}
+
+		if (CONFIG_IS_ENABLED(MIPS_BOOT_ENV_LEGACY))
+			linux_env_legacy(images);
 	}
 }
 

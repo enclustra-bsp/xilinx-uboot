@@ -2,14 +2,14 @@ Overview
 --------
 The LS2080A Development System (QDS) is a high-performance computing,
 evaluation, and development platform that supports the QorIQ LS2080A
-Layerscape Architecture processor. The LS2080AQDS provides validation and
-SW development platform for the Freescale LS2080A processor series, with
-a complete debugging environment.
+and LS2088A Layerscape Architecture processor. The LS2080AQDS provides
+validation and SW development platform for the Freescale LS2080A, LS2088A
+processor series, with a complete debugging environment.
 
-LS2080A SoC Overview
+LS2080A, LS2088A SoC Overview
 --------------------
-Please refer arch/arm/cpu/armv8/fsl-layerscape/doc/README.soc for LS2080A
-SoC overview.
+Please refer arch/arm/cpu/armv8/fsl-layerscape/doc/README.soc for LS2080A,
+LS2088A SoC overview.
 
  LS2080AQDS board Overview
  -----------------------
@@ -89,6 +89,32 @@ c) NAND boot
 d) SD boot
 e) QSPI boot
 
+Memory map for NOR boot
+-------------------------
+Image				Flash Offset
+RCW+PBI				0x00000000
+Boot firmware (U-Boot)		0x00100000
+Boot firmware Environment	0x00300000
+PPA firmware			0x00400000
+Secure Headers			0x00600000
+DPAA2 MC			0x00A00000
+DPAA2 DPL			0x00D00000
+DPAA2 DPC			0x00E00000
+Kernel.itb			0x01000000
+
+Memory map for SD boot
+-------------------------
+Image				Flash Offset	SD Card
+						Start Block No.
+RCW+PBI				0x00000000	0x00008
+Boot firmware (U-Boot)		0x00100000	0x00800
+Boot firmware Environment	0x00300000	0x01800
+PPA firmware			0x00400000	0x02000
+DPAA2 MC			0x00A00000	0x05000
+DPAA2 DPL			0x00D00000	0x06800
+DPAA2 DPC			0x00E00000	0x07000
+Kernel.itb			0x01000000	0x08000
+
 Environment Variables
 ---------------------
 - mcboottimeout: MC boot timeout in milliseconds. If this variable is not defined
@@ -112,7 +138,7 @@ X-QSGMII-16PORT riser card
 ----------------------------
 The X-QSGMII-16PORT is a 4xQSGMII/8xSGMII riser card with eighth SerDes
 interfaces implemented in PCIe form factor board.
-It supports followings
+It supports following:
  - Card can operate with up to 4 QSGMII lane simultaneously
  - Card can operate with up to 8 SGMII lane simultaneously
 

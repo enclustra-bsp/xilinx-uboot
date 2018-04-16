@@ -139,6 +139,9 @@ found:
 #else
 	popts->ddr_cdr1 = DDR_CDR1_DHC_EN | DDR_CDR1_ODT(DDR_CDR_ODT_75ohm);
 	popts->ddr_cdr2 = DDR_CDR2_ODT(DDR_CDR_ODT_75ohm);
+
+	/* optimize cpo for erratum A-009942 */
+	popts->cpo_sample = 0x5f;
 #endif
 
 	/* T1023 supports max DDR bus 32bit width, T1024 supports DDR 64bit,
@@ -166,7 +169,7 @@ void board_mem_sleep_setup(void)
 }
 #endif
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	phys_size_t dram_size;
 
@@ -184,5 +187,7 @@ phys_size_t initdram(int board_type)
 	fsl_dp_resume();
 #endif
 
-	return dram_size;
+	gd->ram_size = dram_size;
+
+	return 0;
 }

@@ -40,8 +40,8 @@ struct fsl_secboot_img_hdr {
 		u8 num_srk;
 		u8 srk_sel;
 		u8 reserve;
-		u8 ie_flag;
 	} len_kr;
+	u8 ie_flag;
 
 	u32 uid_flag;
 
@@ -69,6 +69,11 @@ struct fsl_secboot_img_hdr {
 #define MAX_KEY_ENTRIES 8
 #endif
 
+#if defined(CONFIG_FSL_ISBC_KEY_EXT)
+#define IE_FLAG_MASK 0x1
+#define SCRATCH_IE_LOW_ADR 13
+#define SCRATCH_IE_HIGH_ADR 14
+#endif
 
 #else /* CONFIG_ESBC_HDR_LS */
 
@@ -150,6 +155,10 @@ struct fsl_secboot_img_hdr {
 #define MAX_KEY_ENTRIES 4
 #endif
 
+#if defined(CONFIG_FSL_ISBC_KEY_EXT)
+#define IE_FLAG_MASK 0xFFFFFFFF
+#endif
+
 #endif /* CONFIG_ESBC_HDR_LS */
 
 
@@ -202,6 +211,17 @@ struct fsl_secboot_sg_table {
 };
 #endif
 
+/* ESBC global structure.
+ * Data to be used across verification of different images.
+ * Stores follwoing Data:
+ * IE Table
+ */
+struct fsl_secboot_glb {
+#if defined(CONFIG_FSL_ISBC_KEY_EXT)
+	uintptr_t ie_addr;
+	struct ie_key_info ie_tbl;
+#endif
+};
 /*
  * ESBC private structure.
  * Private structure used by ESBC to store following fields
@@ -213,7 +233,7 @@ struct fsl_secboot_sg_table {
  */
 struct fsl_secboot_img_priv {
 	uint32_t hdr_location;
-	u32 ie_addr;
+	uintptr_t ie_addr;
 	u32 key_len;
 	struct fsl_secboot_img_hdr hdr;
 
@@ -254,4 +274,11 @@ int fsl_secboot_blob_decap(cmd_tbl_t *cmdtp, int flag, int argc,
 
 int fsl_check_boot_mode_secure(void);
 int fsl_setenv_chain_of_trust(void);
+
+/*
+ * This function is used to validate the main U-boot binary from
+ * SPL just before passing control to it using QorIQ Trust
+ * Architecture header (appended to U-boot image).
+ */
+void spl_validate_uboot(uint32_t hdr_addr, uintptr_t img_addr);
 #endif

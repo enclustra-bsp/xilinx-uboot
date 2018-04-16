@@ -9,32 +9,22 @@
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/fsl_serdes.h>
+#ifdef CONFIG_FSL_LS_PPA
+#include <asm/arch/ppa.h>
+#endif
+#include <asm/arch/mmu.h>
 #include <asm/arch/soc.h>
 #include <hwconfig.h>
 #include <ahci.h>
 #include <mmc.h>
 #include <scsi.h>
-#include <fsl_csu.h>
 #include <fsl_esdhc.h>
 #include <environment.h>
 #include <fsl_mmdc.h>
 #include <netdev.h>
+#include <fsl_sec.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-static void set_wait_for_bits_clear(void *ptr, u32 value, u32 bits)
-{
-	int timeout = 1000;
-
-	out_be32(ptr, value);
-
-	while (in_be32(ptr) & bits) {
-		udelay(100);
-		timeout--;
-	}
-	if (timeout <= 0)
-		puts("Error: wait for clear timeout.\n");
-}
 
 int checkboard(void)
 {
@@ -45,25 +35,45 @@ int checkboard(void)
 	/* Initialize i2c early for Serial flash bank information */
 	i2c_set_bus_num(0);
 
-	if (i2c_read(I2C_MUX_IO1_ADDR, 1, 1, &in1, 1) < 0) {
+	if (i2c_read(I2C_MUX_IO_ADDR, I2C_MUX_IO_1, 1, &in1, 1) < 0) {
 		printf("Error reading i2c boot information!\n");
 		return 0; /* Don't want to hang() on this error */
 	}
 
 	puts("Version");
-	if ((in1 & (~__SW_REV_MASK)) == __SW_REV_A)
+	switch (in1 & SW_REV_MASK) {
+	case SW_REV_A:
 		puts(": RevA");
-	else if ((in1 & (~__SW_REV_MASK)) == __SW_REV_B)
+		break;
+	case SW_REV_B:
 		puts(": RevB");
-	else
+		break;
+	case SW_REV_C:
+		puts(": RevC");
+		break;
+	case SW_REV_C1:
+		puts(": RevC1");
+		break;
+	case SW_REV_C2:
+		puts(": RevC2");
+		break;
+	case SW_REV_D:
+		puts(": RevD");
+		break;
+	case SW_REV_E:
+		puts(": RevE");
+		break;
+	default:
 		puts(": unknown");
+		break;
+	}
 
 	printf(", boot from QSPI");
-	if ((in1 & (~__SW_BOOT_MASK)) == __SW_BOOT_EMU)
+	if ((in1 & SW_BOOT_MASK) == SW_BOOT_EMU)
 		puts(": emu\n");
-	else if ((in1 & (~__SW_BOOT_MASK)) == __SW_BOOT_BANK1)
+	else if ((in1 & SW_BOOT_MASK) == SW_BOOT_BANK1)
 		puts(": bank1\n");
-	else if ((in1 & (~__SW_BOOT_MASK)) == __SW_BOOT_BANK2)
+	else if ((in1 & SW_BOOT_MASK) == SW_BOOT_BANK2)
 		puts(": bank2\n");
 	else
 		puts("unknown\n");
@@ -71,113 +81,31 @@ int checkboard(void)
 	return 0;
 }
 
-void mmdc_init(void)
-{
-	struct mmdc_p_regs *mmdc =
-		(struct mmdc_p_regs *)CONFIG_SYS_FSL_DDR_ADDR;
-
-	out_be32(&mmdc->mdscr, CONFIGURATION_REQ);
-
-	/* configure timing parms */
-	out_be32(&mmdc->mdotc,  CONFIG_SYS_MMDC_CORE_ODT_TIMING);
-	out_be32(&mmdc->mdcfg0, CONFIG_SYS_MMDC_CORE_TIMING_CFG_0);
-	out_be32(&mmdc->mdcfg1, CONFIG_SYS_MMDC_CORE_TIMING_CFG_1);
-	out_be32(&mmdc->mdcfg2, CONFIG_SYS_MMDC_CORE_TIMING_CFG_2);
-
-	/* other parms	*/
-	out_be32(&mmdc->mdmisc,    CONFIG_SYS_MMDC_CORE_MISC);
-	out_be32(&mmdc->mpmur0,    CONFIG_SYS_MMDC_PHY_MEASURE_UNIT);
-	out_be32(&mmdc->mdrwd,     CONFIG_SYS_MMDC_CORE_RDWR_CMD_DELAY);
-	out_be32(&mmdc->mpodtctrl, CONFIG_SYS_MMDC_PHY_ODT_CTRL);
-
-	/* out of reset delays */
-	out_be32(&mmdc->mdor,  CONFIG_SYS_MMDC_CORE_OUT_OF_RESET_DELAY);
-
-	/* physical parms */
-	out_be32(&mmdc->mdctl, CONFIG_SYS_MMDC_CORE_CONTROL_1);
-	out_be32(&mmdc->mdasp, CONFIG_SYS_MMDC_CORE_ADDR_PARTITION);
-
-       /* Enable MMDC */
-	out_be32(&mmdc->mdctl, CONFIG_SYS_MMDC_CORE_CONTROL_2);
-
-	/* dram init sequence: update MRs */
-	out_be32(&mmdc->mdscr, (CMD_ADDR_LSB_MR_ADDR(0x8) | CONFIGURATION_REQ |
-				CMD_LOAD_MODE_REG | CMD_BANK_ADDR_2));
-	out_be32(&mmdc->mdscr, (CONFIGURATION_REQ | CMD_LOAD_MODE_REG |
-				CMD_BANK_ADDR_3));
-	out_be32(&mmdc->mdscr, (CMD_ADDR_LSB_MR_ADDR(0x4) | CONFIGURATION_REQ |
-				CMD_LOAD_MODE_REG | CMD_BANK_ADDR_1));
-	out_be32(&mmdc->mdscr, (CMD_ADDR_MSB_MR_OP(0x19) |
-				CMD_ADDR_LSB_MR_ADDR(0x30) | CONFIGURATION_REQ |
-				CMD_LOAD_MODE_REG | CMD_BANK_ADDR_0));
-
-       /* dram init sequence: ZQCL */
-	out_be32(&mmdc->mdscr, (CMD_ADDR_MSB_MR_OP(0x4) | CONFIGURATION_REQ |
-				CMD_ZQ_CALIBRATION | CMD_BANK_ADDR_0));
-	set_wait_for_bits_clear(&mmdc->mpzqhwctrl,
-				CONFIG_SYS_MMDC_PHY_ZQ_HW_CTRL,
-				FORCE_ZQ_AUTO_CALIBRATION);
-
-       /* Calibrations now: wr lvl */
-	out_be32(&mmdc->mdscr, (CMD_ADDR_LSB_MR_ADDR(0x84) |
-				CONFIGURATION_REQ | CMD_LOAD_MODE_REG |
-				CMD_BANK_ADDR_1));
-	out_be32(&mmdc->mdscr, (CONFIGURATION_REQ | WL_EN | CMD_NORMAL));
-	set_wait_for_bits_clear(&mmdc->mpwlgcr, WR_LVL_HW_EN, WR_LVL_HW_EN);
-
-	mdelay(1);
-
-	out_be32(&mmdc->mdscr, (CMD_ADDR_LSB_MR_ADDR(0x4) | CONFIGURATION_REQ |
-				CMD_LOAD_MODE_REG | CMD_BANK_ADDR_1));
-	out_be32(&mmdc->mdscr, CONFIGURATION_REQ);
-
-	mdelay(1);
-
-       /* Calibrations now: Read DQS gating calibration */
-	out_be32(&mmdc->mdscr, (CMD_ADDR_MSB_MR_OP(0x4) | CONFIGURATION_REQ |
-				CMD_PRECHARGE_BANK_OPEN | CMD_BANK_ADDR_0));
-	out_be32(&mmdc->mdscr, (CMD_ADDR_LSB_MR_ADDR(0x4) | CONFIGURATION_REQ |
-				CMD_LOAD_MODE_REG | CMD_BANK_ADDR_3));
-	out_be32(&mmdc->mppdcmpr2, MPR_COMPARE_EN);
-	out_be32(&mmdc->mprddlctl, CONFIG_SYS_MMDC_PHY_RD_DLY_LINES_CFG);
-	set_wait_for_bits_clear(&mmdc->mpdgctrl0,
-				AUTO_RD_DQS_GATING_CALIBRATION_EN,
-				AUTO_RD_DQS_GATING_CALIBRATION_EN);
-
-	out_be32(&mmdc->mdscr, (CONFIGURATION_REQ | CMD_LOAD_MODE_REG |
-				CMD_BANK_ADDR_3));
-
-       /* Calibrations now: Read calibration */
-	out_be32(&mmdc->mdscr, (CMD_ADDR_MSB_MR_OP(0x4) | CONFIGURATION_REQ |
-				CMD_PRECHARGE_BANK_OPEN | CMD_BANK_ADDR_0));
-	out_be32(&mmdc->mdscr, (CMD_ADDR_LSB_MR_ADDR(0x4) | CONFIGURATION_REQ |
-				CMD_LOAD_MODE_REG | CMD_BANK_ADDR_3));
-	out_be32(&mmdc->mppdcmpr2,  MPR_COMPARE_EN);
-	set_wait_for_bits_clear(&mmdc->mprddlhwctl,
-				AUTO_RD_CALIBRATION_EN,
-				AUTO_RD_CALIBRATION_EN);
-
-	out_be32(&mmdc->mdscr, (CONFIGURATION_REQ | CMD_LOAD_MODE_REG |
-				CMD_BANK_ADDR_3));
-
-       /* PD, SR */
-	out_be32(&mmdc->mdpdc, CONFIG_SYS_MMDC_CORE_PWR_DOWN_CTRL);
-	out_be32(&mmdc->mapsr, CONFIG_SYS_MMDC_CORE_PWR_SAV_CTRL_STAT);
-
-       /* refresh scheme */
-	set_wait_for_bits_clear(&mmdc->mdref,
-				CONFIG_SYS_MMDC_CORE_REFRESH_CTL,
-				START_REFRESH);
-
-       /* disable CON_REQ */
-	out_be32(&mmdc->mdscr, DISABLE_CFG_REQ);
-}
-
 int dram_init(void)
 {
-	mmdc_init();
+	static const struct fsl_mmdc_info mparam = {
+		0x05180000,	/* mdctl */
+		0x00030035,	/* mdpdc */
+		0x12554000,	/* mdotc */
+		0xbabf7954,	/* mdcfg0 */
+		0xdb328f64,	/* mdcfg1 */
+		0x01ff00db,	/* mdcfg2 */
+		0x00001680,	/* mdmisc */
+		0x0f3c8000,	/* mdref */
+		0x00002000,	/* mdrwd */
+		0x00bf1023,	/* mdor */
+		0x0000003f,	/* mdasp */
+		0x0000022a,	/* mpodtctrl */
+		0xa1390003,	/* mpzqhwctrl */
+	};
+
+	mmdc_init(&mparam);
 
 	gd->ram_size = CONFIG_SYS_SDRAM_SIZE;
+#if !defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD)
+	/* This will break-before-make MMU for DDR */
+	update_early_mmu_table();
+#endif
 
 	return 0;
 }
@@ -196,21 +124,82 @@ int board_early_init_f(void)
 
 int board_init(void)
 {
-	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)CONFIG_SYS_CCI400_ADDR;
+	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)(CONFIG_SYS_IMMR +
+					CONFIG_SYS_CCI400_OFFSET);
 	/*
 	 * Set CCI-400 control override register to enable barrier
 	 * transaction
 	 */
 	out_le32(&cci->ctrl_ord, CCI400_CTRLORD_EN_BARRIER);
 
+#ifdef CONFIG_SYS_FSL_ERRATUM_A010315
+	erratum_a010315();
+#endif
+
 #ifdef CONFIG_ENV_IS_NOWHERE
 	gd->env_addr = (ulong)&default_environment[0];
 #endif
 
-#ifdef CONFIG_LAYERSCAPE_NS_ACCESS
-	enable_layerscape_ns_access();
+#ifdef CONFIG_FSL_CAAM
+	sec_init();
 #endif
 
+#ifdef CONFIG_FSL_LS_PPA
+	ppa_init();
+#endif
+	return 0;
+}
+
+int esdhc_status_fixup(void *blob, const char *compat)
+{
+	char esdhc1_path[] = "/soc/esdhc@1580000";
+	bool sdhc2_en = false;
+	u8 mux_sdhc2;
+	u8 io = 0;
+
+	i2c_set_bus_num(0);
+
+	/* IO1[7:3] is the field of board revision info. */
+	if (i2c_read(I2C_MUX_IO_ADDR, I2C_MUX_IO_1, 1, &io, 1) < 0) {
+		printf("Error reading i2c boot information!\n");
+		return 0;
+	}
+
+	/* hwconfig method is used for RevD and later versions. */
+	if ((io & SW_REV_MASK) <= SW_REV_D) {
+#ifdef CONFIG_HWCONFIG
+		if (hwconfig("esdhc1"))
+			sdhc2_en = true;
+#endif
+	} else {
+		/*
+		 * The I2C IO-expander for mux select is used to control
+		 * the muxing of various onboard interfaces.
+		 *
+		 * IO0[3:2] indicates SDHC2 interface demultiplexer
+		 * select lines.
+		 *	00 - SDIO wifi
+		 *	01 - GPIO (to Arduino)
+		 *	10 - eMMC Memory
+		 *	11 - SPI
+		 */
+		if (i2c_read(I2C_MUX_IO_ADDR, I2C_MUX_IO_0, 1, &io, 1) < 0) {
+			printf("Error reading i2c boot information!\n");
+			return 0;
+		}
+
+		mux_sdhc2 = (io & 0x0c) >> 2;
+		/* Enable SDHC2 only when use SDIO wifi and eMMC */
+		if (mux_sdhc2 == 2 || mux_sdhc2 == 0)
+			sdhc2_en = true;
+	}
+
+	if (sdhc2_en)
+		do_fixup_by_path(blob, esdhc1_path, "status", "okay",
+				 sizeof("okay"), 1);
+	else
+		do_fixup_by_path(blob, esdhc1_path, "status", "disabled",
+				 sizeof("disabled"), 1);
 	return 0;
 }
 

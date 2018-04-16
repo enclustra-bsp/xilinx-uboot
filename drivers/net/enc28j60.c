@@ -489,10 +489,6 @@ static void enc_poll(enc_dev_t *enc)
 	u8 eir_reg;
 	u8 pkt_cnt;
 
-#ifdef CONFIG_USE_IRQ
-	/* clear global interrupt enable bit in enc28j60 */
-	enc_bclr(enc, CTL_REG_EIE, ENC_EIE_INTIE);
-#endif
 	(void)enc_r8(enc, CTL_REG_ESTAT);
 	eir_reg = enc_r8(enc, CTL_REG_EIR);
 	if (eir_reg & ENC_EIR_TXIF) {
@@ -520,10 +516,6 @@ static void enc_poll(enc_dev_t *enc)
 		printf("%s: tx error\n", enc->dev->name);
 		enc_bclr(enc, CTL_REG_EIR, ENC_EIR_TXERIF);
 	}
-#ifdef CONFIG_USE_IRQ
-	/* set global interrupt enable bit in enc28j60 */
-	enc_bset(enc, CTL_REG_EIE, ENC_EIE_INTIE);
-#endif
 }
 
 /*
@@ -693,15 +685,6 @@ static int enc_setup(enc_dev_t *enc)
 	/* Reset PDPXMD-bit => half duplex */
 	enc_phy_write(enc, PHY_REG_PHCON1, 0);
 
-#ifdef CONFIG_USE_IRQ
-	/* enable interrupts */
-	enc_bset(enc, CTL_REG_EIE, ENC_EIE_PKTIE);
-	enc_bset(enc, CTL_REG_EIE, ENC_EIE_TXIE);
-	enc_bset(enc, CTL_REG_EIE, ENC_EIE_RXERIE);
-	enc_bset(enc, CTL_REG_EIE, ENC_EIE_TXERIE);
-	enc_bset(enc, CTL_REG_EIE, ENC_EIE_INTIE);
-#endif
-
 	return 0;
 }
 
@@ -742,9 +725,10 @@ static int enc_initcheck(enc_dev_t *enc, const enum enc_initstate requiredstate)
  *
  * This function is registered with miiphy_register().
  */
-int enc_miiphy_read(const char *devname, u8 phy_adr, u8 reg, u16 *value)
+int enc_miiphy_read(struct mii_dev *bus, int phy_adr, int devad, int reg)
 {
-	struct eth_device *dev = eth_get_dev_by_name(devname);
+	u16 value = 0;
+	struct eth_device *dev = eth_get_dev_by_name(bus->name);
 	enc_dev_t *enc;
 
 	if (!dev || phy_adr != 0)
@@ -757,9 +741,9 @@ int enc_miiphy_read(const char *devname, u8 phy_adr, u8 reg, u16 *value)
 		enc_release_bus(enc);
 		return -1;
 	}
-	*value = enc_phy_read(enc, reg);
+	value = enc_phy_read(enc, reg);
 	enc_release_bus(enc);
-	return 0;
+	return value;
 }
 
 /*
@@ -767,9 +751,10 @@ int enc_miiphy_read(const char *devname, u8 phy_adr, u8 reg, u16 *value)
  *
  * This function is registered with miiphy_register().
  */
-int enc_miiphy_write(const char *devname, u8 phy_adr, u8 reg, u16 value)
+int enc_miiphy_write(struct mii_dev *bus, int phy_adr, int devad, int reg,
+		     u16 value)
 {
-	struct eth_device *dev = eth_get_dev_by_name(devname);
+	struct eth_device *dev = eth_get_dev_by_name(bus->name);
 	enc_dev_t *enc;
 
 	if (!dev || phy_adr != 0)
@@ -958,7 +943,17 @@ int enc28j60_initialize(unsigned int bus, unsigned int cs,
 	sprintf(dev->name, "enc%i.%i", bus, cs);
 	eth_register(dev);
 #if defined(CONFIG_CMD_MII)
-	miiphy_register(dev->name, enc_miiphy_read, enc_miiphy_write);
+	int retval;
+	struct mii_dev *mdiodev = mdio_alloc();
+	if (!mdiodev)
+		return -ENOMEM;
+	strncpy(mdiodev->name, dev->name, MDIO_NAME_LEN);
+	mdiodev->read = enc_miiphy_read;
+	mdiodev->write = enc_miiphy_write;
+
+	retval = mdio_register(mdiodev);
+	if (retval < 0)
+		return retval;
 #endif
 	return 0;
 }

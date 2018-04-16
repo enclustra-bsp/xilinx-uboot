@@ -118,11 +118,11 @@ static int xilinx_spi_child_pre_probe(struct udevice *bus)
 	struct udevice *dev = dev_get_parent(bus);
 	int spimode;
 
-	spimode = fdtdec_get_int(gd->fdt_blob, dev->of_offset, "xlnx,spi-mode",
+	spimode = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev), "xlnx,spi-mode",
 				 -1);
 
 	if (spimode == XILINX_SPI_QUAD_MODE)
-		slave->op_mode_rx = SPI_OPM_RX_QOF;
+		slave->mode = SPI_RX_QUAD;
 
 	return 0;
 }
@@ -344,11 +344,11 @@ static int xilinx_spi_ofdata_to_platdata(struct udevice *bus)
 {
 	struct xilinx_spi_priv *priv = dev_get_priv(bus);
 
-	priv->regs = (struct xilinx_spi_regs *)dev_get_addr(bus);
+	priv->regs = (struct xilinx_spi_regs *)devfdt_get_addr(bus);
 
 	debug("%s: regs=%p\n", __func__, priv->regs);
 
-	priv->fifo_depth = fdtdec_get_int(gd->fdt_blob, bus->of_offset,
+	priv->fifo_depth = fdtdec_get_int(gd->fdt_blob, dev_of_offset(bus),
 					  "fifo-size", 0);
 
 	return 0;

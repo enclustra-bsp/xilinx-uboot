@@ -7,6 +7,7 @@
 # each represented in a well-delineated/-structured fashion.
 
 import cgi
+import datetime
 import os.path
 import shutil
 import subprocess
@@ -101,6 +102,8 @@ class RunAndLog(object):
         self.logfile = logfile
         self.name = name
         self.chained_file = chained_file
+        self.output = None
+        self.exit_status = None
 
     def close(self):
         """Clean up any resources managed by this object."""
@@ -108,6 +111,9 @@ class RunAndLog(object):
 
     def run(self, cmd, cwd=None, ignore_errors=False):
         """Run a command as a sub-process, and log the results.
+
+        The output is available at self.output which can be useful if there is
+        an exception.
 
         Args:
             cmd: The command to execute.
@@ -119,7 +125,7 @@ class RunAndLog(object):
                 raised if such problems occur.
 
         Returns:
-            Nothing.
+            The output as a string.
         """
 
         msg = '+' + ' '.join(cmd) + '\n'
@@ -159,8 +165,14 @@ class RunAndLog(object):
         self.logfile.write(self, output)
         if self.chained_file:
             self.chained_file.write(output)
+        self.logfile.timestamp()
+
+        # Store the output so it can be accessed if we raise an exception.
+        self.output = output
+        self.exit_status = exit_status
         if exception:
             raise exception
+        return output
 
 class SectionCtxMgr(object):
     """A context manager for Python's "with" statement, which allows a certain
@@ -209,6 +221,9 @@ class Logfile(object):
         self.blocks = []
         self.cur_evt = 1
         self.anchor = 0
+        self.timestamp_start = self._get_time()
+        self.timestamp_prev = self.timestamp_start
+        self.timestamp_blocks = []
 
         shutil.copy(mod_dir + '/multiplexed_log.css', os.path.dirname(fn))
         self.f.write('''\
@@ -355,13 +370,13 @@ $(document).ready(function () {
 
         self._terminate_stream()
         self.f.write('<div class="' + note_type + '">\n')
-        if anchor:
-            self.f.write('<a href="#%s">\n' % anchor)
         self.f.write('<pre>')
-        self.f.write(self._escape(msg))
-        self.f.write('\n</pre>\n')
         if anchor:
-            self.f.write('</a>\n')
+            self.f.write('<a href="#%s">' % anchor)
+        self.f.write(self._escape(msg))
+        if anchor:
+            self.f.write('</a>')
+        self.f.write('\n</pre>\n')
         self.f.write('</div>\n')
 
     def start_section(self, marker, anchor=None):
@@ -378,6 +393,7 @@ $(document).ready(function () {
 
         self._terminate_stream()
         self.blocks.append(marker)
+        self.timestamp_blocks.append(self._get_time())
         if not anchor:
             self.anchor += 1
             anchor = str(self.anchor)
@@ -386,6 +402,7 @@ $(document).ready(function () {
         self.f.write('<div class="section-header block-header">Section: ' +
                      blk_path + '</div>\n')
         self.f.write('<div class="section-content block-content">\n')
+        self.timestamp()
 
         return anchor
 
@@ -406,6 +423,11 @@ $(document).ready(function () {
             raise Exception('Block nesting mismatch: "%s" "%s"' %
                             (marker, '/'.join(self.blocks)))
         self._terminate_stream()
+        timestamp_now = self._get_time()
+        timestamp_section_start = self.timestamp_blocks.pop()
+        delta_section = timestamp_now - timestamp_section_start
+        self._note("timestamp",
+            "TIME: SINCE-SECTION: " + str(delta_section))
         blk_path = '/'.join(self.blocks)
         self.f.write('<div class="section-trailer block-trailer">' +
                      'End section: ' + blk_path + '</div>\n')
@@ -481,6 +503,31 @@ $(document).ready(function () {
         """
 
         self._note("action", msg)
+
+    def _get_time(self):
+        return datetime.datetime.now()
+
+    def timestamp(self):
+        """Write a timestamp to the log file.
+
+        Args:
+            None
+
+        Returns:
+            Nothing.
+        """
+
+        timestamp_now = self._get_time()
+        delta_prev = timestamp_now - self.timestamp_prev
+        delta_start = timestamp_now - self.timestamp_start
+        self.timestamp_prev = timestamp_now
+
+        self._note("timestamp",
+            "TIME: NOW: " + timestamp_now.strftime("%Y/%m/%d %H:%M:%S.%f"))
+        self._note("timestamp",
+            "TIME: SINCE-PREV: " + str(delta_prev))
+        self._note("timestamp",
+            "TIME: SINCE-START: " + str(delta_start))
 
     def status_pass(self, msg, anchor=None):
         """Write a note to the log file describing test(s) which passed.

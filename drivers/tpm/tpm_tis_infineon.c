@@ -25,7 +25,7 @@
 #include <fdtdec.h>
 #include <i2c.h>
 #include <tpm.h>
-#include <asm-generic/errno.h>
+#include <linux/errno.h>
 #include <linux/compiler.h>
 #include <linux/types.h>
 #include <linux/unaligned/be_byteshift.h>
@@ -539,7 +539,7 @@ static int tpm_tis_i2c_init(struct udevice *dev)
 	}
 
 	if (chip->chip_type != UNKNOWN && vendor != expected_did_vid) {
-		error("Vendor id did not match! ID was %08x\n", vendor);
+		pr_err("Vendor id did not match! ID was %08x\n", vendor);
 		return -ENODEV;
 	}
 

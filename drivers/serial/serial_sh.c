@@ -9,6 +9,7 @@
 
 #include <common.h>
 #include <errno.h>
+#include <clk.h>
 #include <dm.h>
 #include <asm/io.h>
 #include <asm/processor.h>
@@ -16,6 +17,8 @@
 #include <linux/compiler.h>
 #include <dm/platform_data/serial_sh.h>
 #include "serial_sh.h"
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #if defined(CONFIG_CPU_SH7760) || \
 	defined(CONFIG_CPU_SH7780) || \
@@ -201,9 +204,48 @@ static const struct dm_serial_ops sh_serial_ops = {
 	.setbrg = sh_serial_setbrg,
 };
 
+#ifdef CONFIG_OF_CONTROL
+static const struct udevice_id sh_serial_id[] ={
+	{.compatible = "renesas,sci", .data = PORT_SCI},
+	{.compatible = "renesas,scif", .data = PORT_SCIF},
+	{.compatible = "renesas,scifa", .data = PORT_SCIFA},
+	{}
+};
+
+static int sh_serial_ofdata_to_platdata(struct udevice *dev)
+{
+	struct sh_serial_platdata *plat = dev_get_platdata(dev);
+	struct clk sh_serial_clk;
+	fdt_addr_t addr;
+	int ret;
+
+	addr = fdtdec_get_addr(gd->fdt_blob, dev_of_offset(dev), "reg");
+	if (addr == FDT_ADDR_T_NONE)
+		return -EINVAL;
+
+	plat->base = addr;
+
+	ret = clk_get_by_name(dev, "fck", &sh_serial_clk);
+	if (!ret) {
+		ret = clk_enable(&sh_serial_clk);
+		if (!ret)
+			plat->clk = clk_get_rate(&sh_serial_clk);
+	} else {
+		plat->clk = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
+					   "clock", 1);
+	}
+
+	plat->type = dev_get_driver_data(dev);
+	return 0;
+}
+#endif
+
 U_BOOT_DRIVER(serial_sh) = {
 	.name	= "serial_sh",
 	.id	= UCLASS_SERIAL,
+	.of_match = of_match_ptr(sh_serial_id),
+	.ofdata_to_platdata = of_match_ptr(sh_serial_ofdata_to_platdata),
+	.platdata_auto_alloc_size = sizeof(struct sh_serial_platdata),
 	.probe	= sh_serial_probe,
 	.ops	= &sh_serial_ops,
 	.flags	= DM_FLAG_PRE_RELOC,
@@ -234,6 +276,8 @@ U_BOOT_DRIVER(serial_sh) = {
 
 #if defined(CONFIG_SCIF_A)
 	#define SCIF_BASE_PORT	PORT_SCIFA
+#elif defined(CONFIG_SCI)
+	#define SCIF_BASE_PORT  PORT_SCI
 #else
 	#define SCIF_BASE_PORT	PORT_SCIF
 #endif

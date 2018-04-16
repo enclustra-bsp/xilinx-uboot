@@ -9,8 +9,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_DISPLAY_BOARDINFO
-
 /* KMBEC FPGA (PRIO) */
 #define CONFIG_SYS_KMBEC_FPGA_BASE	0xE8000000
 #define CONFIG_SYS_KMBEC_FPGA_SIZE	64
@@ -23,9 +21,7 @@
 #define CONFIG_HOSTNAME		kmcoge5ne
 #define CONFIG_KM_BOARD_NAME	"kmcoge5ne"
 #define CONFIG_KM_DEF_NETDEV	"netdev=eth1\0"
-#define CONFIG_CMD_NAND
 #define CONFIG_NAND_ECC_BCH
-#define CONFIG_BCH
 #define CONFIG_NAND_KMETER1
 #define CONFIG_SYS_MAX_NAND_DEVICE		1
 #define NAND_MAX_CHIPS				1
@@ -33,16 +29,6 @@
 
 #define CONFIG_KM_UBI_PARTITION_NAME_BOOT	"ubi0"
 #define CONFIG_KM_UBI_PARTITION_NAME_APP	"ubi1"
-#define MTDIDS_DEFAULT			"nor0=boot,nand0=app"
-
-#define MTDPARTS_DEFAULT		"mtdparts="			\
-	"boot:"								\
-		"768k(u-boot),"						\
-		"128k(env),"						\
-		"128k(envred),"						\
-		"-(" CONFIG_KM_UBI_PARTITION_NAME_BOOT ");"		\
-	"app:"								\
-		"-(" CONFIG_KM_UBI_PARTITION_NAME_APP ");"
 #else
 #error ("Board not supported")
 #endif
@@ -272,7 +258,6 @@
 #define CPM_POST_WORD_ADDR  CONFIG_SYS_MEMTEST_END
 #define CONFIG_TESTPIN_REG  gprt3	/* for kmcoge5ne */
 #define CONFIG_TESTPIN_MASK 0x20	/* for kmcoge5ne */
-#define CONFIG_CMD_DIAG	/* so that testpin is inquired for POST test */
 
 #else
 #define CONFIG_SYS_IBAT6L	(0)

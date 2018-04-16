@@ -1,6 +1,6 @@
 /*
- * (C) Copyright 2016
- * Vikas Manocha, STMicroelectronics, <vikas.manocha@st.com>
+ * Copyright (C) 2016, STMicroelectronics - All Rights Reserved
+ * Author(s): Vikas Manocha, <vikas.manocha@st.com> for STMicroelectronics.
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
@@ -32,6 +32,7 @@
 
 #define USART1_BASE		(APB2_PERIPH_BASE + 0x1000)
 #define USART6_BASE		(APB2_PERIPH_BASE + 0x1400)
+#define STM32_SYSCFG_BASE	(APB2_PERIPH_BASE + 0x3800)
 
 #define STM32_GPIOA_BASE	(AHB1_PERIPH_BASE + 0x0000)
 #define STM32_GPIOB_BASE	(AHB1_PERIPH_BASE + 0x0400)
@@ -48,7 +49,7 @@
 #define FLASH_CNTL_BASE		(AHB1_PERIPH_BASE + 0x3C00)
 
 
-#define SDRAM_FMC_BASE		(AHB3_PERIPH_BASE + 0x4A0000140)
+#define SDRAM_FMC_BASE		(AHB3_PERIPH_BASE + 0x40000140)
 
 static const u32 sect_sz_kb[CONFIG_SYS_MAX_FLASH_SECT] = {
 	[0 ... 3] =	32 * 1024,
@@ -56,14 +57,11 @@ static const u32 sect_sz_kb[CONFIG_SYS_MAX_FLASH_SECT] = {
 	[5 ... 7] =	256 * 1024
 };
 
-enum clock {
-	CLOCK_CORE,
-	CLOCK_AHB,
-	CLOCK_APB1,
-	CLOCK_APB2
-};
-#define STM32_BUS_MASK          0xFFFF0000
+#define STM32_BUS_MASK		GENMASK(31, 16)
 
-int configure_clocks(void);
+#define STM32_RCC		((struct stm32_rcc_regs *)RCC_BASE)
+
+
+void stm32_flash_latency_cfg(int latency);
 
 #endif /* _ASM_ARCH_HARDWARE_H */

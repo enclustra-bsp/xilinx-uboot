@@ -141,32 +141,6 @@ gd_t *global_data;
 "	lwi	r5, r5, %1\n"			\
 "	bra	r5\n"				\
 	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "r5");
-#elif defined(CONFIG_BLACKFIN)
-/*
- * P3 holds the pointer to the global_data, P0 is a call-clobbered
- * register
- */
-#define EXPORT_FUNC(f, a, x, ...)			\
-	asm volatile (			\
-"	.globl _" #x "\n_"		\
-#x ":\n"				\
-"	P0 = [P3 + %0]\n"		\
-"	P0 = [P0 + %1]\n"		\
-"	JUMP (P0)\n"			\
-	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "P0");
-#elif defined(CONFIG_AVR32)
-/*
- * r6 holds the pointer to the global_data. r8 is call clobbered.
- */
-#define EXPORT_FUNC(f, a, x, ...)					\
-	asm volatile(					\
-		"	.globl\t" #x "\n"		\
-		#x ":\n"				\
-		"	ld.w	r8, r6[%0]\n"		\
-		"	ld.w	pc, r8[%1]\n"		\
-		:					\
-		: "i"(offsetof(gd_t, jt)), "i"(FO(x))	\
-		: "r8");
 #elif defined(CONFIG_SH)
 /*
  * r13 holds the pointer to the global_data. r1 is a call clobbered.
@@ -185,21 +159,6 @@ gd_t *global_data;
 		"	nop\n"				\
 		"	nop\n"				\
 		: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "r1", "r2");
-#elif defined(CONFIG_SPARC)
-/*
- * g7 holds the pointer to the global_data. g1 is call clobbered.
- */
-#define EXPORT_FUNC(f, a, x, ...)					\
-	asm volatile(					\
-"	.globl\t" #x "\n"				\
-#x ":\n"						\
-"	set %0, %%g1\n"					\
-"	or %%g1, %%g7, %%g1\n"				\
-"	ld [%%g1], %%g1\n"				\
-"	ld [%%g1 + %1], %%g1\n"				\
-"	jmp %%g1\n"					\
-"	nop\n"						\
-	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "g1");
 #elif defined(CONFIG_NDS32)
 /*
  * r16 holds the pointer to the global_data. gp is call clobbered.
@@ -213,20 +172,6 @@ gd_t *global_data;
 "	lwi	$r16, [$r16 + (%1)]\n"	\
 "	jr	$r16\n"			\
 	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "$r16");
-#elif defined(CONFIG_OPENRISC)
-/*
- * r10 holds the pointer to the global_data, r13 is a call-clobbered
- * register
- */
-#define EXPORT_FUNC(f, a, x, ...) \
-	asm volatile (			\
-"	.globl " #x "\n"		\
-#x ":\n"				\
-"	l.lwz	r13, %0(r10)\n"	\
-"	l.lwz	r13, %1(r13)\n"	\
-"	l.jr	r13\n"		\
-"	l.nop\n"				\
-	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "r13");
 #elif defined(CONFIG_ARC)
 /*
  * r25 holds the pointer to the global_data. r10 is call clobbered.
@@ -240,6 +185,53 @@ gd_t *global_data;
 "	ld	r10, [r10, %1]\n" \
 "	j	[r10]\n" \
 	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "r10");
+#elif defined(CONFIG_XTENSA)
+/*
+ * Global data ptr is in global_data, jump table ptr is in jt.
+ * Windowed ABI: Jump just past 'entry' in target and adjust stack frame
+ * (extract stack frame size from target 'entry' instruction).
+ */
+
+static void **jt;
+
+#if defined(__XTENSA_CALL0_ABI__)
+#define EXPORT_FUNC(f, a, x, ...)	\
+	asm volatile (			\
+"	.extern jt\n"			\
+"	.globl " #x "\n"		\
+"	.align 4\n"			\
+#x ":\n"				\
+"	l32i	a8, %0, 0\n"		\
+"	l32i	a8, a8, %1\n"		\
+"	jx	a8\n"			\
+	: : "r"(jt), "i" (FO(x)) : "a8");
+#elif defined(__XTENSA_WINDOWED_ABI__)
+#if XCHAL_HAVE_BE
+# define SFT "8"
+#else
+# define SFT "12"
+#endif
+#define EXPORT_FUNC(f, a, x, ...)	\
+	asm volatile (			\
+"	.extern jt\n"			\
+"	.globl " #x "\n"		\
+"	.align 4\n"			\
+#x ":\n"				\
+"	entry	sp, 16\n"		\
+"	l32i	a8, %0, 0\n"		\
+"	l32i	a8, a8, %1\n"		\
+"	l32i	a9, a8, 0\n"		\
+"	extui	a9, a9, " SFT ", 12\n"	\
+"	subx8	a9, a9, sp\n"		\
+"	movi	a10, 16\n"		\
+"	sub	a9, a10, a9\n"		\
+"	movsp	sp, a9\n"		\
+"	addi	a8, a8, 3\n"		\
+"	jx	a8\n"			\
+	: : "r"(jt), "i" (FO(x)) : "a8", "a9", "a10");
+#else
+#error Unsupported Xtensa ABI
+#endif
 #else
 /*"	addi	$sp, $sp, -24\n"	\
 "	br	$r16\n"			\*/

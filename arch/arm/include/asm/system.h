@@ -3,6 +3,7 @@
 
 #include <common.h>
 #include <linux/compiler.h>
+#include <asm/barriers.h>
 
 #ifdef CONFIG_ARM64
 
@@ -16,6 +17,95 @@
 #define CR_I		(1 << 12)	/* Icache enable		*/
 #define CR_WXN		(1 << 19)	/* Write Permision Imply XN	*/
 #define CR_EE		(1 << 25)	/* Exception (Big) Endian	*/
+
+#define ES_TO_AARCH64		1
+#define ES_TO_AARCH32		0
+
+/*
+ * SCR_EL3 bits definitions
+ */
+#define SCR_EL3_RW_AARCH64	(1 << 10) /* Next lower level is AArch64     */
+#define SCR_EL3_RW_AARCH32	(0 << 10) /* Lower lowers level are AArch32  */
+#define SCR_EL3_HCE_EN		(1 << 8)  /* Hypervisor Call enable          */
+#define SCR_EL3_SMD_DIS		(1 << 7)  /* Secure Monitor Call disable     */
+#define SCR_EL3_RES1		(3 << 4)  /* Reserved, RES1                  */
+#define SCR_EL3_NS_EN		(1 << 0)  /* EL0 and EL1 in Non-scure state  */
+
+/*
+ * SPSR_EL3/SPSR_EL2 bits definitions
+ */
+#define SPSR_EL_END_LE		(0 << 9)  /* Exception Little-endian          */
+#define SPSR_EL_DEBUG_MASK	(1 << 9)  /* Debug exception masked           */
+#define SPSR_EL_ASYN_MASK	(1 << 8)  /* Asynchronous data abort masked   */
+#define SPSR_EL_SERR_MASK	(1 << 8)  /* System Error exception masked    */
+#define SPSR_EL_IRQ_MASK	(1 << 7)  /* IRQ exception masked             */
+#define SPSR_EL_FIQ_MASK	(1 << 6)  /* FIQ exception masked             */
+#define SPSR_EL_T_A32		(0 << 5)  /* AArch32 instruction set A32      */
+#define SPSR_EL_M_AARCH64	(0 << 4)  /* Exception taken from AArch64     */
+#define SPSR_EL_M_AARCH32	(1 << 4)  /* Exception taken from AArch32     */
+#define SPSR_EL_M_SVC		(0x3)     /* Exception taken from SVC mode    */
+#define SPSR_EL_M_HYP		(0xa)     /* Exception taken from HYP mode    */
+#define SPSR_EL_M_EL1H		(5)       /* Exception taken from EL1h mode   */
+#define SPSR_EL_M_EL2H		(9)       /* Exception taken from EL2h mode   */
+
+/*
+ * CPTR_EL2 bits definitions
+ */
+#define CPTR_EL2_RES1		(3 << 12 | 0x3ff)           /* Reserved, RES1 */
+
+/*
+ * SCTLR_EL2 bits definitions
+ */
+#define SCTLR_EL2_RES1		(3 << 28 | 3 << 22 | 1 << 18 | 1 << 16 |\
+				 1 << 11 | 3 << 4)	    /* Reserved, RES1 */
+#define SCTLR_EL2_EE_LE		(0 << 25) /* Exception Little-endian          */
+#define SCTLR_EL2_WXN_DIS	(0 << 19) /* Write permission is not XN       */
+#define SCTLR_EL2_ICACHE_DIS	(0 << 12) /* Instruction cache disabled       */
+#define SCTLR_EL2_SA_DIS	(0 << 3)  /* Stack Alignment Check disabled   */
+#define SCTLR_EL2_DCACHE_DIS	(0 << 2)  /* Data cache disabled              */
+#define SCTLR_EL2_ALIGN_DIS	(0 << 1)  /* Alignment check disabled         */
+#define SCTLR_EL2_MMU_DIS	(0)       /* MMU disabled                     */
+
+/*
+ * CNTHCTL_EL2 bits definitions
+ */
+#define CNTHCTL_EL2_EL1PCEN_EN	(1 << 1)  /* Physical timer regs accessible   */
+#define CNTHCTL_EL2_EL1PCTEN_EN	(1 << 0)  /* Physical counter accessible      */
+
+/*
+ * HCR_EL2 bits definitions
+ */
+#define HCR_EL2_RW_AARCH64	(1 << 31) /* EL1 is AArch64                   */
+#define HCR_EL2_RW_AARCH32	(0 << 31) /* Lower levels are AArch32         */
+#define HCR_EL2_HCD_DIS		(1 << 29) /* Hypervisor Call disabled         */
+
+/*
+ * CPACR_EL1 bits definitions
+ */
+#define CPACR_EL1_FPEN_EN	(3 << 20) /* SIMD and FP instruction enabled  */
+
+/*
+ * SCTLR_EL1 bits definitions
+ */
+#define SCTLR_EL1_RES1		(3 << 28 | 3 << 22 | 1 << 20 |\
+				 1 << 11) /* Reserved, RES1                   */
+#define SCTLR_EL1_UCI_DIS	(0 << 26) /* Cache instruction disabled       */
+#define SCTLR_EL1_EE_LE		(0 << 25) /* Exception Little-endian          */
+#define SCTLR_EL1_WXN_DIS	(0 << 19) /* Write permission is not XN       */
+#define SCTLR_EL1_NTWE_DIS	(0 << 18) /* WFE instruction disabled         */
+#define SCTLR_EL1_NTWI_DIS	(0 << 16) /* WFI instruction disabled         */
+#define SCTLR_EL1_UCT_DIS	(0 << 15) /* CTR_EL0 access disabled          */
+#define SCTLR_EL1_DZE_DIS	(0 << 14) /* DC ZVA instruction disabled      */
+#define SCTLR_EL1_ICACHE_DIS	(0 << 12) /* Instruction cache disabled       */
+#define SCTLR_EL1_UMA_DIS	(0 << 9)  /* User Mask Access disabled        */
+#define SCTLR_EL1_SED_EN	(0 << 8)  /* SETEND instruction enabled       */
+#define SCTLR_EL1_ITD_EN	(0 << 7)  /* IT instruction enabled           */
+#define SCTLR_EL1_CP15BEN_DIS	(0 << 5)  /* CP15 barrier operation disabled  */
+#define SCTLR_EL1_SA0_DIS	(0 << 4)  /* Stack Alignment EL0 disabled     */
+#define SCTLR_EL1_SA_DIS	(0 << 3)  /* Stack Alignment EL1 disabled     */
+#define SCTLR_EL1_DCACHE_DIS	(0 << 2)  /* Data cache disabled              */
+#define SCTLR_EL1_ALIGN_DIS	(0 << 1)  /* Alignment check disabled         */
+#define SCTLR_EL1_MMU_DIS	(0)       /* MMU disabled                     */
 
 #ifndef __ASSEMBLY__
 
@@ -33,11 +123,6 @@ enum dcache_option {
 	DCACHE_WRITEBACK = 4 << 2,
 	DCACHE_WRITEALLOC = 4 << 2,
 };
-
-#define isb()				\
-	({asm volatile(			\
-	"isb" : : : "memory");		\
-	})
 
 #define wfi()				\
 	({asm volatile(			\
@@ -95,13 +180,60 @@ static inline unsigned long read_mpidr(void)
 void __asm_flush_dcache_all(void);
 void __asm_invalidate_dcache_all(void);
 void __asm_flush_dcache_range(u64 start, u64 end);
+
+/**
+ * __asm_invalidate_dcache_range() - Invalidate a range of virtual addresses
+ *
+ * This performance an invalidate from @start to @end - 1. Both addresses
+ * should be cache-aligned, otherwise this function will align the start
+ * address and may continue past the end address.
+ *
+ * Data in the address range is evicted from the cache and is not written back
+ * to memory.
+ *
+ * @start: Start address to invalidate
+ * @end: End address to invalidate up to (exclusive)
+ */
+void __asm_invalidate_dcache_range(u64 start, u64 end);
 void __asm_invalidate_tlb_all(void);
 void __asm_invalidate_icache_all(void);
-int __asm_flush_l3_cache(void);
+int __asm_invalidate_l3_dcache(void);
+int __asm_flush_l3_dcache(void);
+int __asm_invalidate_l3_icache(void);
 void __asm_switch_ttbr(u64 new_ttbr);
 
-void armv8_switch_to_el2(void);
-void armv8_switch_to_el1(void);
+/*
+ * Switch from EL3 to EL2 for ARMv8
+ *
+ * @args:        For loading 64-bit OS, fdt address.
+ *               For loading 32-bit OS, zero.
+ * @mach_nr:     For loading 64-bit OS, zero.
+ *               For loading 32-bit OS, machine nr
+ * @fdt_addr:    For loading 64-bit OS, zero.
+ *               For loading 32-bit OS, fdt address.
+ * @arg4:	 Input argument.
+ * @entry_point: kernel entry point
+ * @es_flag:     execution state flag, ES_TO_AARCH64 or ES_TO_AARCH32
+ */
+void __noreturn armv8_switch_to_el2(u64 args, u64 mach_nr, u64 fdt_addr,
+				    u64 arg4, u64 entry_point, u64 es_flag);
+/*
+ * Switch from EL2 to EL1 for ARMv8
+ *
+ * @args:        For loading 64-bit OS, fdt address.
+ *               For loading 32-bit OS, zero.
+ * @mach_nr:     For loading 64-bit OS, zero.
+ *               For loading 32-bit OS, machine nr
+ * @fdt_addr:    For loading 64-bit OS, zero.
+ *               For loading 32-bit OS, fdt address.
+ * @arg4:	 Input argument.
+ * @entry_point: kernel entry point
+ * @es_flag:     execution state flag, ES_TO_AARCH64 or ES_TO_AARCH32
+ */
+void armv8_switch_to_el1(u64 args, u64 mach_nr, u64 fdt_addr,
+			 u64 arg4, u64 entry_point, u64 es_flag);
+void armv8_el2_to_aarch32(u64 args, u64 mach_nr, u64 fdt_addr,
+			  u64 arg4, u64 entry_point);
 void gic_init(void);
 void gic_send_sgi(unsigned long sgino);
 void wait_for_wakeup(void);
@@ -109,15 +241,7 @@ void protect_secure_region(void);
 void smp_kick_all_cpus(void);
 
 void flush_l3_cache(void);
-
-/*
- *Issue a hypervisor call in accordance with ARM "SMC Calling convention",
- * DEN0028A
- *
- * @args: input and output arguments
- *
- */
-void hvc_call(struct pt_regs *args);
+void mmu_change_region_attr(phys_addr_t start, size_t size, u64 attrs);
 
 /*
  *Issue a secure monitor call in accordance with ARM "SMC Calling convention",
@@ -128,7 +252,19 @@ void hvc_call(struct pt_regs *args);
  */
 void smc_call(struct pt_regs *args);
 
-void __noreturn psci_system_reset(bool smc);
+void __noreturn psci_system_reset(void);
+void __noreturn psci_system_off(void);
+
+#ifdef CONFIG_ARMV8_PSCI
+extern char __secure_start[];
+extern char __secure_end[];
+extern char __secure_stack_start[];
+extern char __secure_stack_end[];
+
+void armv8_setup_psci(void);
+void psci_setup_vectors(void);
+void psci_arch_init(void);
+#endif
 
 #endif	/* __ASSEMBLY__ */
 
@@ -196,38 +332,9 @@ void __noreturn psci_system_reset(bool smc);
 
 #ifndef __ASSEMBLY__
 
-/**
- * save_boot_params() - Save boot parameters before starting reset sequence
- *
- * If you provide this function it will be called immediately U-Boot starts,
- * both for SPL and U-Boot proper.
- *
- * All registers are unchanged from U-Boot entry. No registers need be
- * preserved.
- *
- * This is not a normal C function. There is no stack. Return by branching to
- * save_boot_params_ret.
- *
- * void save_boot_params(u32 r0, u32 r1, u32 r2, u32 r3);
- */
-
-/**
- * save_boot_params_ret() - Return from save_boot_params()
- *
- * If you provide save_boot_params(), then you should jump back to this
- * function when done. Try to preserve all registers.
- *
- * If your implementation of save_boot_params() is in C then it is acceptable
- * to simply call save_boot_params_ret() at the end of your function. Since
- * there is no link register set up, you cannot just exit the function. U-Boot
- * will return to the (initialised) value of lr, and likely crash/hang.
- *
- * If your implementation of save_boot_params() is in assembler then you
- * should use 'b' or 'bx' to return to save_boot_params_ret.
- */
-void save_boot_params_ret(void);
-
-#define isb() __asm__ __volatile__ ("" : : : "memory")
+#ifdef CONFIG_ARMV7_LPAE
+void switch_to_hypervisor_ret(void);
+#endif
 
 #define nop() __asm__ __volatile__("mov\tr0,r0\t@ nop\n\t");
 
@@ -339,7 +446,7 @@ static inline void set_dacr(unsigned int val)
 
 /* options available for data cache on each page */
 enum dcache_option {
-	DCACHE_OFF = TTB_SECT | TTB_SECT_MAIR(0),
+	DCACHE_OFF = TTB_SECT | TTB_SECT_MAIR(0) | TTB_SECT_XN_MASK,
 	DCACHE_WRITETHROUGH = TTB_SECT | TTB_SECT_MAIR(1),
 	DCACHE_WRITEBACK = TTB_SECT | TTB_SECT_MAIR(2),
 	DCACHE_WRITEALLOC = TTB_SECT | TTB_SECT_MAIR(3),
@@ -417,6 +524,37 @@ void mmu_page_table_flush(unsigned long start, unsigned long stop);
 #endif /* CONFIG_ARM64 */
 
 #ifndef __ASSEMBLY__
+/**
+ * save_boot_params() - Save boot parameters before starting reset sequence
+ *
+ * If you provide this function it will be called immediately U-Boot starts,
+ * both for SPL and U-Boot proper.
+ *
+ * All registers are unchanged from U-Boot entry. No registers need be
+ * preserved.
+ *
+ * This is not a normal C function. There is no stack. Return by branching to
+ * save_boot_params_ret.
+ *
+ * void save_boot_params(u32 r0, u32 r1, u32 r2, u32 r3);
+ */
+
+/**
+ * save_boot_params_ret() - Return from save_boot_params()
+ *
+ * If you provide save_boot_params(), then you should jump back to this
+ * function when done. Try to preserve all registers.
+ *
+ * If your implementation of save_boot_params() is in C then it is acceptable
+ * to simply call save_boot_params_ret() at the end of your function. Since
+ * there is no link register set up, you cannot just exit the function. U-Boot
+ * will return to the (initialised) value of lr, and likely crash/hang.
+ *
+ * If your implementation of save_boot_params() is in assembler then you
+ * should use 'b' or 'bx' to return to save_boot_params_ret.
+ */
+void save_boot_params_ret(void);
+
 /**
  * Change the cache settings for a region.
  *

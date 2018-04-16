@@ -13,7 +13,7 @@
 #include <asm/processor.h>
 #include <asm/mach-types.h>
 #include <asm/io.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
 #include <asm/arch/rmobile.h>
@@ -126,7 +126,7 @@ int board_eth_init(bd_t *bis)
 
 #ifdef CONFIG_SH_ETHER
 	ret = sh_eth_initialize(bis);
-	if (!eth_getenv_enetaddr("ethaddr", enetaddr))
+	if (!eth_env_get_enetaddr("ethaddr", enetaddr))
 		return ret;
 
 	/* Set Mac address */
@@ -201,7 +201,7 @@ int dram_init(void)
 }
 
 const struct rmobile_sysinfo sysinfo = {
-	CONFIG_RMOBILE_BOARD_STRING
+	CONFIG_ARCH_RMOBILE_BOARD_STRING
 };
 
 void reset_cpu(ulong addr)

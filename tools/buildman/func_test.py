@@ -39,7 +39,6 @@ boards = [
     ['Active', 'arm', 'armv7', '', 'Tester', 'ARM Board 1', 'board0',  ''],
     ['Active', 'arm', 'armv7', '', 'Tester', 'ARM Board 2', 'board1', ''],
     ['Active', 'powerpc', 'powerpc', '', 'Tester', 'PowerPC board 1', 'board2', ''],
-    ['Active', 'powerpc', 'mpc5xx', '', 'Tester', 'PowerPC board 2', 'board3', ''],
     ['Active', 'sandbox', 'sandbox', '', 'Tester', 'Sandbox board', 'board4', ''],
 ]
 
@@ -180,7 +179,7 @@ class TestFunctional(unittest.TestCase):
         self._base_dir = tempfile.mkdtemp()
         self._git_dir = os.path.join(self._base_dir, 'src')
         self._buildman_pathname = sys.argv[0]
-        self._buildman_dir = os.path.dirname(sys.argv[0])
+        self._buildman_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
         command.test_result = self._HandleCommand
         self.setupToolchains()
         self._toolchains.Add('arm-gcc', test=False)

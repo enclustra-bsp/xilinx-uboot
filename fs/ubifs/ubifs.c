@@ -462,14 +462,10 @@ out:
 		dbg_gen("cannot find next direntry, error %d", err);
 
 out_free:
-	if (file->private_data)
-		kfree(file->private_data);
-	if (file)
-		free(file);
-	if (dentry)
-		free(dentry);
-	if (dir)
-		free(dir);
+	kfree(file->private_data);
+	free(file);
+	free(dentry);
+	free(dir);
 
 	return ret;
 }
@@ -854,7 +850,7 @@ int ubifs_read(const char *filename, void *buf, loff_t offset,
 	*actread = 0;
 
 	if (offset & (PAGE_SIZE - 1)) {
-		printf("ubifs: Error offset must be a multple of %d\n",
+		printf("ubifs: Error offset must be a multiple of %d\n",
 		       PAGE_SIZE);
 		return -1;
 	}
@@ -939,9 +935,9 @@ int ubifs_load(char *filename, u32 addr, u32 size)
 
 	printf("Loading file '%s' to addr 0x%08x...\n", filename, addr);
 
-	err = ubifs_read(filename, (void *)addr, 0, size, &actread);
+	err = ubifs_read(filename, (void *)(uintptr_t)addr, 0, size, &actread);
 	if (err == 0) {
-		setenv_hex("filesize", actread);
+		env_set_hex("filesize", actread);
 		printf("Done\n");
 	}
 

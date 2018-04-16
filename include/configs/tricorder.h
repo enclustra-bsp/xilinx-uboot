@@ -16,17 +16,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_SYS_CACHELINE_SIZE	64
-
-/* High Level Configuration Options */
-#define CONFIG_SYS_THUMB_BUILD
-#define CONFIG_OMAP			/* in a TI OMAP core */
-#define CONFIG_OMAP_COMMON
-/* Common ARM Erratas */
-#define CONFIG_ARM_ERRATA_454179
-#define CONFIG_ARM_ERRATA_430973
-#define CONFIG_ARM_ERRATA_621766
-
 #define CONFIG_MACH_TYPE		MACH_TYPE_TRICORDER
 /*
  * 1MB into the SDRAM to allow for SPL's bss at the beginning of SDRAM
@@ -36,16 +25,8 @@
  */
 #define CONFIG_SYS_TEXT_BASE		0x80100000
 
-#define CONFIG_SDRC			/* The chip has SDRC controller */
-
 #include <asm/arch/cpu.h>		/* get chip and board defs */
 #include <asm/arch/omap.h>
-
-/* Display CPU and Board information */
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DISPLAY_BOARDINFO
-
-#define CONFIG_SILENT_CONSOLE
 
 /* Clock Defines */
 #define V_OSCK				26000000 /* Clock output from T2 */
@@ -63,26 +44,6 @@
 
 /* Hardware drivers */
 
-/* GPIO support */
-#define CONFIG_OMAP_GPIO
-
-/* GPIO banks */
-#define CONFIG_OMAP3_GPIO_2		/* GPIO32..63 are in GPIO bank 2 */
-
-/* LED support */
-#define CONFIG_STATUS_LED
-#define CONFIG_BOARD_SPECIFIC_LED
-#define CONFIG_CMD_LED			/* LED command */
-#define STATUS_LED_BIT			(1 << 0)
-#define STATUS_LED_STATE		STATUS_LED_ON
-#define STATUS_LED_PERIOD		(CONFIG_SYS_HZ / 2)
-#define STATUS_LED_BIT1			(1 << 1)
-#define STATUS_LED_STATE1		STATUS_LED_ON
-#define STATUS_LED_PERIOD1		(CONFIG_SYS_HZ / 2)
-#define STATUS_LED_BIT2			(1 << 2)
-#define STATUS_LED_STATE2		STATUS_LED_ON
-#define STATUS_LED_PERIOD2		(CONFIG_SYS_HZ / 2)
-
 /* NS16550 Configuration */
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
@@ -92,47 +53,25 @@
 #define CONFIG_CONS_INDEX		3
 #define CONFIG_SYS_NS16550_COM3		OMAP34XX_UART3
 #define CONFIG_SERIAL3			3
-#define CONFIG_BAUDRATE			115200
 #define CONFIG_SYS_BAUDRATE_TABLE	{4800, 9600, 19200, 38400, 57600,\
 					115200}
-
-/* MMC */
-#define CONFIG_GENERIC_MMC
-#define CONFIG_MMC
-#define CONFIG_OMAP_HSMMC
-#define CONFIG_DOS_PARTITION
 
 /* I2C */
 #define CONFIG_SYS_I2C
 #define CONFIG_SYS_OMAP24_I2C_SPEED	100000
 #define CONFIG_SYS_OMAP24_I2C_SLAVE	1
-#define CONFIG_SYS_I2C_OMAP34XX
  
 
 /* EEPROM */
-#define CONFIG_CMD_EEPROM
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	2
 #define CONFIG_SYS_EEPROM_BUS_NUM	1
 
 /* TWL4030 */
-#define CONFIG_TWL4030_POWER
 #define CONFIG_TWL4030_LED
 
 /* Board NAND Info */
-#define CONFIG_SYS_NO_FLASH		/* no NOR flash */
 #define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
-#define MTDIDS_DEFAULT			"nand0=omap2-nand.0"
-#define MTDPARTS_DEFAULT		"mtdparts=omap2-nand.0:" \
-						"128k(SPL)," \
-						"1m(u-boot)," \
-						"384k(u-boot-env1)," \
-						"1152k(mtdoops)," \
-						"384k(u-boot-env2)," \
-						"5m(kernel)," \
-						"2m(fdt)," \
-						"-(ubi)"
 
-#define CONFIG_NAND_OMAP_GPMC
 #define CONFIG_SYS_NAND_ADDR		NAND_BASE	/* physical address */
 							/* to access nand */
 #define CONFIG_SYS_NAND_BASE		NAND_BASE	/* physical address */
@@ -140,22 +79,10 @@
 							/* CS0 */
 #define CONFIG_SYS_MAX_NAND_DEVICE	1		/* Max number of NAND */
 							/* devices */
-#define CONFIG_BCH
 #define CONFIG_SYS_NAND_MAX_OOBFREE	2
 #define CONFIG_SYS_NAND_MAX_ECCPOS	56
 
-/* commands to include */
-#define CONFIG_CMD_MTDPARTS		/* Enable MTD parts commands */
-#define CONFIG_CMD_NAND			/* NAND support */
-#define CONFIG_CMD_NAND_LOCK_UNLOCK	/* nand (un)lock commands */
-#define CONFIG_CMD_UBI			/* UBI commands */
-#define CONFIG_CMD_UBIFS		/* UBIFS commands */
-#define CONFIG_LZO			/* LZO is needed for UBIFS */
-
-#undef CONFIG_CMD_JFFS2			/* JFFS2 Support */
-
 /* needed for ubi */
-#define CONFIG_RBTREE
 #define CONFIG_MTD_DEVICE       /* needed for mtdparts commands */
 #define CONFIG_MTD_PARTITIONS
 
@@ -163,7 +90,6 @@
 
 
 /* hang() the board on panic() */
-#define CONFIG_PANIC_HANG
 
 /* environment placement (for NAND), is different for FLASHCARD but does not
  * harm there */
@@ -182,8 +108,8 @@
 	"vram=3M\0" \
 	"defaultdisplay=lcd\0" \
 	"kernelopts=mtdoops.mtddev=3\0" \
-	"mtdparts=" MTDPARTS_DEFAULT "\0" \
-	"mtdids=" MTDIDS_DEFAULT "\0" \
+	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
+	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
 	"commonargs=" \
 		"setenv bootargs console=${console} " \
 		"${mtdparts} " \
@@ -202,9 +128,6 @@
  * which will not be influenced by any data already on the device.
  */
 #ifdef CONFIG_FLASHCARD
-
-#define CONFIG_ENV_IS_NOWHERE
-
 /* the rdaddr is 16 MiB before the loadaddr */
 #define CONFIG_ENV_RDADDR	"rdaddr=0x81000000\0"
 
@@ -224,8 +147,6 @@
 #else /* CONFIG_FLASHCARD */
 
 #define CONFIG_ENV_OVERWRITE /* allow to overwrite serial and ethaddr */
-
-#define CONFIG_ENV_IS_IN_NAND
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	CONFIG_COMMON_ENV_SETTINGS \
@@ -275,13 +196,6 @@
 #define CONFIG_CMDLINE_EDITING		/* enable cmdline history */
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
-					sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS		16	/* max number of command args */
-
-/* Boot Argument Buffer Size */
-#define CONFIG_SYS_BARGSIZE		(CONFIG_SYS_CBSIZE)
 
 #define CONFIG_SYS_MEMTEST_START	(OMAP34XX_SDRC_CS0 + 0x00000000)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + \
@@ -318,29 +232,16 @@
 
 /* Defines for SPL */
 #define CONFIG_SPL_FRAMEWORK
-#define CONFIG_SPL_NAND_SIMPLE
 
-#define CONFIG_SPL_BOARD_INIT
-#define CONFIG_SPL_GPIO_SUPPORT
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
-#define CONFIG_SPL_LIBDISK_SUPPORT
-#define CONFIG_SPL_I2C_SUPPORT
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
-#define CONFIG_SPL_SERIAL_SUPPORT
-#define CONFIG_SPL_POWER_SUPPORT
-#define CONFIG_SPL_NAND_SUPPORT
 #define CONFIG_SPL_NAND_BASE
 #define CONFIG_SPL_NAND_DRIVERS
 #define CONFIG_SPL_NAND_ECC
-#define CONFIG_SPL_MMC_SUPPORT
-#define CONFIG_SPL_FAT_SUPPORT
-#define CONFIG_SPL_LDSCRIPT		"$(CPUDIR)/omap-common/u-boot-spl.lds"
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME        "u-boot.img"
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION     1
-#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR 0x300 /* address 0x60000 */
 
 #define CONFIG_SPL_TEXT_BASE		0x40200000 /*CONFIG_SYS_SRAM_START*/
-#define CONFIG_SPL_MAX_SIZE		(57 * 1024)	/* 7 KB for stack */
+#define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - \
+					 CONFIG_SPL_TEXT_BASE)
 
 #define CONFIG_SPL_BSS_START_ADDR	0x80000000 /*CONFIG_SYS_SDRAM_BASE*/
 #define CONFIG_SPL_BSS_MAX_SIZE		0x80000

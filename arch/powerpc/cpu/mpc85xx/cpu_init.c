@@ -45,8 +45,10 @@
 #include <nand.h>
 #include <errno.h>
 #endif
-
-#include "../../../../drivers/block/fsl_sata.h"
+#ifndef CONFIG_ARCH_QEMU_E500
+#include <fsl_ddr.h>
+#endif
+#include "../../../../drivers/ata/fsl_sata.h"
 #ifdef CONFIG_U_QE
 #include <fsl_qe.h>
 #endif
@@ -114,10 +116,10 @@ void fsl_erratum_a006261_workaround(struct ccsr_usb_phy __iomem *usb_phy)
 	setbits_be32(&usb_phy->config2,
 		     CONFIG_SYS_FSL_USB_RX_AUTO_CAL_RD_WR_SEL);
 
-	temp = squelch_prog_rd_0_2 << CONFIG_SYS_FSL_USB_SQUELCH_PROG_WR_0;
+	temp = squelch_prog_rd_0_2 << CONFIG_SYS_FSL_USB_SQUELCH_PROG_WR_3;
 	out_be32(&usb_phy->config2, in_be32(&usb_phy->config2) | temp);
 
-	temp = squelch_prog_rd_3_5 << CONFIG_SYS_FSL_USB_SQUELCH_PROG_WR_3;
+	temp = squelch_prog_rd_3_5 << CONFIG_SYS_FSL_USB_SQUELCH_PROG_WR_0;
 	out_be32(&usb_phy->config2, in_be32(&usb_phy->config2) | temp);
 #endif
 }
@@ -254,7 +256,7 @@ static void enable_tdm_law(void)
 	 * is not setup properly yet. Search for tdm entry in
 	 * hwconfig.
 	 */
-	ret = getenv_f("hwconfig", buffer, sizeof(buffer));
+	ret = env_get_f("hwconfig", buffer, sizeof(buffer));
 	if (ret > 0) {
 		tdm_hwconfig_enabled = hwconfig_f("tdm", buffer);
 		/* If tdm is defined in hwconfig, set law for tdm workaround */
@@ -278,7 +280,7 @@ void enable_cpc(void)
 	cpc_corenet_t *cpc = (cpc_corenet_t *)CONFIG_SYS_FSL_CPC_ADDR;
 
 	/* Extract hwconfig from environment */
-	ret = getenv_f("hwconfig", buffer, sizeof(buffer));
+	ret = env_get_f("hwconfig", buffer, sizeof(buffer));
 	if (ret > 0) {
 		/*
 		 * If "en_cpc" is not defined in hwconfig then by default all
@@ -376,10 +378,10 @@ void fsl_erratum_a007212_workaround(void)
 	u32 __iomem *plldgdcr1 = (void *)(CONFIG_SYS_DCSRBAR + 0x21c20);
 	u32 __iomem *plldadcr1 = (void *)(CONFIG_SYS_DCSRBAR + 0x21c28);
 	u32 __iomem *dpdovrcr4 = (void *)(CONFIG_SYS_DCSRBAR + 0x21e80);
-#if (CONFIG_NUM_DDR_CONTROLLERS >= 2)
+#if (CONFIG_SYS_NUM_DDR_CTLRS >= 2)
 	u32 __iomem *plldgdcr2 = (void *)(CONFIG_SYS_DCSRBAR + 0x21c40);
 	u32 __iomem *plldadcr2 = (void *)(CONFIG_SYS_DCSRBAR + 0x21c48);
-#if (CONFIG_NUM_DDR_CONTROLLERS >= 3)
+#if (CONFIG_SYS_NUM_DDR_CTLRS >= 3)
 	u32 __iomem *plldgdcr3 = (void *)(CONFIG_SYS_DCSRBAR + 0x21c60);
 	u32 __iomem *plldadcr3 = (void *)(CONFIG_SYS_DCSRBAR + 0x21c68);
 #endif
@@ -407,25 +409,25 @@ void fsl_erratum_a007212_workaround(void)
 	ddr_pll_ratio >>= 1;
 
 	setbits_be32(plldadcr1, 0x02000001);
-#if (CONFIG_NUM_DDR_CONTROLLERS >= 2)
+#if (CONFIG_SYS_NUM_DDR_CTLRS >= 2)
 	setbits_be32(plldadcr2, 0x02000001);
-#if (CONFIG_NUM_DDR_CONTROLLERS >= 3)
+#if (CONFIG_SYS_NUM_DDR_CTLRS >= 3)
 	setbits_be32(plldadcr3, 0x02000001);
 #endif
 #endif
 	setbits_be32(dpdovrcr4, 0xe0000000);
 	out_be32(plldgdcr1, 0x08000001 | (ddr_pll_ratio << 1));
-#if (CONFIG_NUM_DDR_CONTROLLERS >= 2)
+#if (CONFIG_SYS_NUM_DDR_CTLRS >= 2)
 	out_be32(plldgdcr2, 0x08000001 | (ddr_pll_ratio << 1));
-#if (CONFIG_NUM_DDR_CONTROLLERS >= 3)
+#if (CONFIG_SYS_NUM_DDR_CTLRS >= 3)
 	out_be32(plldgdcr3, 0x08000001 | (ddr_pll_ratio << 1));
 #endif
 #endif
 	udelay(100);
 	clrbits_be32(plldadcr1, 0x02000001);
-#if (CONFIG_NUM_DDR_CONTROLLERS >= 2)
+#if (CONFIG_SYS_NUM_DDR_CTLRS >= 2)
 	clrbits_be32(plldadcr2, 0x02000001);
-#if (CONFIG_NUM_DDR_CONTROLLERS >= 3)
+#if (CONFIG_SYS_NUM_DDR_CTLRS >= 3)
 	clrbits_be32(plldadcr3, 0x02000001);
 #endif
 #endif
@@ -439,10 +441,10 @@ ulong cpu_init_f(void)
 #ifdef CONFIG_SYS_DCSRBAR_PHYS
 	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 #endif
-#if defined(CONFIG_SECURE_BOOT)
+#if defined(CONFIG_SECURE_BOOT) && !defined(CONFIG_SYS_RAMBOOT)
 	struct law_entry law;
 #endif
-#ifdef CONFIG_MPC8548
+#ifdef CONFIG_ARCH_MPC8548
 	ccsr_local_ecm_t *ecm = (void *)(CONFIG_SYS_MPC85xx_ECM_ADDR);
 	uint svr = get_svr();
 
@@ -459,7 +461,7 @@ ulong cpu_init_f(void)
 	disable_tlb(14);
 	disable_tlb(15);
 
-#if defined(CONFIG_SECURE_BOOT)
+#if defined(CONFIG_SECURE_BOOT) && !defined(CONFIG_SYS_RAMBOOT)
 	/* Disable the LAW created for NOR flash by the PBI commands */
 	law = find_law(CONFIG_SYS_PBI_FLASH_BASE);
 	if (law.index != -1)
@@ -752,7 +754,7 @@ int cpu_init_r(void)
 	char *buf = NULL;
 	int n, res;
 
-	n = getenv_f("hwconfig", buffer, sizeof(buffer));
+	n = env_get_f("hwconfig", buffer, sizeof(buffer));
 	if (n > 0)
 		buf = buffer;
 
@@ -775,6 +777,13 @@ int cpu_init_r(void)
 		sync();
 	}
 #endif
+
+#ifdef CONFIG_SYS_FSL_ERRATUM_A007907
+	flush_dcache();
+	mtspr(L1CSR2, (mfspr(L1CSR2) & ~L1CSR2_DCSTASHID));
+	sync();
+#endif
+
 #ifdef CONFIG_SYS_FSL_ERRATUM_A005812
 	/*
 	 * A-005812 workaround sets bit 32 of SPR 976 for SoCs running
@@ -785,7 +794,7 @@ int cpu_init_r(void)
 #endif
 
 #if defined(CONFIG_PPC_SPINTABLE_COMPATIBLE) && defined(CONFIG_MP)
-	spin = getenv("spin_table_compat");
+	spin = env_get("spin_table_compat");
 	if (spin && (*spin == 'n'))
 		spin_table_compat = 0;
 	else
@@ -836,7 +845,7 @@ int cpu_init_r(void)
 #ifdef CONFIG_SYS_SRIO
 	srio_init();
 #ifdef CONFIG_SRIO_PCIE_BOOT_MASTER
-	char *s = getenv("bootmaster");
+	char *s = env_get("bootmaster");
 	if (s) {
 		if (!strcmp(s, "SRIO1")) {
 			srio_boot_master(1);
@@ -947,6 +956,10 @@ int cpu_init_r(void)
 
 #endif /* CONFIG_SYS_FSL_USB_DUAL_PHY_ENABLE */
 
+#ifdef CONFIG_SYS_FSL_ERRATUM_A009942
+	erratum_a009942_check_cpo();
+#endif
+
 #ifdef CONFIG_FMAN_ENET
 	fman_enet_init();
 #endif
@@ -959,7 +972,7 @@ int cpu_init_r(void)
 #ifdef CONFIG_FSL_CAAM
 	sec_init();
 
-#if defined(CONFIG_PPC_C29X)
+#if defined(CONFIG_ARCH_C29X)
 	if ((SVR_SOC_VER(svr) == SVR_C292) ||
 	    (SVR_SOC_VER(svr) == SVR_C293))
 		sec_init_idx(1);
@@ -969,7 +982,7 @@ int cpu_init_r(void)
 #endif
 #endif
 
-#if defined(CONFIG_FSL_SATA_V2) && defined(CONFIG_FSL_SATA_ERRATUM_A001)
+#if defined(CONFIG_FSL_SATA_V2) && defined(CONFIG_SYS_FSL_ERRATUM_SATA_A001)
 	/*
 	 * For P1022/1013 Rev1.0 silicon, after power on SATA host
 	 * controller is configured in legacy mode instead of the
@@ -1011,7 +1024,7 @@ void arch_preboot_os(void)
 	mtmsr(msr);
 }
 
-#if defined(CONFIG_CMD_SATA) && defined(CONFIG_FSL_SATA)
+#if defined(CONFIG_SATA) && defined(CONFIG_FSL_SATA)
 int sata_initialize(void)
 {
 	if (is_serdes_configured(SATA1) || is_serdes_configured(SATA2))

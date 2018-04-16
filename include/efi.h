@@ -15,6 +15,7 @@
 #ifndef _EFI_H
 #define _EFI_H
 
+#include <linux/linkage.h>
 #include <linux/string.h>
 #include <linux/types.h>
 
@@ -22,24 +23,65 @@
 /* EFI uses the Microsoft ABI which is not the default for GCC */
 #define EFIAPI __attribute__((ms_abi))
 #else
-#define EFIAPI
+#define EFIAPI asmlinkage
 #endif
 
 struct efi_device_path;
 
-#define EFI_SUCCESS		0
-#define EFI_LOAD_ERROR		(1 | (1UL << (BITS_PER_LONG - 1)))
-#define EFI_INVALID_PARAMETER	(2 | (1UL << (BITS_PER_LONG - 1)))
-#define EFI_UNSUPPORTED		(3 | (1UL << (BITS_PER_LONG - 1)))
-#define EFI_BAD_BUFFER_SIZE	(4 | (1UL << (BITS_PER_LONG - 1)))
-#define EFI_BUFFER_TOO_SMALL	(5 | (1UL << (BITS_PER_LONG - 1)))
-#define EFI_NOT_READY		(6 | (1UL << (BITS_PER_LONG - 1)))
-#define EFI_DEVICE_ERROR	(7 | (1UL << (BITS_PER_LONG - 1)))
-#define EFI_WRITE_PROTECTED	(8 | (1UL << (BITS_PER_LONG - 1)))
-#define EFI_OUT_OF_RESOURCES	(9 | (1UL << (BITS_PER_LONG - 1)))
-#define EFI_NOT_FOUND		(14 | (1UL << (BITS_PER_LONG - 1)))
-#define EFI_ACCESS_DENIED	(15 | (1UL << (BITS_PER_LONG - 1)))
-#define EFI_SECURITY_VIOLATION	(26 | (1UL << (BITS_PER_LONG - 1)))
+typedef struct {
+	u8 b[16];
+} efi_guid_t;
+
+#define EFI_BITS_PER_LONG	BITS_PER_LONG
+
+/*
+ * With 64-bit EFI stub, EFI_BITS_PER_LONG has to be 64. EFI_STUB is set
+ * in lib/efi/Makefile, when building the stub.
+ */
+#if defined(CONFIG_EFI_STUB_64BIT) && defined(EFI_STUB)
+#undef EFI_BITS_PER_LONG
+#define EFI_BITS_PER_LONG	64
+#endif
+
+/* Bit mask for EFI status code with error */
+#define EFI_ERROR_MASK (1UL << (EFI_BITS_PER_LONG - 1))
+/* Status codes returned by EFI protocols */
+#define EFI_SUCCESS			0
+#define EFI_LOAD_ERROR			(EFI_ERROR_MASK | 1)
+#define EFI_INVALID_PARAMETER		(EFI_ERROR_MASK | 2)
+#define EFI_UNSUPPORTED			(EFI_ERROR_MASK | 3)
+#define EFI_BAD_BUFFER_SIZE		(EFI_ERROR_MASK | 4)
+#define EFI_BUFFER_TOO_SMALL		(EFI_ERROR_MASK | 5)
+#define EFI_NOT_READY			(EFI_ERROR_MASK | 6)
+#define EFI_DEVICE_ERROR		(EFI_ERROR_MASK | 7)
+#define EFI_WRITE_PROTECTED		(EFI_ERROR_MASK | 8)
+#define EFI_OUT_OF_RESOURCES		(EFI_ERROR_MASK | 9)
+#define EFI_VOLUME_CORRUPTED		(EFI_ERROR_MASK | 10)
+#define EFI_VOLUME_FULL			(EFI_ERROR_MASK | 11)
+#define EFI_NO_MEDIA			(EFI_ERROR_MASK | 12)
+#define EFI_MEDIA_CHANGED		(EFI_ERROR_MASK | 13)
+#define EFI_NOT_FOUND			(EFI_ERROR_MASK | 14)
+#define EFI_ACCESS_DENIED		(EFI_ERROR_MASK | 15)
+#define EFI_NO_RESPONSE			(EFI_ERROR_MASK | 16)
+#define EFI_NO_MAPPING			(EFI_ERROR_MASK | 17)
+#define EFI_TIMEOUT			(EFI_ERROR_MASK | 18)
+#define EFI_NOT_STARTED			(EFI_ERROR_MASK | 19)
+#define EFI_ALREADY_STARTED		(EFI_ERROR_MASK | 20)
+#define EFI_ABORTED			(EFI_ERROR_MASK | 21)
+#define EFI_ICMP_ERROR			(EFI_ERROR_MASK | 22)
+#define EFI_TFTP_ERROR			(EFI_ERROR_MASK | 23)
+#define EFI_PROTOCOL_ERROR		(EFI_ERROR_MASK | 24)
+#define EFI_INCOMPATIBLE_VERSION	(EFI_ERROR_MASK | 25)
+#define EFI_SECURITY_VIOLATION		(EFI_ERROR_MASK | 26)
+#define EFI_CRC_ERROR			(EFI_ERROR_MASK | 27)
+#define EFI_END_OF_MEDIA		(EFI_ERROR_MASK | 28)
+#define EFI_END_OF_FILE			(EFI_ERROR_MASK | 31)
+#define EFI_INVALID_LANGUAGE		(EFI_ERROR_MASK | 32)
+#define EFI_COMPROMISED_DATA		(EFI_ERROR_MASK | 33)
+#define EFI_IP_ADDRESS_CONFLICT		(EFI_ERROR_MASK | 34)
+#define EFI_HTTP_ERROR			(EFI_ERROR_MASK | 35)
+
+#define EFI_WARN_DELETE_FAILURE	2
 
 typedef unsigned long efi_status_t;
 typedef u64 efi_physical_addr_t;
@@ -80,7 +122,7 @@ enum efi_mem_type {
 	/* The code portions of a loaded Boot Services Driver */
 	EFI_BOOT_SERVICES_CODE,
 	/*
-	 * The data portions of a loaded Boot Serves Driver and
+	 * The data portions of a loaded Boot Services Driver and
 	 * the default data allocation type used by a Boot Services
 	 * Driver to allocate pool memory.
 	 */
@@ -151,6 +193,8 @@ struct efi_mem_desc {
 	u64 attribute;
 };
 
+#define EFI_MEMORY_DESCRIPTOR_VERSION 1
+
 /* Allocation types for calls to boottime->allocate_pages*/
 #define EFI_ALLOCATE_ANY_PAGES		0
 #define EFI_ALLOCATE_MAX_ADDRESS	1
@@ -183,9 +227,9 @@ struct efi_time_cap {
 };
 
 enum efi_locate_search_type {
-	all_handles,
-	by_register_notify,
-	by_protocol
+	ALL_HANDLES,
+	BY_REGISTER_NOTIFY,
+	BY_PROTOCOL
 };
 
 struct efi_open_protocol_info_entry {
@@ -278,7 +322,26 @@ struct efi_priv {
 extern char image_base[];
 
 /* Start and end of U-Boot image (for payload) */
-extern char _binary_u_boot_dtb_bin_start[], _binary_u_boot_dtb_bin_end[];
+extern char _binary_u_boot_bin_start[], _binary_u_boot_bin_end[];
+
+/*
+ * Variable Attributes
+ */
+#define EFI_VARIABLE_NON_VOLATILE       0x0000000000000001
+#define EFI_VARIABLE_BOOTSERVICE_ACCESS 0x0000000000000002
+#define EFI_VARIABLE_RUNTIME_ACCESS     0x0000000000000004
+#define EFI_VARIABLE_HARDWARE_ERROR_RECORD 0x0000000000000008
+#define EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS 0x0000000000000010
+#define EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS 0x0000000000000020
+#define EFI_VARIABLE_APPEND_WRITE	0x0000000000000040
+
+#define EFI_VARIABLE_MASK	(EFI_VARIABLE_NON_VOLATILE | \
+				EFI_VARIABLE_BOOTSERVICE_ACCESS | \
+				EFI_VARIABLE_RUNTIME_ACCESS | \
+				EFI_VARIABLE_HARDWARE_ERROR_RECORD | \
+				EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS | \
+				EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS | \
+				EFI_VARIABLE_APPEND_WRITE)
 
 /**
  * efi_get_sys_table() - Get access to the main EFI system table

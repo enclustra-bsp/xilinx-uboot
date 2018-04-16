@@ -11,11 +11,6 @@
 #define CONFIG_MACH_TYPE	4105
 
 /* U-Boot Commands */
-#define CONFIG_SYS_NO_FLASH
-#define CONFIG_DISPLAY_CPUINFO
-#define CONFIG_DOS_PARTITION
-
-#define CONFIG_CMD_LED
 
 /* Memory configuration */
 #define CONFIG_NR_DRAM_BANKS		1		/* 1 bank of DRAM */
@@ -24,7 +19,6 @@
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 
 /* Environment */
-#define CONFIG_ENV_IS_IN_MMC
 #define CONFIG_ENV_OVERWRITE
 
 /* Environment is in MMC */
@@ -35,26 +29,14 @@
 #endif
 
 /* Status LED */
-#define CONFIG_STATUS_LED
-#define CONFIG_GPIO_LED
-#define CONFIG_BOARD_SPECIFIC_LED
-#define STATUS_LED_BOOT		0
-#define STATUS_LED_BIT		MX23_PAD_SSP1_DETECT__GPIO_2_1
-#define STATUS_LED_STATE	STATUS_LED_ON
-#define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
 
 /* USB */
 #ifdef CONFIG_CMD_USB
 #define CONFIG_EHCI_MXS_PORT0
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 1
-#define CONFIG_USB_STORAGE
 #endif
 
 /* Ethernet */
-#ifdef CONFIG_CMD_NET
-#define CONFIG_USB_HOST_ETHER
-#define CONFIG_USB_ETHER_SMSC95XX
-#endif
 
 /* Booting Linux */
 #define CONFIG_BOOTFILE		"uImage"

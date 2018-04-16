@@ -236,8 +236,21 @@
 #define VDD_MPU_ES2_HIGH 1250
 #define VDD_MM_ES2_OD  1120
 
-#define VDD_MPU_ES2_LOW 880
-#define VDD_MM_ES2_LOW 880
+/* Efuse register offsets for OMAP5 platform */
+#define OMAP5_ES2_EFUSE_BASE	0x4A002000
+#define OMAP5_ES2_PROD_REGBITS	16
+
+/* CONTROL_STD_FUSE_OPP_VDD_CORE_3 */
+#define OMAP5_ES2_PROD_CORE_OPNO_VMIN	(OMAP5_ES2_EFUSE_BASE + 0x1D8)
+
+/* CONTROL_STD_FUSE_OPP_VDD_MM_4 */
+#define OMAP5_ES2_PROD_MM_OPNO_VMIN	(OMAP5_ES2_EFUSE_BASE + 0x1A4)
+/* CONTROL_STD_FUSE_OPP_VDD_MM_5 */
+#define OMAP5_ES2_PROD_MM_OPOD_VMIN	(OMAP5_ES2_EFUSE_BASE + 0x1A8)
+/* CONTROL_STD_FUSE_OPP_VDD_MPU_6 */
+#define OMAP5_ES2_PROD_MPU_OPNO_VMIN	(OMAP5_ES2_EFUSE_BASE + 0x1C4)
+/* CONTROL_STD_FUSE_OPP_VDD_MPU_7 */
+#define OMAP5_ES2_PROD_MPU_OPHI_VMIN	(OMAP5_ES2_EFUSE_BASE + 0x1C8)
 
 /* DRA74x/75x/72x voltage settings in mv for OPP_NOM per DM */
 #define VDD_MPU_DRA7_NOM	1150
@@ -286,22 +299,49 @@
 /* STD_FUSE_OPP_VMIN_MPU_4 */
 #define STD_FUSE_OPP_VMIN_MPU_HIGH	(DRA752_EFUSE_BASE + 0x1B28)
 
-/* Common voltage and Efuse register macros */
-/* DRA74x/DRA75x/DRA72x */
-#define VDD_MPU_DRA7			VDD_MPU_DRA7_NOM
-#define VDD_CORE_DRA7			VDD_CORE_DRA7_NOM
-#define VDD_EVE_DRA7			VDD_EVE_DRA7_NOM
-#define VDD_GPU_DRA7			VDD_GPU_DRA7_NOM
-#define VDD_IVA_DRA7			VDD_IVA_DRA7_NOM
+#if defined(CONFIG_DRA7_MPU_OPP_HIGH)
+#define DRA7_MPU_OPP	OPP_HIGH
+#elif defined(CONFIG_DRA7_MPU_OPP_OD)
+#define DRA7_MPU_OPP	OPP_OD
+#else /* OPP_NOM default */
+#define DRA7_MPU_OPP	OPP_NOM
+#endif
 
-#define STD_FUSE_OPP_VMIN_MPU		STD_FUSE_OPP_VMIN_MPU_NOM
-#define STD_FUSE_OPP_VMIN_CORE		STD_FUSE_OPP_VMIN_CORE_NOM
-#define STD_FUSE_OPP_VMIN_DSPEVE	STD_FUSE_OPP_VMIN_DSPEVE_NOM
-#define STD_FUSE_OPP_VMIN_GPU		STD_FUSE_OPP_VMIN_GPU_NOM
-#define STD_FUSE_OPP_VMIN_IVA		STD_FUSE_OPP_VMIN_IVA_NOM
+/* OPP_NOM only available option for CORE */
+#define DRA7_CORE_OPP	OPP_NOM
+
+#if defined(CONFIG_DRA7_DSPEVE_OPP_HIGH)
+#define DRA7_DSPEVE_OPP	OPP_HIGH
+#elif defined(CONFIG_DRA7_DSPEVE_OPP_OD)
+#define DRA7_DSPEVE_OPP	OPP_OD
+#else /* OPP_NOM default */
+#define DRA7_DSPEVE_OPP	OPP_NOM
+#endif
+
+#if defined(CONFIG_DRA7_IVA_OPP_HIGH)
+#define DRA7_IVA_OPP	OPP_HIGH
+#elif defined(CONFIG_DRA7_IVA_OPP_OD)
+#define DRA7_IVA_OPP	OPP_OD
+#else /* OPP_NOM default */
+#define DRA7_IVA_OPP	OPP_NOM
+#endif
+
+#if defined(CONFIG_DRA7_GPU_OPP_HIGH)
+#define DRA7_GPU_OPP	OPP_HIGH
+#elif defined(CONFIG_DRA7_GPU_OPP_OD)
+#define DRA7_GPU_OPP	OPP_OD
+#else /* OPP_NOM default */
+#define DRA7_GPU_OPP	OPP_NOM
+#endif
 
 /* Standard offset is 0.5v expressed in uv */
 #define PALMAS_SMPS_BASE_VOLT_UV 500000
+
+/* Offset is 0.73V for LP873x */
+#define LP873X_BUCK_BASE_VOLT_UV		730000
+
+/* Offset is 0.73V for LP87565 */
+#define LP87565_BUCK_BASE_VOLT_UV		730000
 
 /* TPS659038 */
 #define TPS659038_I2C_SLAVE_ADDR		0x58
@@ -316,7 +356,18 @@
 #define TPS65917_REG_ADDR_SMPS1		0x23
 #define TPS65917_REG_ADDR_SMPS2		0x27
 #define TPS65917_REG_ADDR_SMPS3		0x2F
+#define TPS65917_REG_ADDR_SMPS4		0x33
 
+/* LP873X */
+#define LP873X_I2C_SLAVE_ADDR		0x60
+#define LP873X_REG_ADDR_BUCK0		0x6
+#define LP873X_REG_ADDR_BUCK1		0x7
+#define LP873X_REG_ADDR_LDO1		0xA
+
+/* LP87565 */
+#define LP87565_I2C_SLAVE_ADDR		0x61
+#define LP87565_REG_ADDR_BUCK01		0xA
+#define LP87565_REG_ADDR_BUCK23		0xE
 
 /* TPS */
 #define TPS62361_I2C_SLAVE_ADDR		0x60
@@ -341,14 +392,7 @@
 #define DPLL_NO_LOCK	0
 #define DPLL_LOCK	1
 
-/*
- * MAX value for PRM_RSTTIME[9:0]RSTTIME1 stored is 0x3ff.
- * 0x3ff is in the no of FUNC_32K_CLK cycles. Converting cycles
- * into microsec and passing the value.
- */
-#define CONFIG_DEFAULT_OMAP_RESET_TIME_MAX_USEC	31219
-
-#if defined(CONFIG_DRA7XX) || defined(CONFIG_AM57XX)
+#if defined(CONFIG_DRA7XX)
 #define V_OSCK			20000000	/* Clock output from T2 */
 #else
 #define V_OSCK			19200000	/* Clock output from T2 */

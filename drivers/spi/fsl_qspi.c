@@ -14,6 +14,7 @@
 #include <dm.h>
 #include <errno.h>
 #include <watchdog.h>
+#include <wait_bit.h>
 #include "fsl_qspi.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -386,6 +387,7 @@ static inline void qspi_ahb_read(struct fsl_qspi_priv *priv, u8 *rxbuf, int len)
 {
 	struct fsl_qspi_regs *regs = priv->regs;
 	u32 mcr_reg;
+	void *rx_addr = NULL;
 
 	mcr_reg = qspi_read32(priv->flags, &regs->mcr);
 
@@ -393,8 +395,9 @@ static inline void qspi_ahb_read(struct fsl_qspi_priv *priv, u8 *rxbuf, int len)
 		     QSPI_MCR_CLR_RXF_MASK | QSPI_MCR_CLR_TXF_MASK |
 		     QSPI_MCR_RESERVED_MASK | QSPI_MCR_END_CFD_LE);
 
+	rx_addr = (void *)(uintptr_t)(priv->cur_amba_base + priv->sf_addr);
 	/* Read out the data directly from the AHB buffer. */
-	memcpy(rxbuf, (u8 *)(priv->cur_amba_base + priv->sf_addr), len);
+	memcpy(rxbuf, rx_addr, len);
 
 	qspi_write32(priv->flags, &regs->mcr, mcr_reg);
 }
@@ -491,6 +494,8 @@ static void qspi_op_rdbank(struct fsl_qspi_priv *priv, u8 *rxbuf, u32 len)
 		;
 
 	while (1) {
+		WATCHDOG_RESET();
+
 		reg = qspi_read32(priv->flags, &regs->rbsr);
 		if (reg & QSPI_RBSR_RDBFL_MASK) {
 			data = qspi_read32(priv->flags, &regs->rbdr[0]);
@@ -528,6 +533,8 @@ static void qspi_op_rdid(struct fsl_qspi_priv *priv, u32 *rxbuf, u32 len)
 
 	i = 0;
 	while ((RX_BUFFER_SIZE >= len) && (len > 0)) {
+		WATCHDOG_RESET();
+
 		rbsr_reg = qspi_read32(priv->flags, &regs->rbsr);
 		if (rbsr_reg & QSPI_RBSR_RDBFL_MASK) {
 			data = qspi_read32(priv->flags, &regs->rbdr[i]);
@@ -657,20 +664,18 @@ static void qspi_op_write(struct fsl_qspi_priv *priv, u8 *txbuf, u32 len)
 	tx_size = (len > TX_BUFFER_SIZE) ?
 		TX_BUFFER_SIZE : len;
 
-	size = tx_size / 4;
-	for (i = 0; i < size; i++) {
+	size = tx_size / 16;
+	/*
+	 * There must be atleast 128bit data
+	 * available in TX FIFO for any pop operation
+	 */
+	if (tx_size % 16)
+		size++;
+	for (i = 0; i < size * 4; i++) {
 		memcpy(&data, txbuf, 4);
 		data = qspi_endian_xchg(data);
 		qspi_write32(priv->flags, &regs->tbdr, data);
 		txbuf += 4;
-	}
-
-	size = tx_size % 4;
-	if (size) {
-		data = 0;
-		memcpy(&data, txbuf, size);
-		data = qspi_endian_xchg(data);
-		qspi_write32(priv->flags, &regs->tbdr, data);
 	}
 
 	qspi_write32(priv->flags, &regs->ipcr,
@@ -700,6 +705,8 @@ static void qspi_op_rdsr(struct fsl_qspi_priv *priv, void *rxbuf, u32 len)
 		;
 
 	while (1) {
+		WATCHDOG_RESET();
+
 		reg = qspi_read32(priv->flags, &regs->rbsr);
 		if (reg & QSPI_RBSR_RDBFL_MASK) {
 			data = qspi_read32(priv->flags, &regs->rbdr[0]);
@@ -754,6 +761,8 @@ int qspi_xfer(struct fsl_qspi_priv *priv, unsigned int bitlen,
 	u32 bytes = DIV_ROUND_UP(bitlen, 8);
 	static u32 wr_sfaddr;
 	u32 txbuf;
+
+	WATCHDOG_RESET();
 
 	if (dout) {
 		if (flags & SPI_XFER_BEGIN) {
@@ -863,6 +872,7 @@ static inline struct fsl_qspi *to_qspi_spi(struct spi_slave *slave)
 struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 		unsigned int max_hz, unsigned int mode)
 {
+	u32 mcr_val;
 	struct fsl_qspi *qspi;
 	struct fsl_qspi_regs *regs;
 	u32 total_size;
@@ -894,8 +904,10 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 
 	qspi->slave.max_write_size = TX_BUFFER_SIZE;
 
+	mcr_val = qspi_read32(qspi->priv.flags, &regs->mcr);
 	qspi_write32(qspi->priv.flags, &regs->mcr,
-		     QSPI_MCR_RESERVED_MASK | QSPI_MCR_MDIS_MASK);
+		     QSPI_MCR_RESERVED_MASK | QSPI_MCR_MDIS_MASK |
+		     (mcr_val & QSPI_MCR_END_CFD_MASK));
 
 	qspi_cfg_smpr(&qspi->priv,
 		      ~(QSPI_SMPR_FSDLY_MASK | QSPI_SMPR_DDRSMP_MASK |
@@ -973,11 +985,12 @@ static int fsl_qspi_child_pre_probe(struct udevice *dev)
 
 static int fsl_qspi_probe(struct udevice *bus)
 {
+	u32 mcr_val;
 	u32 amba_size_per_chip;
 	struct fsl_qspi_platdata *plat = dev_get_platdata(bus);
 	struct fsl_qspi_priv *priv = dev_get_priv(bus);
 	struct dm_spi_bus *dm_spi_bus;
-	int i;
+	int i, ret;
 
 	dm_spi_bus = bus->uclass_priv;
 
@@ -997,8 +1010,22 @@ static int fsl_qspi_probe(struct udevice *bus)
 	priv->flash_num = plat->flash_num;
 	priv->num_chipselect = plat->num_chipselect;
 
+	/* make sure controller is not busy anywhere */
+	ret = wait_for_bit(__func__, &priv->regs->sr,
+			   QSPI_SR_BUSY_MASK |
+			   QSPI_SR_AHB_ACC_MASK |
+			   QSPI_SR_IP_ACC_MASK,
+			   false, 100, false);
+
+	if (ret) {
+		debug("ERROR : The controller is busy\n");
+		return ret;
+	}
+
+	mcr_val = qspi_read32(priv->flags, &priv->regs->mcr);
 	qspi_write32(priv->flags, &priv->regs->mcr,
-		     QSPI_MCR_RESERVED_MASK | QSPI_MCR_MDIS_MASK);
+		     QSPI_MCR_RESERVED_MASK | QSPI_MCR_MDIS_MASK |
+		     (mcr_val & QSPI_MCR_END_CFD_MASK));
 
 	qspi_cfg_smpr(priv, ~(QSPI_SMPR_FSDLY_MASK | QSPI_SMPR_DDRSMP_MASK |
 		QSPI_SMPR_FSPHS_MASK | QSPI_SMPR_HSENA_MASK), 0);
@@ -1029,8 +1056,11 @@ static int fsl_qspi_probe(struct udevice *bus)
 	 * setting the size of these devices to 0.  This would ensure
 	 * that the complete memory map is assigned to only one flash device.
 	 */
-	qspi_write32(priv->flags, &priv->regs->sfa1ad, priv->amba_base[1]);
+	qspi_write32(priv->flags, &priv->regs->sfa1ad,
+		     priv->amba_base[0] + amba_size_per_chip);
 	switch (priv->num_chipselect) {
+	case 1:
+		break;
 	case 2:
 		qspi_write32(priv->flags, &priv->regs->sfa2ad,
 			     priv->amba_base[1]);
@@ -1070,7 +1100,7 @@ static int fsl_qspi_ofdata_to_platdata(struct udevice *bus)
 	struct fdt_resource res_regs, res_mem;
 	struct fsl_qspi_platdata *plat = bus->platdata;
 	const void *blob = gd->fdt_blob;
-	int node = bus->of_offset;
+	int node = dev_of_offset(bus);
 	int ret, flash_num = 0, subnode;
 
 	if (fdtdec_get_bool(blob, node, "big-endian"))
@@ -1090,7 +1120,7 @@ static int fsl_qspi_ofdata_to_platdata(struct udevice *bus)
 	}
 
 	/* Count flash numbers */
-	fdt_for_each_subnode(blob, subnode, node)
+	fdt_for_each_subnode(subnode, blob, node)
 		++flash_num;
 
 	if (flash_num == 0) {
@@ -1137,9 +1167,22 @@ static int fsl_qspi_claim_bus(struct udevice *dev)
 	struct fsl_qspi_priv *priv;
 	struct udevice *bus;
 	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	int ret;
 
 	bus = dev->parent;
 	priv = dev_get_priv(bus);
+
+	/* make sure controller is not busy anywhere */
+	ret = wait_for_bit(__func__, &priv->regs->sr,
+			   QSPI_SR_BUSY_MASK |
+			   QSPI_SR_AHB_ACC_MASK |
+			   QSPI_SR_IP_ACC_MASK,
+			   false, 100, false);
+
+	if (ret) {
+		debug("ERROR : The controller is busy\n");
+		return ret;
+	}
 
 	priv->cur_amba_base = priv->amba_base[slave_plat->cs];
 

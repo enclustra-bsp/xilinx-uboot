@@ -6,9 +6,8 @@
 
 #include <common.h>
 #include <asm/acpi_table.h>
-#include <asm/ioapic.h>
-#include <asm/mpspec.h>
 #include <asm/tables.h>
+#include <asm/arch/global_nvs.h>
 #include <asm/arch/iomap.h>
 
 void acpi_create_fadt(struct acpi_fadt *fadt, struct acpi_facs *facs,
@@ -135,29 +134,8 @@ void acpi_create_fadt(struct acpi_fadt *fadt, struct acpi_facs *facs,
 	header->checksum = table_compute_checksum(fadt, header->length);
 }
 
-static int acpi_create_madt_irq_overrides(u32 current)
+void acpi_create_gnvs(struct acpi_global_nvs *gnvs)
 {
-	struct acpi_madt_irqoverride *irqovr;
-	u16 sci_flags = MP_IRQ_TRIGGER_LEVEL | MP_IRQ_POLARITY_HIGH;
-	int length = 0;
-
-	irqovr = (void *)current;
-	length += acpi_create_madt_irqoverride(irqovr, 0, 0, 2, 0);
-
-	irqovr = (void *)(current + length);
-	length += acpi_create_madt_irqoverride(irqovr, 0, 9, 9, sci_flags);
-
-	return length;
-}
-
-u32 acpi_fill_madt(u32 current)
-{
-	current += acpi_create_madt_lapics(current);
-
-	current += acpi_create_madt_ioapic((struct acpi_madt_ioapic *)current,
-			io_apic_read(IO_APIC_ID) >> 24, IO_APIC_ADDR, 0);
-
-	current += acpi_create_madt_irq_overrides(current);
-
-	return current;
+	/* quark is a uni-processor */
+	gnvs->pcnt = 1;
 }

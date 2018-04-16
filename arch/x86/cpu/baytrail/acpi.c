@@ -5,10 +5,14 @@
  */
 
 #include <common.h>
+#include <cpu.h>
+#include <dm.h>
+#include <dm/uclass-internal.h>
+#include <asm/acpi_s3.h>
 #include <asm/acpi_table.h>
-#include <asm/ioapic.h>
-#include <asm/mpspec.h>
+#include <asm/io.h>
 #include <asm/tables.h>
+#include <asm/arch/global_nvs.h>
 #include <asm/arch/iomap.h>
 
 void acpi_create_fadt(struct acpi_fadt *fadt, struct acpi_facs *facs,
@@ -69,7 +73,7 @@ void acpi_create_fadt(struct acpi_fadt *fadt, struct acpi_facs *facs,
 	fadt->reset_reg.access_size = ACPI_ACCESS_SIZE_BYTE_ACCESS;
 	fadt->reset_reg.addrl = IO_PORT_RESET;
 	fadt->reset_reg.addrh = 0;
-	fadt->reset_value = SYS_RST | RST_CPU;
+	fadt->reset_value = SYS_RST | RST_CPU | FULL_RST;
 
 	fadt->x_firmware_ctl_l = (u32)facs;
 	fadt->x_firmware_ctl_h = 0;
@@ -135,29 +139,69 @@ void acpi_create_fadt(struct acpi_fadt *fadt, struct acpi_facs *facs,
 	header->checksum = table_compute_checksum(fadt, header->length);
 }
 
-static int acpi_create_madt_irq_overrides(u32 current)
+void acpi_create_gnvs(struct acpi_global_nvs *gnvs)
 {
-	struct acpi_madt_irqoverride *irqovr;
-	u16 sci_flags = MP_IRQ_TRIGGER_LEVEL | MP_IRQ_POLARITY_HIGH;
-	int length = 0;
+	struct udevice *dev;
+	int ret;
 
-	irqovr = (void *)current;
-	length += acpi_create_madt_irqoverride(irqovr, 0, 0, 2, 0);
+	/* at least we have one processor */
+	gnvs->pcnt = 1;
+	/* override the processor count with actual number */
+	ret = uclass_find_first_device(UCLASS_CPU, &dev);
+	if (ret == 0 && dev != NULL) {
+		ret = cpu_get_count(dev);
+		if (ret > 0)
+			gnvs->pcnt = ret;
+	}
 
-	irqovr = (void *)(current + length);
-	length += acpi_create_madt_irqoverride(irqovr, 0, 9, 9, sci_flags);
-
-	return length;
+	/* determine whether internal uart is on */
+	if (IS_ENABLED(CONFIG_INTERNAL_UART))
+		gnvs->iuart_en = 1;
+	else
+		gnvs->iuart_en = 0;
 }
 
-u32 acpi_fill_madt(u32 current)
+#ifdef CONFIG_HAVE_ACPI_RESUME
+/*
+ * The following two routines are called at a very early stage, even before
+ * FSP 2nd phase API fsp_init() is called. Registers off ACPI_BASE_ADDRESS
+ * and PMC_BASE_ADDRESS are accessed, so we need make sure the base addresses
+ * of these two blocks are programmed by either U-Boot or FSP.
+ *
+ * It has been verified that 1st phase API (see arch/x86/lib/fsp/fsp_car.S)
+ * on Intel BayTrail SoC already initializes these two base addresses so
+ * we are safe to access these registers here.
+ */
+
+enum acpi_sleep_state chipset_prev_sleep_state(void)
 {
-	current += acpi_create_madt_lapics(current);
+	u32 pm1_sts;
+	u32 pm1_cnt;
+	u32 gen_pmcon1;
+	enum acpi_sleep_state prev_sleep_state = ACPI_S0;
 
-	current += acpi_create_madt_ioapic((struct acpi_madt_ioapic *)current,
-			io_apic_read(IO_APIC_ID) >> 24, IO_APIC_ADDR, 0);
+	/* Read Power State */
+	pm1_sts = inw(ACPI_BASE_ADDRESS + PM1_STS);
+	pm1_cnt = inl(ACPI_BASE_ADDRESS + PM1_CNT);
+	gen_pmcon1 = readl(PMC_BASE_ADDRESS + GEN_PMCON1);
 
-	current += acpi_create_madt_irq_overrides(current);
+	debug("PM1_STS = 0x%x PM1_CNT = 0x%x GEN_PMCON1 = 0x%x\n",
+	      pm1_sts, pm1_cnt, gen_pmcon1);
 
-	return current;
+	if (pm1_sts & WAK_STS)
+		prev_sleep_state = acpi_sleep_from_pm1(pm1_cnt);
+
+	if (gen_pmcon1 & (PWR_FLR | SUS_PWR_FLR))
+		prev_sleep_state = ACPI_S5;
+
+	return prev_sleep_state;
 }
+
+void chipset_clear_sleep_state(void)
+{
+	u32 pm1_cnt;
+
+	pm1_cnt = inl(ACPI_BASE_ADDRESS + PM1_CNT);
+	outl(pm1_cnt & ~(SLP_TYP), ACPI_BASE_ADDRESS + PM1_CNT);
+}
+#endif

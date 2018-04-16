@@ -62,6 +62,11 @@ int mvebu_soc_family(void)
 	case SOC_88F6820_ID:
 	case SOC_88F6828_ID:
 		return MVEBU_SOC_A38X;
+
+	case SOC_98DX3236_ID:
+	case SOC_98DX3336_ID:
+	case SOC_98DX4251_ID:
+		return MVEBU_SOC_MSYS;
 	}
 
 	return MVEBU_SOC_UNKNOWN;
@@ -107,13 +112,15 @@ static const struct sar_freq_modes sar_freq_tab[] = {
 #elif defined(CONFIG_ARMADA_38X)
 /* SAR frequency values for Armada 38x */
 static const struct sar_freq_modes sar_freq_tab[] = {
-	{  0x0,  0x0,  666, 333, 333 },
-	{  0x2,  0x0,  800, 400, 400 },
-	{  0x4,  0x0, 1066, 533, 533 },
-	{  0x6,  0x0, 1200, 600, 600 },
-	{  0x8,  0x0, 1332, 666, 666 },
-	{  0xc,  0x0, 1600, 800, 800 },
-	{ 0xff, 0xff,    0,   0,   0 }	/* 0xff marks end of array */
+	{  0x0,  0x0,  666,  333, 333 },
+	{  0x2,  0x0,  800,  400, 400 },
+	{  0x4,  0x0, 1066,  533, 533 },
+	{  0x6,  0x0, 1200,  600, 600 },
+	{  0x8,  0x0, 1332,  666, 666 },
+	{  0xc,  0x0, 1600,  800, 800 },
+	{ 0x10,  0x0, 1866,  933, 933 },
+	{ 0x13,  0x0, 2000, 1000, 933 },
+	{ 0xff, 0xff,    0,    0,   0 }	/* 0xff marks end of array */
 };
 #else
 /* SAR frequency values for Armada XP */
@@ -207,6 +214,15 @@ int print_cpuinfo(void)
 		break;
 	case SOC_88F6828_ID:
 		puts("MV88F6828-");
+		break;
+	case SOC_98DX3236_ID:
+		puts("98DX3236-");
+		break;
+	case SOC_98DX3336_ID:
+		puts("98DX3336-");
+		break;
+	case SOC_98DX4251_ID:
+		puts("98DX4251-");
 		break;
 	default:
 		puts("Unknown-");
@@ -452,8 +468,15 @@ int arch_cpu_init(void)
 
 u32 mvebu_get_nand_clock(void)
 {
+	u32 reg;
+
+	if (mvebu_soc_family() == MVEBU_SOC_A38X)
+		reg = MVEBU_DFX_DIV_CLK_CTRL(1);
+	else
+		reg = MVEBU_CORE_DIV_CLK_CTRL(1);
+
 	return CONFIG_SYS_MVEBU_PLL_CLOCK /
-		((readl(MVEBU_CORE_DIV_CLK_CTRL(1)) &
+		((readl(reg) &
 		  NAND_ECC_DIVCKL_RATIO_MASK) >> NAND_ECC_DIVCKL_RATIO_OFFS);
 }
 
@@ -468,7 +491,7 @@ int arch_misc_init(void)
 }
 #endif /* CONFIG_ARCH_MISC_INIT */
 
-#ifdef CONFIG_MV_SDHCI
+#ifdef CONFIG_MMC_SDHCI_MV
 int board_mmc_init(bd_t *bis)
 {
 	mv_sdh_init(MVEBU_SDIO_BASE, 0, 0,
@@ -528,6 +551,47 @@ void scsi_init(void)
 	ahci_mvebu_mbus_config((void __iomem *)MVEBU_SATA0_BASE);
 	ahci_mvebu_regret_option((void __iomem *)MVEBU_SATA0_BASE);
 	ahci_init((void __iomem *)MVEBU_SATA0_BASE);
+}
+#endif
+
+#ifdef CONFIG_USB_XHCI_MVEBU
+#define USB3_MAX_WINDOWS        4
+#define USB3_WIN_CTRL(w)        (0x0 + ((w) * 8))
+#define USB3_WIN_BASE(w)        (0x4 + ((w) * 8))
+
+static void xhci_mvebu_mbus_config(void __iomem *base,
+			const struct mbus_dram_target_info *dram)
+{
+	int i;
+
+	for (i = 0; i < USB3_MAX_WINDOWS; i++) {
+		writel(0, base + USB3_WIN_CTRL(i));
+		writel(0, base + USB3_WIN_BASE(i));
+	}
+
+	for (i = 0; i < dram->num_cs; i++) {
+		const struct mbus_dram_window *cs = dram->cs + i;
+
+		/* Write size, attributes and target id to control register */
+		writel(((cs->size - 1) & 0xffff0000) | (cs->mbus_attr << 8) |
+			(dram->mbus_dram_target_id << 4) | 1,
+			base + USB3_WIN_CTRL(i));
+
+		/* Write base address to base register */
+		writel((cs->base & 0xffff0000), base + USB3_WIN_BASE(i));
+	}
+}
+
+int board_xhci_enable(fdt_addr_t base)
+{
+	const struct mbus_dram_target_info *dram;
+
+	printf("MVEBU XHCI INIT controller @ 0x%lx\n", base);
+
+	dram = mvebu_mbus_dram_info();
+	xhci_mvebu_mbus_config((void __iomem *)base, dram);
+
+	return 0;
 }
 #endif
 

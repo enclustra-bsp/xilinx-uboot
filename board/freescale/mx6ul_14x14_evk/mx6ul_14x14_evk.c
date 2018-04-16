@@ -12,9 +12,9 @@
 #include <asm/arch/mx6-pins.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
-#include <asm/imx-common/iomux-v3.h>
-#include <asm/imx-common/boot_mode.h>
-#include <asm/imx-common/mxc_i2c.h>
+#include <asm/mach-imx/iomux-v3.h>
+#include <asm/mach-imx/boot_mode.h>
+#include <asm/mach-imx/mxc_i2c.h>
 #include <asm/io.h>
 #include <common.h>
 #include <fsl_esdhc.h>
@@ -59,9 +59,6 @@ DECLARE_GLOBAL_DATA_PTR;
 	PAD_CTL_DSE_48ohm   | PAD_CTL_SRE_FAST | PAD_CTL_ODE)
 
 #define ENET_CLK_PAD_CTRL  (PAD_CTL_DSE_40ohm   | PAD_CTL_SRE_FAST)
-
-#define ENET_RX_PAD_CTRL  (PAD_CTL_PKE | PAD_CTL_PUE |          \
-	PAD_CTL_SPEED_HIGH   | PAD_CTL_SRE_FAST)
 
 #define IOX_SDI IMX_GPIO_NR(5, 10)
 #define IOX_STCP IMX_GPIO_NR(5, 7)
@@ -196,9 +193,7 @@ int power_init_board(void)
 		       reg, rev_id);
 
 		/* disable Low Power Mode during standby mode */
-		pmic_reg_read(pfuze, PFUZE3000_LDOGCTL, &reg);
-		reg |= 0x1;
-		pmic_reg_write(pfuze, PFUZE3000_LDOGCTL, reg);
+		pmic_reg_write(pfuze, PFUZE3000_LDOGCTL, 0x1);
 
 		/* SW1B step ramp up time from 2us to 4us/25mV */
 		reg = 0x40;
@@ -230,6 +225,7 @@ static iomux_v3_cfg_t const uart1_pads[] = {
 	MX6_PAD_UART1_RX_DATA__UART1_DCE_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
 };
 
+#ifndef CONFIG_SPL_BUILD
 static iomux_v3_cfg_t const usdhc1_pads[] = {
 	MX6_PAD_SD1_CLK__USDHC1_CLK | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 	MX6_PAD_SD1_CMD__USDHC1_CMD | MUX_PAD_CTRL(USDHC_PAD_CTRL),
@@ -245,6 +241,7 @@ static iomux_v3_cfg_t const usdhc1_pads[] = {
 	/* RST_B */
 	MX6_PAD_GPIO1_IO09__GPIO1_IO09 | MUX_PAD_CTRL(NO_PAD_CTRL),
 };
+#endif
 
 /*
  * mx6ul_14x14_evk board default supports sd card. If want to use
@@ -280,18 +277,16 @@ static iomux_v3_cfg_t const usdhc2_pads[] = {
 	MX6_PAD_NAND_DATA03__USDHC2_DATA3 | MUX_PAD_CTRL(USDHC_PAD_CTRL),
 };
 
-static iomux_v3_cfg_t const usdhc2_cd_pads[] = {
-	/*
-	 * The evk board uses DAT3 to detect CD card plugin,
-	 * in u-boot we mux the pin to GPIO when doing board_mmc_getcd.
-	 */
-	MX6_PAD_NAND_DATA03__GPIO4_IO05 | MUX_PAD_CTRL(USDHC_DAT3_CD_PAD_CTRL),
-};
+/*
+ * The evk board uses DAT3 to detect CD card plugin,
+ * in u-boot we mux the pin to GPIO when doing board_mmc_getcd.
+ */
+static iomux_v3_cfg_t const usdhc2_cd_pad =
+	MX6_PAD_NAND_DATA03__GPIO4_IO05 | MUX_PAD_CTRL(USDHC_DAT3_CD_PAD_CTRL);
 
-static iomux_v3_cfg_t const usdhc2_dat3_pads[] = {
+static iomux_v3_cfg_t const usdhc2_dat3_pad =
 	MX6_PAD_NAND_DATA03__USDHC2_DATA3 |
-	MUX_PAD_CTRL(USDHC_DAT3_CD_PAD_CTRL),
-};
+	MUX_PAD_CTRL(USDHC_DAT3_CD_PAD_CTRL);
 #endif
 
 static void setup_iomux_uart(void)
@@ -354,8 +349,7 @@ int board_mmc_getcd(struct mmc *mmc)
 #if defined(CONFIG_MX6UL_14X14_EVK_EMMC_REWORK)
 		ret = 1;
 #else
-		imx_iomux_v3_setup_multiple_pads(usdhc2_cd_pads,
-						 ARRAY_SIZE(usdhc2_cd_pads));
+		imx_iomux_v3_setup_pad(usdhc2_cd_pad);
 		gpio_direction_input(USDHC2_CD_GPIO);
 
 		/*
@@ -364,8 +358,7 @@ int board_mmc_getcd(struct mmc *mmc)
 		 */
 		ret = gpio_get_value(USDHC2_CD_GPIO);
 
-		imx_iomux_v3_setup_multiple_pads(usdhc2_dat3_pads,
-						 ARRAY_SIZE(usdhc2_dat3_pads));
+		imx_iomux_v3_setup_pad(usdhc2_dat3_pad);
 #endif
 		break;
 	}
@@ -609,7 +602,7 @@ static iomux_v3_cfg_t const lcd_pads[] = {
 
 static int setup_lcd(void)
 {
-	enable_lcdif_clock(LCDIF1_BASE_ADDR);
+	enable_lcdif_clock(LCDIF1_BASE_ADDR, 1);
 
 	imx_iomux_v3_setup_multiple_pads(lcd_pads, ARRAY_SIZE(lcd_pads));
 
@@ -681,12 +674,12 @@ int board_late_init(void)
 #endif
 
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
-	setenv("board_name", "EVK");
+	env_set("board_name", "EVK");
 
 	if (is_mx6ul_9x9_evk())
-		setenv("board_rev", "9X9");
+		env_set("board_rev", "9X9");
 	else
-		setenv("board_rev", "14X14");
+		env_set("board_rev", "14X14");
 #endif
 
 	return 0;
@@ -773,6 +766,8 @@ struct mx6_ddr_sysinfo ddr_sysinfo = {
 	.sde_to_rst = 0,    /* LPDDR2 does not need this field */
 	.rst_to_cke = 0x10, /* JEDEC value for LPDDR2: 200us */
 	.ddr_type = DDR_TYPE_LPDDR2,
+	.refsel = 0,	/* Refresh cycles at 64KHz */
+	.refr = 3,	/* 4 refresh commands per refresh cycle */
 };
 
 #else
@@ -784,17 +779,17 @@ static struct mx6ul_iomux_ddr_regs mx6_ddr_ioregs = {
 	.dram_odt0 = 0x00000030,
 	.dram_odt1 = 0x00000030,
 	.dram_sdba2 = 0x00000000,
-	.dram_sdclk_0 = 0x00000008,
-	.dram_sdqs0 = 0x00000038,
+	.dram_sdclk_0 = 0x00000030,
+	.dram_sdqs0 = 0x00000030,
 	.dram_sdqs1 = 0x00000030,
 	.dram_reset = 0x00000030,
 };
 
 static struct mx6_mmdc_calibration mx6_mmcd_calib = {
-	.p0_mpwldectrl0 = 0x00070007,
-	.p0_mpdgctrl0 = 0x41490145,
-	.p0_mprddlctl = 0x40404546,
-	.p0_mpwrdlctl = 0x4040524D,
+	.p0_mpwldectrl0 = 0x00000000,
+	.p0_mpdgctrl0 = 0x41570155,
+	.p0_mprddlctl = 0x4040474A,
+	.p0_mpwrdlctl = 0x40405550,
 };
 
 struct mx6_ddr_sysinfo ddr_sysinfo = {
@@ -804,13 +799,15 @@ struct mx6_ddr_sysinfo ddr_sysinfo = {
 	.cs1_mirror = 0,
 	.rtt_wr = 2,
 	.rtt_nom = 1,		/* RTT_Nom = RZQ/2 */
-	.walat = 1,		/* Write additional latency */
+	.walat = 0,		/* Write additional latency */
 	.ralat = 5,		/* Read additional latency */
 	.mif3_mode = 3,		/* Command prediction working mode */
 	.bi_on = 1,		/* Bank interleaving enabled */
 	.sde_to_rst = 0x10,	/* 14 cycles, 200us (JEDEC default) */
 	.rst_to_cke = 0x23,	/* 33 cycles, 500us (JEDEC default) */
 	.ddr_type = DDR_TYPE_DDR3,
+	.refsel = 0,	/* Refresh cycles at 64KHz */
+	.refr = 1,	/* 2 refresh commands per refresh cycle */
 };
 
 static struct mx6_ddr3_cfg mem_ddr = {
@@ -849,10 +846,10 @@ static void spl_dram_init(void)
 
 void board_init_f(ulong dummy)
 {
+	ccgr_init();
+
 	/* setup AIPS and disable watchdog */
 	arch_cpu_init();
-
-	ccgr_init();
 
 	/* iomux and setup of i2c */
 	board_early_init_f();

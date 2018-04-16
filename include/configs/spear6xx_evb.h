@@ -12,16 +12,8 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_SPEAR600
-
-#if defined(CONFIG_usbtty)
+#if defined(CONFIG_USBTTY)
 #define CONFIG_SPEAR_USBTTY
-#endif
-
-#if defined(CONFIG_nand)
-#define CONFIG_ENV_IS_IN_NAND
-#else
-#define CONFIG_ENV_IS_IN_FLASH
 #endif
 
 #include <configs/spear-common.h>

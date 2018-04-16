@@ -15,17 +15,17 @@
 
 #include <common.h>
 #include <linux/mtd/mtd.h>
-#include <linux/mtd/nand.h>
+#include <linux/mtd/rawnand.h>
 #include <linux/types.h>
 #include <malloc.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
-#include <asm/imx-common/regs-bch.h>
-#include <asm/imx-common/regs-gpmi.h>
+#include <asm/mach-imx/regs-bch.h>
+#include <asm/mach-imx/regs-gpmi.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/imx-common/dma.h>
+#include <asm/mach-imx/dma.h>
 
 #define	MXS_NAND_DMA_DESCRIPTOR_COUNT		4
 
@@ -37,7 +37,12 @@
 #endif
 #define	MXS_NAND_METADATA_SIZE			10
 #define	MXS_NAND_BITS_PER_ECC_LEVEL		13
+
+#if !defined(CONFIG_SYS_CACHELINE_SIZE) || CONFIG_SYS_CACHELINE_SIZE < 32
 #define	MXS_NAND_COMMAND_BUFFER_SIZE		32
+#else
+#define	MXS_NAND_COMMAND_BUFFER_SIZE		CONFIG_SYS_CACHELINE_SIZE
+#endif
 
 #define	MXS_NAND_BCH_TIMEOUT			10000
 
@@ -976,7 +981,7 @@ static int mxs_nand_block_bad(struct mtd_info *mtd, loff_t ofs)
  * counted, so we know the physical geometry. This enables us to make some
  * important configuration decisions.
  *
- * The return value of this function propogates directly back to this driver's
+ * The return value of this function propagates directly back to this driver's
  * call to nand_scan(). Anything other than zero will cause this driver to
  * tear everything down and declare failure.
  */
@@ -1109,6 +1114,7 @@ int mxs_nand_init(struct mxs_nand_info *info)
 	}
 
 	/* Init the DMA controller. */
+	mxs_dma_init();
 	for (j = MXS_DMA_CHANNEL_AHB_APBH_GPMI0;
 		j <= MXS_DMA_CHANNEL_AHB_APBH_GPMI7; j++) {
 		ret = mxs_dma_init_channel(j);

@@ -9,8 +9,6 @@
 
 #include "ls2080a_common.h"
 
-#define CONFIG_IDENT_STRING		" LS2080A-EMU"
-
 #define CONFIG_SYS_CLK_FREQ	100000000
 #define CONFIG_DDR_CLK_FREQ	133333333
 
@@ -84,7 +82,6 @@
 #define CONFIG_SYS_LS_MC_BOOT_TIMEOUT_MS 200000
 
 /* Store environment at top of flash */
-#define CONFIG_ENV_IS_NOWHERE		1
 #define CONFIG_ENV_SIZE			0x1000
 
 #endif /* __LS2_EMU_H */

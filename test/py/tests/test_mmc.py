@@ -18,11 +18,14 @@ def test_mmc_list(u_boot_console):
     if "No MMC device available" in output:
         pytest.skip('No SD/MMC/eMMC controller available')
 
+    if "Card did not respond to voltage select" in output:
+        pytest.skip('No SD/MMC card present')
+
     array = output.split( )
 
     global devices
     global controllers
-    controllers = len(array) / 2
+    controllers = len(array) / 3
     for x in range(0, controllers):
         y = x * 2
         devices[x] = {}
@@ -38,14 +41,16 @@ def test_mmc_dev(u_boot_console):
 
     fail = 0
     for x in range(0, controllers):
+        devices[x]["detected"] = "yes"
         output = u_boot_console.run_command('mmc dev %d' % x)
 
         # Some sort of switch here
         if "Card did not respond to voltage select" in output:
             fail = 1
             devices[x]["detected"] = "no"
-        else:
-            devices[x]["detected"] = "yes"
+
+        if "no mmc device at slot" in output:
+            devices[x]["detected"] = "no"
 
     if fail:
         pytest.fail("Card not present")
@@ -62,7 +67,7 @@ def test_mmcinfo(u_boot_console):
             if "busy timeout" in output:
                   pytest.skip('No SD/MMC/eMMC device present')
 
-            obj = re.search(r'Capacity: (\d+[\.]?\d)', output)
+            obj = re.search(r'Capacity: (\d+|\d+[\.]?\d)', output)
             try:
                 capacity = float(obj.groups()[0])
                 print capacity
@@ -82,7 +87,7 @@ def test_mmc_info(u_boot_console):
 
             output = u_boot_console.run_command("mmc info")
 
-            obj = re.search(r'Capacity: (\d+[\.]?\d)', output)
+            obj = re.search(r'Capacity: (\d+|\d+[\.]?\d)', output)
             try:
                 capacity = float(obj.groups()[0])
                 print capacity

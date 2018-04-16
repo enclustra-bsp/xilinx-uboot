@@ -46,8 +46,6 @@
 #define CONFIG_SETUP_MEMORY_TAGS	/* pass memory defs to kernel */
 #define CONFIG_INITRD_TAG		/* pass initrd param to kernel */
 #define CONFIG_SKIP_LOWLEVEL_INIT_ONLY	/* U-Boot is loaded by a bootloader */
-#define CONFIG_BOARD_EARLY_INIT_F	/* call board_early_init_f() */
-#define CONFIG_DISPLAY_CPUINFO		/* display CPU Info at startup */
 
 /* We set the max number of command args high to avoid HUSH bugs. */
 #define CONFIG_SYS_MAXARGS    32
@@ -85,7 +83,6 @@
 
 /* NAND flash settings */
 #define CONFIG_NAND_ATMEL
-#define CONFIG_SYS_NO_FLASH
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		ATMEL_BASE_CS3
 #define CONFIG_SYS_NAND_DBW_8
@@ -94,17 +91,7 @@
 #define CONFIG_SYS_NAND_ENABLE_PIN	AT91_PIN_PC14
 #define CONFIG_SYS_NAND_READY_PIN	AT91_PIN_PC13
 
-#define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_DEVICE
-#define MTDIDS_NAME_STR		"atmel_nand"
-#define MTDIDS_DEFAULT		"nand0=" MTDIDS_NAME_STR
-#define MTDPARTS_DEFAULT	"mtdparts=" MTDIDS_NAME_STR ":" \
-					"128k(Bootstrap),"		\
-					"896k(U-Boot),"	\
-					"512k(ENV0),"	\
-					"512k(ENV1),"	\
-					"4M(Linux),"	\
-					"-(Root-FS)"
 
 /* general purpose I/O */
 #define CONFIG_ATMEL_LEGACY		/* required until (g)pio is fixed */
@@ -115,16 +102,12 @@
 #define CONFIG_ATMEL_USART
 #define CONFIG_USART_BASE		ATMEL_BASE_DBGU
 #define CONFIG_USART_ID			ATMEL_ID_SYS
-#define CONFIG_BAUDRATE			115200
 
 /*
  * Ethernet configuration
  *
  */
 #define CONFIG_MACB
-#define CONFIG_USB_HOST_ETHER
-#define CONFIG_USB_ETHER_ASIX
-#define CONFIG_USB_ETHER_MCS7830
 #define CONFIG_RMII			/* use reduced MII inteface */
 #define CONFIG_NET_RETRY_COUNT	20      /* # of DHCP/BOOTP retries */
 #define CONFIG_AT91_WANTS_COMMON_PHY
@@ -158,26 +141,19 @@
 #define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	2
 
 /* USB DFU support */
-#define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_DEVICE
 #define CONFIG_MTD_PARTITIONS
 
 #define CONFIG_USB_GADGET_AT91
 
 /* DFU class support */
-#define CONFIG_USB_FUNCTION_DFU
-#define CONFIG_DFU_NAND
 #define CONFIG_SYS_DFU_DATA_BUF_SIZE	SZ_1M
 #define DFU_MANIFEST_POLL_TIMEOUT	25000
-
-#define CONFIG_SYS_CACHELINE_SIZE	0x2000
 #endif
 
 /* General Boot Parameter */
 #define CONFIG_BOOTCOMMAND		"run flashboot"
 #define CONFIG_SYS_CBSIZE		512
-#define CONFIG_SYS_PBSIZE \
-	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CMDLINE_EDITING
 
@@ -190,7 +166,6 @@
 /*
  * The NAND Flash partitions:
  */
-#define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_OFFSET		(0x100000)
 #define CONFIG_ENV_OFFSET_REDUND	(0x180000)
 #define CONFIG_ENV_RANGE		(SZ_512K)
@@ -204,15 +179,7 @@
 									\
 	"basicargs=console=ttyS0,115200\0"				\
 									\
-	"mtdparts="MTDPARTS_DEFAULT"\0"
-
-/* Command line & features configuration */
-
-#define CONFIG_CMD_NAND
-
-#ifdef CONFIG_MACB
-#else
-#endif /* CONFIG_MACB */
+	"mtdparts="CONFIG_MTDPARTS_DEFAULT"\0"
 
 #ifdef CONFIG_SPL_BUILD
 #define CONFIG_SYS_INIT_SP_ADDR		0x301000
@@ -238,15 +205,8 @@
 #define CONFIG_SYS_SPL_MALLOC_START     (CONFIG_SPL_BSS_START_ADDR + \
 					CONFIG_SPL_BSS_MAX_SIZE)
 #define CONFIG_SYS_SPL_MALLOC_SIZE      CONFIG_SYS_MALLOC_LEN
-#define CONFIG_SPL_LDSCRIPT	arch/arm/mach-at91/arm926ejs/u-boot-spl.lds
 
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
-
-#define CONFIG_SPL_BOARD_INIT
-#define CONFIG_SPL_GPIO_SUPPORT
 #define CONFIG_SYS_NAND_ENABLE_PIN_SPL	(2*32 + 14)
-#define CONFIG_SPL_NAND_SUPPORT
 #define CONFIG_SYS_USE_NANDFLASH	1
 #define CONFIG_SPL_NAND_DRIVERS
 #define CONFIG_SPL_NAND_BASE
@@ -281,9 +241,7 @@
 #define CONFIG_SYS_AT91_PLLB		0x10483f0e
 
 #if defined(CONFIG_SPL_BUILD)
-#define CONFIG_SYS_THUMB_BUILD
 #define CONFIG_SYS_ICACHE_OFF
 #define CONFIG_SYS_DCACHE_OFF
-#undef CONFIG_SPL_OS_BOOT		/* Not supported by existing map */
 #endif
 #endif /* __CONFIG_H */

@@ -96,6 +96,10 @@ int ddr3_init(const unsigned int base,
 #define ATMEL_MPDDRC_CR_DLL_RESET_ENABLED	(0x1 << 7)
 #define ATMEL_MPDDRC_CR_DIC_DS			(0x1 << 8)
 #define ATMEL_MPDDRC_CR_DIS_DLL			(0x1 << 9)
+#define ATMEL_MPDDRC_CR_ZQ_INIT			(0x0 << 10)
+#define ATMEL_MPDDRC_CR_ZQ_LONG			(0x1 << 10)
+#define ATMEL_MPDDRC_CR_ZQ_SHORT		(0x2 << 10)
+#define ATMEL_MPDDRC_CR_ZQ_RESET		(0x3 << 10)
 #define ATMEL_MPDDRC_CR_OCD_DEFAULT		(0x7 << 12)
 #define ATMEL_MPDDRC_CR_DQMS_SHARED		(0x1 << 16)
 #define ATMEL_MPDDRC_CR_ENRDM_ON		(0x1 << 17)
@@ -147,6 +151,9 @@ int ddr3_init(const unsigned int base,
 #define ATMEL_MPDDRC_TPR2_TFAW_MASK		0xf
 
 /* Bit field in Memory Device Register */
+#define ATMEL_MPDDRC_MD_SDR_SDRAM	0x0
+#define ATMEL_MPDDRC_MD_LP_SDR_SDRAM	0x1
+#define ATMEL_MPDDRC_MD_DDR_SDRAM	0x2
 #define ATMEL_MPDDRC_MD_LPDDR_SDRAM	0x3
 #define ATMEL_MPDDRC_MD_DDR3_SDRAM	0x4
 #define ATMEL_MPDDRC_MD_LPDDR3_SDRAM	0x5
@@ -183,8 +190,13 @@ int ddr3_init(const unsigned int base,
 #define ATMEL_MPDDRC_IO_CALIBR_DDR3_RZQ_73	0x6
 #define ATMEL_MPDDRC_IO_CALIBR_DDR3_RZQ_110	0x7
 
-#define ATMEL_MPDDRC_IO_CALIBR_TZQIO		0x7f
+#define ATMEL_MPDDRC_IO_CALIBR_TZQIO		(0x7f << 8)
 #define ATMEL_MPDDRC_IO_CALIBR_TZQIO_(x)	(((x) & 0x7f) << 8)
+
+#define ATMEL_MPDDRC_IO_CALIBR_CALCODEP		(0xf << 16)
+#define ATMEL_MPDDRC_IO_CALIBR_CALCODEP_(x)	(((x) & 0xf) << 16)
+#define ATMEL_MPDDRC_IO_CALIBR_CALCODEN		(0xf << 20)
+#define ATMEL_MPDDRC_IO_CALIBR_CALCODEN_(x)	(((x) & 0xf) << 20)
 
 #define ATMEL_MPDDRC_IO_CALIBR_EN_CALIB		(0x1 << 4)
 

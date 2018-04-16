@@ -16,7 +16,7 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/crm_regs.h>
-#include <asm/imx-common/iomux-v3.h>
+#include <asm/mach-imx/iomux-v3.h>
 #include <fsl_esdhc.h>
 #include "common.h"
 
@@ -107,6 +107,8 @@ static struct mx6_ddr_sysinfo cm_fx6_sysinfo_s = {
 	.mif3_mode	= 3,
 	.rst_to_cke	= 0x23,
 	.sde_to_rst	= 0x10,
+	.refsel = 1,		/* Refresh cycles at 32KHz */
+	.refr = 7,		/* 8 refresh commands per refresh cycle */
 };
 
 static struct mx6_ddr3_cfg cm_fx6_ddr3_cfg_s = {
@@ -174,6 +176,8 @@ static struct mx6_ddr_sysinfo cm_fx6_sysinfo_q = {
 	.mif3_mode	= 3,
 	.rst_to_cke	= 0x23,
 	.sde_to_rst	= 0x10,
+	.refsel = 1,		/* Refresh cycles at 32KHz */
+	.refr = 7,		/* 8 refresh commands per refresh cycle */
 };
 
 static struct mx6_ddr3_cfg cm_fx6_ddr3_cfg_q = {
@@ -332,9 +336,6 @@ void board_init_f(ulong dummy)
 		puts("!!!ERROR!!! DRAM detection failed!!!\n");
 		hang();
 	}
-
-	memset(__bss_start, 0, __bss_end - __bss_start);
-	board_init_r(NULL, 0);
 }
 
 void board_boot_order(u32 *spl_boot_list)

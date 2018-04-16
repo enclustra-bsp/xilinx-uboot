@@ -207,12 +207,6 @@ static int tx_threshold;
  * There are so many options that it would be difficult to document
  * each bit. We mostly use the default or recommended settings.
  */
-static const char i82557_config_cmd[] = {
-	22, 0x08, 0, 0, 0, 0, 0x32, 0x03, 1,	/* 1=Use MII  0=Use AUI */
-	0, 0x2E, 0, 0x60, 0,
-	0xf2, 0x48, 0, 0x40, 0xf2, 0x80,	/* 0x40=Force full-duplex */
-	0x3f, 0x05,
-};
 static const char i82558_config_cmd[] = {
 	22, 0x08, 0, 1, 0, 0, 0x22, 0x03, 1,	/* 1=Use MII  0=Use AUI */
 	0, 0x2E, 0, 0x60, 0x08, 0x88,
@@ -334,34 +328,35 @@ static struct eth_device* verify_phyaddr (const char *devname,
 	return dev;
 }
 
-static int eepro100_miiphy_read(const char *devname, unsigned char addr,
-		unsigned char reg, unsigned short *value)
+static int eepro100_miiphy_read(struct mii_dev *bus, int addr, int devad,
+				int reg)
 {
+	unsigned short value = 0;
 	struct eth_device *dev;
 
-	dev = verify_phyaddr(devname, addr);
+	dev = verify_phyaddr(bus->name, addr);
 	if (dev == NULL)
 		return -1;
 
-	if (get_phyreg(dev, addr, reg, value) != 0) {
-		printf("%s: mii read timeout!\n", devname);
+	if (get_phyreg(dev, addr, reg, &value) != 0) {
+		printf("%s: mii read timeout!\n", bus->name);
 		return -1;
 	}
 
-	return 0;
+	return value;
 }
 
-static int eepro100_miiphy_write(const char *devname, unsigned char addr,
-		unsigned char reg, unsigned short value)
+static int eepro100_miiphy_write(struct mii_dev *bus, int addr, int devad,
+				 int reg, u16 value)
 {
 	struct eth_device *dev;
 
-	dev = verify_phyaddr(devname, addr);
+	dev = verify_phyaddr(bus->name, addr);
 	if (dev == NULL)
 		return -1;
 
 	if (set_phyreg(dev, addr, reg, value) != 0) {
-		printf("%s: mii write timeout!\n", devname);
+		printf("%s: mii write timeout!\n", bus->name);
 		return -1;
 	}
 
@@ -451,8 +446,17 @@ int eepro100_initialize (bd_t * bis)
 
 #if defined (CONFIG_MII) || defined(CONFIG_CMD_MII)
 		/* register mii command access routines */
-		miiphy_register(dev->name,
-				eepro100_miiphy_read, eepro100_miiphy_write);
+		int retval;
+		struct mii_dev *mdiodev = mdio_alloc();
+		if (!mdiodev)
+			return -ENOMEM;
+		strncpy(mdiodev->name, dev->name, MDIO_NAME_LEN);
+		mdiodev->read = eepro100_miiphy_read;
+		mdiodev->write = eepro100_miiphy_write;
+
+		retval = mdio_register(mdiodev);
+		if (retval < 0)
+			return retval;
 #endif
 
 		card_number++;

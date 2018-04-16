@@ -12,29 +12,20 @@
 #include <part.h>
 #include <mmc.h>
 
-#include <asm/io.h>
-#include <asm/errno.h>
+#include <linux/io.h>
+#include <linux/errno.h>
 #include <asm/byteorder.h>
 #include <faraday/ftsdc010.h>
+#include "ftsdc010_mci.h"
 
 #define CFG_CMD_TIMEOUT (CONFIG_SYS_HZ >> 4) /* 250 ms */
 #define CFG_RST_TIMEOUT CONFIG_SYS_HZ /* 1 sec reset timeout */
-
-struct ftsdc010_chip {
-	void __iomem *regs;
-	uint32_t wprot;   /* write protected (locked) */
-	uint32_t rate;    /* actual SD clock in Hz */
-	uint32_t sclk;    /* FTSDC010 source clock in Hz */
-	uint32_t fifo;    /* fifo depth in bytes */
-	uint32_t acmd;
-	struct mmc_config cfg;	/* mmc configuration */
-};
 
 static inline int ftsdc010_send_cmd(struct mmc *mmc, struct mmc_cmd *mmc_cmd)
 {
 	struct ftsdc010_chip *chip = mmc->priv;
 	struct ftsdc010_mmc __iomem *regs = chip->regs;
-	int ret = TIMEOUT;
+	int ret = -ETIMEDOUT;
 	uint32_t ts, st;
 	uint32_t cmd   = FTSDC010_CMD_IDX(mmc_cmd->cmdidx);
 	uint32_t arg   = mmc_cmd->cmdarg;
@@ -126,10 +117,9 @@ static void ftsdc010_clkset(struct mmc *mmc, uint32_t rate)
 
 static int ftsdc010_wait(struct ftsdc010_mmc __iomem *regs, uint32_t mask)
 {
-	int ret = TIMEOUT;
-	uint32_t st, ts;
-
-	for (ts = get_timer(0); get_timer(ts) < CFG_CMD_TIMEOUT; ) {
+	int ret = -ETIMEDOUT;
+	uint32_t st, timeout = 10000000;
+	while (timeout--) {
 		st = readl(&regs->status);
 		if (!(st & mask))
 			continue;
@@ -138,8 +128,9 @@ static int ftsdc010_wait(struct ftsdc010_mmc __iomem *regs, uint32_t mask)
 		break;
 	}
 
-	if (ret)
+	if (ret){
 		debug("ftsdc010: wait st(0x%x) timeout\n", mask);
+	}
 
 	return ret;
 }
@@ -147,11 +138,17 @@ static int ftsdc010_wait(struct ftsdc010_mmc __iomem *regs, uint32_t mask)
 /*
  * u-boot mmc api
  */
-
+#ifdef CONFIG_DM_MMC
+static int ftsdc010_request(struct udevice *dev, struct mmc_cmd *cmd,
+	struct mmc_data *data)
+{
+	struct mmc *mmc = mmc_get_mmc_dev(dev);
+#else
 static int ftsdc010_request(struct mmc *mmc, struct mmc_cmd *cmd,
 	struct mmc_data *data)
 {
-	int ret = UNUSABLE_ERR;
+#endif
+	int ret = -EOPNOTSUPP;
 	uint32_t len = 0;
 	struct ftsdc010_chip *chip = mmc->priv;
 	struct ftsdc010_mmc __iomem *regs = chip->regs;
@@ -245,14 +242,20 @@ static int ftsdc010_request(struct mmc *mmc, struct mmc_cmd *cmd,
 
 	if (!ret) {
 		ret = ftsdc010_wait(regs,
-			FTSDC010_STATUS_DATA_END | FTSDC010_STATUS_DATA_ERROR);
+			FTSDC010_STATUS_DATA_END | FTSDC010_STATUS_DATA_CRC_OK);
 	}
 
 	return ret;
 }
 
-static void ftsdc010_set_ios(struct mmc *mmc)
+#ifdef CONFIG_DM_MMC
+static int ftsdc010_set_ios(struct udevice *dev)
 {
+	struct mmc *mmc = mmc_get_mmc_dev(dev);
+#else
+static int ftsdc010_set_ios(struct mmc *mmc)
+{
+#endif
 	struct ftsdc010_chip *chip = mmc->priv;
 	struct ftsdc010_mmc __iomem *regs = chip->regs;
 
@@ -270,6 +273,39 @@ static void ftsdc010_set_ios(struct mmc *mmc)
 		setbits_le32(&regs->bwr, FTSDC010_BWR_MODE_1BIT);
 		break;
 	}
+
+	return 0;
+}
+
+#ifdef CONFIG_DM_MMC
+static int ftsdc010_get_cd(struct udevice *dev)
+{
+	struct mmc *mmc = mmc_get_mmc_dev(dev);
+#else
+static int ftsdc010_get_cd(struct mmc *mmc)
+{
+#endif
+	struct ftsdc010_chip *chip = mmc->priv;
+	struct ftsdc010_mmc __iomem *regs = chip->regs;
+	return !(readl(&regs->status) & FTSDC010_STATUS_CARD_DETECT);
+}
+
+#ifdef CONFIG_DM_MMC
+static int ftsdc010_get_wp(struct udevice *dev)
+{
+	struct mmc *mmc = mmc_get_mmc_dev(dev);
+#else
+static int ftsdc010_get_wp(struct mmc *mmc)
+{
+#endif
+	struct ftsdc010_chip *chip = mmc->priv;
+	struct ftsdc010_mmc __iomem *regs = chip->regs;
+	if (readl(&regs->status) & FTSDC010_STATUS_WRITE_PROT) {
+		printf("ftsdc010: write protected\n");
+		chip->wprot = 1;
+	}
+
+	return 0;
 }
 
 static int ftsdc010_init(struct mmc *mmc)
@@ -277,14 +313,6 @@ static int ftsdc010_init(struct mmc *mmc)
 	struct ftsdc010_chip *chip = mmc->priv;
 	struct ftsdc010_mmc __iomem *regs = chip->regs;
 	uint32_t ts;
-
-	if (readl(&regs->status) & FTSDC010_STATUS_CARD_DETECT)
-		return NO_CARD_ERR;
-
-	if (readl(&regs->status) & FTSDC010_STATUS_WRITE_PROT) {
-		printf("ftsdc010: write protected\n");
-		chip->wprot = 1;
-	}
 
 	chip->fifo = (readl(&regs->feature) & 0xff) << 2;
 
@@ -297,7 +325,7 @@ static int ftsdc010_init(struct mmc *mmc)
 	}
 	if (readl(&regs->cmd) & FTSDC010_CMD_SDC_RST) {
 		printf("ftsdc010: reset failed\n");
-		return UNUSABLE_ERR;
+		return -EOPNOTSUPP;
 	}
 
 	/* 2. enter low speed mode (400k card detection) */
@@ -309,11 +337,69 @@ static int ftsdc010_init(struct mmc *mmc)
 	return 0;
 }
 
+#ifdef CONFIG_DM_MMC
+int ftsdc010_probe(struct udevice *dev)
+{
+	struct mmc *mmc = mmc_get_mmc_dev(dev);
+	return ftsdc010_init(mmc);
+}
+
+const struct dm_mmc_ops dm_ftsdc010_ops = {
+	.send_cmd	= ftsdc010_request,
+	.set_ios	= ftsdc010_set_ios,
+	.get_cd		= ftsdc010_get_cd,
+	.get_wp		= ftsdc010_get_wp,
+};
+
+#else
 static const struct mmc_ops ftsdc010_ops = {
 	.send_cmd	= ftsdc010_request,
 	.set_ios	= ftsdc010_set_ios,
+	.getcd		= ftsdc010_get_cd,
+	.getwp		= ftsdc010_get_wp,
 	.init		= ftsdc010_init,
 };
+#endif
+
+void ftsdc_setup_cfg(struct mmc_config *cfg, const char *name, int buswidth,
+		     uint caps, u32 max_clk, u32 min_clk)
+{
+	cfg->name = name;
+	cfg->f_min = min_clk;
+	cfg->f_max = max_clk;
+	cfg->voltages = MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
+	cfg->host_caps = caps;
+	if (buswidth == 8) {
+		cfg->host_caps |= MMC_MODE_8BIT;
+		cfg->host_caps &= ~MMC_MODE_4BIT;
+	} else {
+		cfg->host_caps |= MMC_MODE_4BIT;
+		cfg->host_caps &= ~MMC_MODE_8BIT;
+	}
+	cfg->part_type = PART_TYPE_DOS;
+	cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
+}
+
+void set_bus_width(struct ftsdc010_mmc __iomem *regs, struct mmc_config *cfg)
+{
+	switch (readl(&regs->bwr) & FTSDC010_BWR_CAPS_MASK) {
+	case FTSDC010_BWR_CAPS_4BIT:
+		cfg->host_caps |= MMC_MODE_4BIT;
+		break;
+	case FTSDC010_BWR_CAPS_8BIT:
+		cfg->host_caps |= MMC_MODE_4BIT | MMC_MODE_8BIT;
+		break;
+	default:
+		break;
+	}
+}
+
+#ifdef CONFIG_BLK
+int ftsdc010_bind(struct udevice *dev, struct mmc *mmc, struct mmc_config *cfg)
+{
+	return mmc_bind(dev, mmc, cfg);
+}
+#else
 
 int ftsdc010_mmc_init(int devid)
 {
@@ -343,19 +429,11 @@ int ftsdc010_mmc_init(int devid)
 #endif
 
 	chip->cfg.name = "ftsdc010";
+#ifndef CONFIG_DM_MMC
 	chip->cfg.ops = &ftsdc010_ops;
+#endif
 	chip->cfg.host_caps = MMC_MODE_HS | MMC_MODE_HS_52MHz;
-	switch (readl(&regs->bwr) & FTSDC010_BWR_CAPS_MASK) {
-	case FTSDC010_BWR_CAPS_4BIT:
-		chip->cfg.host_caps |= MMC_MODE_4BIT;
-		break;
-	case FTSDC010_BWR_CAPS_8BIT:
-		chip->cfg.host_caps |= MMC_MODE_4BIT | MMC_MODE_8BIT;
-		break;
-	default:
-		break;
-	}
-
+	set_bus_width(regs , &chip->cfg);
 	chip->cfg.voltages  = MMC_VDD_32_33 | MMC_VDD_33_34;
 	chip->cfg.f_max     = chip->sclk / 2;
 	chip->cfg.f_min     = chip->sclk / 0x100;
@@ -371,3 +449,4 @@ int ftsdc010_mmc_init(int devid)
 
 	return 0;
 }
+#endif

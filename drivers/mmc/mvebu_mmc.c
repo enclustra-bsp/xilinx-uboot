@@ -9,6 +9,7 @@
  */
 
 #include <common.h>
+#include <errno.h>
 #include <malloc.h>
 #include <part.h>
 #include <mmc.h>
@@ -172,15 +173,15 @@ static int mvebu_mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 			    (SDIO_ERR_CMD_TIMEOUT | SDIO_ERR_DATA_TIMEOUT)) {
 				debug("%s: command READ timed out\n",
 				      DRIVER_NAME);
-				return TIMEOUT;
+				return -ETIMEDOUT;
 			}
 			debug("%s: command READ error\n", DRIVER_NAME);
-			return COMM_ERR;
+			return -ECOMM;
 		}
 
 		if ((get_timer(0) - start) > TIMEOUT_DELAY) {
 			debug("%s: command timed out\n", DRIVER_NAME);
-			return TIMEOUT;
+			return -ETIMEDOUT;
 		}
 	}
 
@@ -232,7 +233,7 @@ static int mvebu_mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 
 	if (mvebu_mmc_read(SDIO_ERR_INTR_STATUS) &
 		(SDIO_ERR_CMD_TIMEOUT | SDIO_ERR_DATA_TIMEOUT))
-		return TIMEOUT;
+		return -ETIMEDOUT;
 
 	return 0;
 }
@@ -315,12 +316,14 @@ static void mvebu_mmc_set_bus(unsigned int bus)
 	mvebu_mmc_write(SDIO_HOST_CTRL, ctrl_reg);
 }
 
-static void mvebu_mmc_set_ios(struct mmc *mmc)
+static int mvebu_mmc_set_ios(struct mmc *mmc)
 {
 	debug("%s: bus[%d] clock[%d]\n", DRIVER_NAME,
 	      mmc->bus_width, mmc->clock);
 	mvebu_mmc_set_bus(mmc->bus_width);
 	mvebu_mmc_set_clk(mmc->clock);
+
+	return 0;
 }
 
 /*

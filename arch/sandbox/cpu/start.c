@@ -66,6 +66,11 @@ int sandbox_early_getopt_check(void)
 	os_exit(0);
 }
 
+int misc_init_f(void)
+{
+	return sandbox_early_getopt_check();
+}
+
 static int sandbox_cmdline_cb_help(struct sandbox_state *state, const char *arg)
 {
 	/* just flag to sandbox_early_getopt_check to show usage */
@@ -73,6 +78,7 @@ static int sandbox_cmdline_cb_help(struct sandbox_state *state, const char *arg)
 }
 SANDBOX_CMDLINE_OPT_SHORT(help, 'h', 0, "Display help");
 
+#ifndef CONFIG_SPL_BUILD
 int sandbox_main_loop_init(void)
 {
 	struct sandbox_state *state = state_get_current();
@@ -97,6 +103,7 @@ int sandbox_main_loop_init(void)
 
 	return 0;
 }
+#endif
 
 static int sandbox_cmdline_cb_boot(struct sandbox_state *state,
 				      const char *arg)
@@ -273,6 +280,12 @@ int board_run_command(const char *cmdline)
 	return 1;
 }
 
+static void setup_ram_buf(struct sandbox_state *state)
+{
+	gd->arch.ram_buf = state->ram_buf;
+	gd->ram_size = state->ram_size;
+}
+
 int main(int argc, char *argv[])
 {
 	struct sandbox_state *state;
@@ -297,9 +310,10 @@ int main(int argc, char *argv[])
 
 	memset(&data, '\0', sizeof(data));
 	gd = &data;
-#ifdef CONFIG_SYS_MALLOC_F_LEN
+#if CONFIG_VAL(SYS_MALLOC_F_LEN)
 	gd->malloc_base = CONFIG_MALLOC_F_ADDR;
 #endif
+	setup_ram_buf(state);
 
 	/* Do pre- and post-relocation init */
 	board_init_f(0);

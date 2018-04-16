@@ -9,12 +9,10 @@
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
-#include <fdtdec.h>
 #include <i2c.h>
 #include <asm/test.h>
 #include <dm/lists.h>
 #include <dm/device-internal.h>
-#include <dm/root.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -33,8 +31,7 @@ static int get_emul(struct udevice *dev, struct udevice **devp,
 	*opsp = NULL;
 	plat = dev_get_parent_platdata(dev);
 	if (!plat->emul) {
-		ret = dm_scan_fdt_node(dev, gd->fdt_blob, dev->of_offset,
-				       false);
+		ret = dm_scan_fdt_dev(dev);
 		if (ret)
 			return ret;
 

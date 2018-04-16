@@ -13,9 +13,9 @@
 #include <asm/arch/mx6-pins.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
-#include <asm/imx-common/iomux-v3.h>
+#include <asm/mach-imx/iomux-v3.h>
 #include <asm/io.h>
-#include <asm/imx-common/mxc_i2c.h>
+#include <asm/mach-imx/mxc_i2c.h>
 #include <linux/sizes.h>
 #include <common.h>
 #include <fsl_esdhc.h>
@@ -64,7 +64,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int dram_init(void)
 {
-	gd->ram_size = PHYS_SDRAM_SIZE;
+	gd->ram_size = imx_ddr_size();
 
 	return 0;
 }
@@ -504,7 +504,7 @@ static iomux_v3_cfg_t const lcd_pads[] = {
 
 static int setup_lcd(void)
 {
-	enable_lcdif_clock(LCDIF1_BASE_ADDR);
+	enable_lcdif_clock(LCDIF1_BASE_ADDR, 1);
 
 	imx_iomux_v3_setup_multiple_pads(lcd_pads, ARRAY_SIZE(lcd_pads));
 
@@ -540,9 +540,23 @@ int board_init(void)
 	return 0;
 }
 
+static bool is_reva(void)
+{
+	return (nxp_board_rev() == 1);
+}
+
+int board_late_init(void)
+{
+#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
+	if (is_reva())
+		env_set("board_rev", "REVA");
+#endif
+	return 0;
+}
+
 int checkboard(void)
 {
-	puts("Board: MX6SX SABRE SDB\n");
+	printf("Board: MX6SX SABRE SDB rev%c\n", nxp_board_rev_string());
 
 	return 0;
 }
@@ -637,6 +651,8 @@ static void spl_dram_init(void)
 		.sde_to_rst = 0x10,	/* 14 cycles, 200us (JEDEC default) */
 		.rst_to_cke = 0x23,	/* 33 cycles, 500us (JEDEC default) */
 		.ddr_type = DDR_TYPE_DDR3,
+		.refsel = 1,	/* Refresh cycles at 32KHz */
+		.refr = 7,	/* 8 refresh commands per refresh cycle */
 	};
 
 	mx6sx_dram_iocfg(mem_ddr.width, &mx6_ddr_ioregs, &mx6_grp_ioregs);

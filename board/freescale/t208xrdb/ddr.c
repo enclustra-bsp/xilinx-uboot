@@ -92,9 +92,12 @@ found:
 	/* DHC_EN =1, ODT = 75 Ohm */
 	popts->ddr_cdr1 = DDR_CDR1_DHC_EN | DDR_CDR1_ODT(DDR_CDR_ODT_75ohm);
 	popts->ddr_cdr2 = DDR_CDR2_ODT(DDR_CDR_ODT_75ohm);
+
+	/* optimize cpo for erratum A-009942 */
+	popts->cpo_sample = 0x54;
 }
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	phys_size_t dram_size;
 
@@ -108,5 +111,7 @@ phys_size_t initdram(int board_type)
 	dram_size = setup_ddr_tlbs(dram_size / 0x100000);
 	dram_size *= 0x100000;
 
-	return dram_size;
+	gd->ram_size = dram_size;
+
+	return 0;
 }

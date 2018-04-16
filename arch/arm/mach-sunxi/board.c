@@ -14,9 +14,7 @@
 #include <mmc.h>
 #include <i2c.h>
 #include <serial.h>
-#ifdef CONFIG_SPL_BUILD
 #include <spl.h>
-#endif
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
@@ -40,19 +38,21 @@ struct fel_stash {
 
 struct fel_stash fel_stash __attribute__((section(".data")));
 
-#ifdef CONFIG_MACH_SUN50I
+#ifdef CONFIG_ARM64
 #include <asm/armv8/mmu.h>
 
 static struct mm_region sunxi_mem_map[] = {
 	{
 		/* SRAM, MMIO regions */
-		.base = 0x0UL,
+		.virt = 0x0UL,
+		.phys = 0x0UL,
 		.size = 0x40000000UL,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
 			 PTE_BLOCK_NON_SHARE
 	}, {
 		/* RAM */
-		.base = 0x40000000UL,
+		.virt = 0x40000000UL,
+		.phys = 0x40000000UL,
 		.size = 0x80000000UL,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
 			 PTE_BLOCK_INNER_SHARE
@@ -67,12 +67,14 @@ struct mm_region *mem_map = sunxi_mem_map;
 static int gpio_init(void)
 {
 #if CONFIG_CONS_INDEX == 1 && defined(CONFIG_UART0_PORT_F)
-#if defined(CONFIG_MACH_SUN4I) || defined(CONFIG_MACH_SUN7I)
+#if defined(CONFIG_MACH_SUN4I) || \
+    defined(CONFIG_MACH_SUN7I) || \
+    defined(CONFIG_MACH_SUN8I_R40)
 	/* disable GPB22,23 as uart0 tx,rx to avoid conflict */
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(22), SUNXI_GPIO_INPUT);
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(23), SUNXI_GPIO_INPUT);
 #endif
-#if defined(CONFIG_MACH_SUN8I)
+#if defined(CONFIG_MACH_SUN8I) && !defined(CONFIG_MACH_SUN8I_R40)
 	sunxi_gpio_set_cfgpin(SUNXI_GPF(2), SUN8I_GPF_UART0);
 	sunxi_gpio_set_cfgpin(SUNXI_GPF(4), SUN8I_GPF_UART0);
 #else
@@ -80,7 +82,9 @@ static int gpio_init(void)
 	sunxi_gpio_set_cfgpin(SUNXI_GPF(4), SUNXI_GPF_UART0);
 #endif
 	sunxi_gpio_set_pull(SUNXI_GPF(4), 1);
-#elif CONFIG_CONS_INDEX == 1 && (defined(CONFIG_MACH_SUN4I) || defined(CONFIG_MACH_SUN7I))
+#elif CONFIG_CONS_INDEX == 1 && (defined(CONFIG_MACH_SUN4I) || \
+				 defined(CONFIG_MACH_SUN7I) || \
+				 defined(CONFIG_MACH_SUN8I_R40))
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(22), SUN4I_GPB_UART0);
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(23), SUN4I_GPB_UART0);
 	sunxi_gpio_set_pull(SUNXI_GPB(23), SUNXI_GPIO_PULL_UP);
@@ -96,7 +100,7 @@ static int gpio_init(void)
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(0), SUN8I_A33_GPB_UART0);
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(1), SUN8I_A33_GPB_UART0);
 	sunxi_gpio_set_pull(SUNXI_GPB(1), SUNXI_GPIO_PULL_UP);
-#elif CONFIG_CONS_INDEX == 1 && defined(CONFIG_MACH_SUN8I_H3)
+#elif CONFIG_CONS_INDEX == 1 && defined(CONFIG_MACH_SUNXI_H3_H5)
 	sunxi_gpio_set_cfgpin(SUNXI_GPA(4), SUN8I_H3_GPA_UART0);
 	sunxi_gpio_set_cfgpin(SUNXI_GPA(5), SUN8I_H3_GPA_UART0);
 	sunxi_gpio_set_pull(SUNXI_GPA(5), SUNXI_GPIO_PULL_UP);
@@ -108,6 +112,10 @@ static int gpio_init(void)
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(9), SUN8I_A83T_GPB_UART0);
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(10), SUN8I_A83T_GPB_UART0);
 	sunxi_gpio_set_pull(SUNXI_GPB(10), SUNXI_GPIO_PULL_UP);
+#elif CONFIG_CONS_INDEX == 1 && defined(CONFIG_MACH_SUN8I_V3S)
+	sunxi_gpio_set_cfgpin(SUNXI_GPB(8), SUN8I_V3S_GPB_UART0);
+	sunxi_gpio_set_cfgpin(SUNXI_GPB(9), SUN8I_V3S_GPB_UART0);
+	sunxi_gpio_set_pull(SUNXI_GPB(9), SUNXI_GPIO_PULL_UP);
 #elif CONFIG_CONS_INDEX == 1 && defined(CONFIG_MACH_SUN9I)
 	sunxi_gpio_set_cfgpin(SUNXI_GPH(12), SUN9I_GPH_UART0);
 	sunxi_gpio_set_cfgpin(SUNXI_GPH(13), SUN9I_GPH_UART0);
@@ -131,13 +139,17 @@ static int gpio_init(void)
 	return 0;
 }
 
-int spl_board_load_image(void)
+#if defined(CONFIG_SPL_BOARD_LOAD_IMAGE) && defined(CONFIG_SPL_BUILD)
+static int spl_board_load_image(struct spl_image_info *spl_image,
+				struct spl_boot_device *bootdev)
 {
 	debug("Returning to FEL sp=%x, lr=%x\n", fel_stash.sp, fel_stash.lr);
 	return_to_fel(fel_stash.sp, fel_stash.lr);
 
 	return 0;
 }
+SPL_LOAD_IMAGE_METHOD("FEL", 0, BOOT_DEVICE_BOARD, spl_board_load_image);
+#endif
 
 void s_init(void)
 {
@@ -174,14 +186,13 @@ void s_init(void)
 	/* No H3 BSP, boot0 seems to not modify SUNXI_SRAMC_BASE + 0x44 */
 #endif
 
-#if defined CONFIG_MACH_SUN6I || \
-    defined CONFIG_MACH_SUN7I || \
-    defined CONFIG_MACH_SUN8I
+#if !defined(CONFIG_ARM_CORTEX_CPU_IS_UP) && !defined(CONFIG_ARM64)
 	/* Enable SMP mode for CPU0, by setting bit 6 of Auxiliary Ctl reg */
 	asm volatile(
 		"mrc p15, 0, r0, c1, c0, 1\n"
 		"orr r0, r0, #1 << 6\n"
-		"mcr p15, 0, r0, c1, c0, 1\n");
+		"mcr p15, 0, r0, c1, c0, 1\n"
+		::: "r0");
 #endif
 #if defined CONFIG_MACH_SUN6I || defined CONFIG_MACH_SUN8I_H3
 	/* Enable non-secure access to some peripherals */
@@ -191,19 +202,23 @@ void s_init(void)
 	clock_init();
 	timer_init();
 	gpio_init();
+#ifndef CONFIG_DM_I2C
 	i2c_init_board();
+#endif
 	eth_init_board();
 }
 
 #ifdef CONFIG_SPL_BUILD
 DECLARE_GLOBAL_DATA_PTR;
+#endif
 
 /* The sunxi internal brom will try to loader external bootloader
  * from mmc0, nand flash, mmc2.
  */
-u32 spl_boot_device(void)
+uint32_t sunxi_get_boot_device(void)
 {
-	__maybe_unused struct mmc *mmc0, *mmc1;
+	int boot_source;
+
 	/*
 	 * When booting from the SD card or NAND memory, the "eGON.BT0"
 	 * signature is expected to be found in memory at the address 0x0004
@@ -223,37 +238,26 @@ u32 spl_boot_device(void)
 	if (!is_boot0_magic(SPL_ADDR + 4)) /* eGON.BT0 */
 		return BOOT_DEVICE_BOARD;
 
-	/* The BROM will try to boot from mmc0 first, so try that first. */
-#ifdef CONFIG_MMC
-	mmc_initialize(gd->bd);
-	mmc0 = find_mmc_device(0);
-	if (sunxi_mmc_has_egon_boot_signature(mmc0))
+	boot_source = readb(SPL_ADDR + 0x28);
+	switch (boot_source) {
+	case SUNXI_BOOTED_FROM_MMC0:
 		return BOOT_DEVICE_MMC1;
-#endif
-
-	/* Fallback to booting NAND if enabled. */
-	if (IS_ENABLED(CONFIG_SPL_NAND_SUPPORT))
+	case SUNXI_BOOTED_FROM_NAND:
 		return BOOT_DEVICE_NAND;
-
-#ifdef CONFIG_MMC
-	if (CONFIG_MMC_SUNXI_SLOT_EXTRA == 2) {
-		mmc1 = find_mmc_device(1);
-		if (sunxi_mmc_has_egon_boot_signature(mmc1))
-			return BOOT_DEVICE_MMC2;
+	case SUNXI_BOOTED_FROM_MMC2:
+		return BOOT_DEVICE_MMC2;
+	case SUNXI_BOOTED_FROM_SPI:
+		return BOOT_DEVICE_SPI;
 	}
-#endif
 
-	panic("Could not determine boot source\n");
+	panic("Unknown boot source %d\n", boot_source);
 	return -1;		/* Never reached */
 }
 
-/*
- * Properly announce BOOT_DEVICE_BOARD as "FEL".
- * Overrides weak function from common/spl/spl.c
- */
-void spl_board_announce_boot_device(void)
+#ifdef CONFIG_SPL_BUILD
+u32 spl_boot_device(void)
 {
-	printf("FEL");
+	return sunxi_get_boot_device();
 }
 
 /* No confirmation data available in SPL yet. Hardcode bootmode */
@@ -277,7 +281,7 @@ void board_init_f(ulong dummy)
 
 void reset_cpu(ulong addr)
 {
-#ifdef CONFIG_SUNXI_GEN_SUN4I
+#if defined(CONFIG_SUNXI_GEN_SUN4I) || defined(CONFIG_MACH_SUN8I_R40)
 	static const struct sunxi_wdog *wdog =
 		 &((struct sunxi_timer_reg *)SUNXI_TIMER_BASE)->wdog;
 
@@ -289,8 +293,7 @@ void reset_cpu(ulong addr)
 		/* sun5i sometimes gets stuck without this */
 		writel(WDT_MODE_RESET_EN | WDT_MODE_EN, &wdog->mode);
 	}
-#endif
-#ifdef CONFIG_SUNXI_GEN_SUN6I
+#elif defined(CONFIG_SUNXI_GEN_SUN6I)
 	static const struct sunxi_wdog *wdog =
 		 ((struct sunxi_timer_reg *)SUNXI_TIMER_BASE)->wdog;
 

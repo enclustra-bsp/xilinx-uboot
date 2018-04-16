@@ -19,14 +19,6 @@
 #define CONFIG_MX35
 
 #define CONFIG_SYS_DCACHE_OFF
-#define CONFIG_SYS_CACHELINE_SIZE	32
-
-#define CONFIG_DISPLAY_CPUINFO
-
-/* Only in case the value is not present in mach-types.h */
-#ifndef MACH_TYPE_FLEA3
-#define MACH_TYPE_FLEA3                3668
-#endif
 
 #define CONFIG_MACH_TYPE		MACH_TYPE_FLEA3
 
@@ -34,7 +26,6 @@
 #define CONFIG_SYS_TEXT_BASE	0xA0000000
 
 /* This is required to setup the ESDC controller */
-#define CONFIG_BOARD_EARLY_INIT_F
 
 #define CONFIG_CMDLINE_TAG		/* enable passing of ATAGs */
 #define CONFIG_REVISION_TAG
@@ -68,7 +59,6 @@
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_CONS_INDEX	1
-#define CONFIG_BAUDRATE		115200
 
 /*
  * Command definition
@@ -76,8 +66,6 @@
 #define CONFIG_BOOTP_SUBNETMASK
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_DNS
-
-#define CONFIG_CMD_NAND
 
 #define CONFIG_NET_RETRY_COUNT	100
 
@@ -89,8 +77,6 @@
  */
 #define CONFIG_FEC_MXC
 #define IMX_FEC_BASE	FEC_BASE_ADDR
-#define CONFIG_PHYLIB
-#define CONFIG_PHY_MICREL
 #define CONFIG_FEC_MXC_PHYADDR	0x1
 
 #define CONFIG_MII
@@ -104,11 +90,9 @@
 #define CONFIG_CMDLINE_EDITING
 
 #define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
+#define CONFIG_SYS_CBSIZE	512	/* Console I/O Buffer Size */
 /* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
-#define CONFIG_SYS_BARGSIZE CONFIG_SYS_CBSIZE /* Boot Argument Buffer Size */
+#define CONFIG_SYS_MAXARGS	32	/* max number of command args */
 
 #define CONFIG_SYS_MEMTEST_START	0	/* memtest works on */
 #define CONFIG_SYS_MEMTEST_END		0x10000
@@ -133,18 +117,9 @@
 /*
  * MTD Command for mtdparts
  */
-#define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_DEVICE
 #define CONFIG_FLASH_CFI_MTD
 #define CONFIG_MTD_PARTITIONS
-#define MTDIDS_DEFAULT		"nand0=mxc_nand,nor0=physmap-flash.0"
-#define MTDPARTS_DEFAULT	"mtdparts=mxc_nand:50m(root1)," \
-				"32m(rootfb)," \
-				"64m(pcache)," \
-				"64m(app1)," \
-				"10m(app2),-(spool);" \
-				"physmap-flash.0:512k(u-boot),64k(env1)," \
-				"64k(env2),3776k(kernel1),3776k(kernel2)"
 
 /*
  * FLASH and environment organization
@@ -166,8 +141,6 @@
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + \
 				CONFIG_SYS_MONITOR_LEN)
 
-#define CONFIG_ENV_IS_IN_FLASH
-
 /*
  * CFI FLASH driver setup
  */
@@ -181,7 +154,6 @@
 /*
  * NAND FLASH driver setup
  */
-#define CONFIG_NAND_MXC
 #define CONFIG_MXC_NAND_REGS_BASE	(NFC_BASE_ADDR)
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		(NFC_BASE_ADDR)
@@ -230,8 +202,8 @@
 	"u-boot=" __stringify(CONFIG_HOSTNAME) "/u-boot.bin\0"		\
 	"load=tftp ${loadaddr} ${u-boot}\0"				\
 	"uboot_addr=" __stringify(CONFIG_SYS_MONITOR_BASE) "\0"		\
-	"update=protect off ${uboot_addr} +40000;"			\
-		"erase ${uboot_addr} +40000;"				\
+	"update=protect off ${uboot_addr} +80000;"			\
+		"erase ${uboot_addr} +80000;"				\
 		"cp.b ${loadaddr} ${uboot_addr} ${filesize}\0"		\
 	"upd=if run load;then echo Updating u-boot;if run update;"	\
 		"then echo U-Boot updated;"				\

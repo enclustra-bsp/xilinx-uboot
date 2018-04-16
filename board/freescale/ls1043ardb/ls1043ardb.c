@@ -16,7 +16,6 @@
 #include <mmc.h>
 #include <scsi.h>
 #include <fm_eth.h>
-#include <fsl_csu.h>
 #include <fsl_esdhc.h>
 #include <fsl_ifc.h>
 #include <fsl_sec.h>
@@ -24,9 +23,18 @@
 #ifdef CONFIG_U_QE
 #include <fsl_qe.h>
 #endif
-
+#include <asm/arch/ppa.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+int board_early_init_f(void)
+{
+	fsl_lsch2_early_init_f();
+
+	return 0;
+}
+
+#ifndef CONFIG_SPL_BUILD
 
 int checkboard(void)
 {
@@ -66,30 +74,37 @@ int checkboard(void)
 	return 0;
 }
 
-int dram_init(void)
-{
-	gd->ram_size = initdram(0);
-
-	return 0;
-}
-
-int board_early_init_f(void)
-{
-	fsl_lsch2_early_init_f();
-
-	return 0;
-}
-
 int board_init(void)
 {
 	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
+
+#ifdef CONFIG_SYS_FSL_ERRATUM_A010315
+	erratum_a010315();
+#endif
 
 #ifdef CONFIG_FSL_IFC
 	init_final_memctl_regs();
 #endif
 
-#ifdef CONFIG_LAYERSCAPE_NS_ACCESS
-	enable_layerscape_ns_access();
+#ifdef CONFIG_SECURE_BOOT
+	/* In case of Secure Boot, the IBR configures the SMMU
+	 * to allow only Secure transactions.
+	 * SMMU must be reset in bypass mode.
+	 * Set the ClientPD bit and Clear the USFCFG Bit
+	 */
+	u32 val;
+	val = (in_le32(SMMU_SCR0) | SCR0_CLIENTPD_MASK) & ~(SCR0_USFCFG_MASK);
+	out_le32(SMMU_SCR0, val);
+	val = (in_le32(SMMU_NSCR0) | SCR0_CLIENTPD_MASK) & ~(SCR0_USFCFG_MASK);
+	out_le32(SMMU_NSCR0, val);
+#endif
+
+#ifdef CONFIG_FSL_CAAM
+	sec_init();
+#endif
+
+#ifdef CONFIG_FSL_LS_PPA
+	ppa_init();
 #endif
 
 #ifdef CONFIG_U_QE
@@ -131,21 +146,6 @@ int config_board_mux(void)
 int misc_init_r(void)
 {
 	config_board_mux();
-#ifdef CONFIG_SECURE_BOOT
-	/* In case of Secure Boot, the IBR configures the SMMU
-	 * to allow only Secure transactions.
-	 * SMMU must be reset in bypass mode.
-	 * Set the ClientPD bit and Clear the USFCFG Bit
-	 */
-	u32 val;
-	val = (in_le32(SMMU_SCR0) | SCR0_CLIENTPD_MASK) & ~(SCR0_USFCFG_MASK);
-	out_le32(SMMU_SCR0, val);
-	val = (in_le32(SMMU_NSCR0) | SCR0_CLIENTPD_MASK) & ~(SCR0_USFCFG_MASK);
-	out_le32(SMMU_NSCR0, val);
-#endif
-#ifdef CONFIG_FSL_CAAM
-	return sec_init();
-#endif
 	return 0;
 }
 #endif
@@ -215,3 +215,5 @@ u16 flash_read16(void *addr)
 
 	return (((val) >> 8) & 0x00ff) | (((val) << 8) & 0xff00);
 }
+
+#endif

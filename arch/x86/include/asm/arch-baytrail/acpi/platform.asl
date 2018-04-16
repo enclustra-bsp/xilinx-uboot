@@ -22,6 +22,9 @@ Method(_WAK, 1)
 	Return (Package() {0, 0})
 }
 
+/* ACPI global NVS */
+#include "global_nvs.asl"
+
 /* TODO: add CPU ASL support */
 
 Scope (\_SB)
@@ -33,4 +36,4 @@ Scope (\_SB)
 }
 
 /* Chipset specific sleep states */
-#include "sleepstates.asl"
+#include <asm/acpi/sleepstates.asl>

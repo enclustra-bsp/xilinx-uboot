@@ -12,7 +12,7 @@
  */
 
 #include <common.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/global_data.h>
 #include <linux/string.h>
 #include <linux/list.h>
@@ -570,6 +570,9 @@ void ipuv3_fb_shutdown(void)
 {
 	int i;
 	struct ipu_stat *stat = (struct ipu_stat *)IPU_STAT;
+
+	if (!ipu_clk_enabled())
+		return;
 
 	for (i = 0; i < ARRAY_SIZE(mxcfb_info); i++) {
 		struct fb_info *fbi = mxcfb_info[i];

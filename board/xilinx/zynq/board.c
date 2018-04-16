@@ -20,6 +20,7 @@
 #include <spi_flash.h>
 #include <enclustra_qspi.h>
 #include <enclustra/eeprom-mac.h>
+#include <asm/arch/ps7_init_gpl.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -40,7 +41,7 @@ static xilinx_desc fpga045 = XILINX_XC7Z045_DESC(0x45);
 static xilinx_desc fpga100 = XILINX_XC7Z100_DESC(0x100);
 #endif
 
-#if defined(CONFIG_MARS_ZX) || defined(CONFIG_MERCURY_ZX)
+#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MERCURY_ZX)
 
 extern void zynq_slcr_unlock(void);
 extern void zynq_slcr_lock(void);
@@ -138,7 +139,7 @@ int zx_set_storage_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 	return CMD_RET_SUCCESS;
 }
 
-#elif defined(CONFIG_MARS_ZX2)
+#elif defined(ENCLUSTRA_MARS_ZX2)
 /* Mars ZX2 do not have NAND flash, so there is no point to change pinmuxes.
  * Just return SUCCESS
  */
@@ -149,7 +150,7 @@ int zx_set_storage_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 }
 #endif
 
-#if defined(CONFIG_MARS_ZX) || defined(CONFIG_MARS_ZX2) || defined(CONFIG_MERCURY_ZX)
+#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX)
 U_BOOT_CMD(zx_set_storage, 2, 0, zx_set_storage_cmd,
 	"Set non volatile memory access",
 	"<NAND|QSPI> - Set access for the selected memory device");
@@ -283,26 +284,26 @@ int board_late_init(void)
 {
 	switch ((zynq_slcr_get_boot_mode()) & ZYNQ_BM_MASK) {
 	case ZYNQ_BM_QSPI:
-		setenv("modeboot", "qspiboot");
+		env_set("modeboot", "qspiboot");
 		break;
 	case ZYNQ_BM_NAND:
-		setenv("modeboot", "nandboot");
+		env_set("modeboot", "nandboot");
 		break;
 	case ZYNQ_BM_NOR:
-		setenv("modeboot", "norboot");
+		env_set("modeboot", "norboot");
 		break;
 	case ZYNQ_BM_SD:
-		setenv("modeboot", "sdboot");
+		env_set("modeboot", "sdboot");
 		break;
 	case ZYNQ_BM_JTAG:
-		setenv("modeboot", "jtagboot");
+		env_set("modeboot", "jtagboot");
 		break;
 	default:
-		setenv("modeboot", "");
+		env_set("modeboot", "");
 		break;
 	}
 
-#if defined(CONFIG_MARS_ZX) || defined(CONFIG_MARS_ZX2) || defined(CONFIG_MERCURY_ZX)
+#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX)
 	int i, ret;
 	u8 hwaddr[6] = {0, 0, 0, 0, 0, 0};
 	u32 hwaddr_h;
@@ -311,7 +312,7 @@ int board_late_init(void)
 
 	hwaddr_set = false;
 
-	if (getenv("ethaddr") == NULL) {
+	if (env_get("ethaddr") == NULL) {
 		/* Init i2c */
 		i2c_init(0, 0);
 		i2c_set_bus_num(0);
@@ -345,12 +346,12 @@ int board_late_init(void)
 				continue;
 
 			/* Set the actual env variable */
-			setenv("ethaddr", hwaddr_str);
+			env_set("ethaddr", hwaddr_str);
 			hwaddr_set = true;
 			break;
 		}
 		if(!hwaddr_set)
-			setenv("ethaddr", ENCLUSTRA_ETHADDR_DEFAULT);
+			env_set("ethaddr", ENCLUSTRA_ETHADDR_DEFAULT);
 	}
 
 #if defined(CONFIG_ZYNQ_QSPI)
@@ -379,7 +380,15 @@ int board_late_init(void)
 #ifdef CONFIG_DISPLAY_BOARDINFO
 int checkboard(void)
 {
+	u32 version = zynq_get_silicon_version();
+
+	version <<= 1;
+	if (version > (PCW_SILICON_VERSION_3 << 1))
+		version += 1;
+
 	puts("Board: Xilinx Zynq\n");
+	printf("Silicon: v%d.%d\n", version >> 1, version & 1);
+
 	return 0;
 }
 #endif
@@ -398,7 +407,7 @@ int zynq_board_read_rom_ethaddr(unsigned char *ethaddr)
 }
 
 /* Setup clock skews for ethernet PHY on Enclustra ZX boards */
-#if defined(CONFIG_MARS_ZX) || defined(CONFIG_MARS_ZX2) || defined(CONFIG_MERCURY_ZX)
+#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX)
 #define ENCLUSTRA_ZX_CLK_SKEW_VAL	0x3FF
 #define ENCLUSTRA_ZX_DATA_SKEW_VAL	0x00
 
@@ -432,121 +441,15 @@ int board_phy_config(struct phy_device *phydev)
 #endif
 
 #if !defined(CONFIG_SYS_SDRAM_BASE) && !defined(CONFIG_SYS_SDRAM_SIZE)
-/*
- * fdt_get_reg - Fill buffer by information from DT
- */
-static phys_size_t fdt_get_reg(const void *fdt, int nodeoffset, void *buf,
-			       const u32 *cell, int n)
+int dram_init_banksize(void)
 {
-	int i = 0, b, banks;
-	int parent_offset = fdt_parent_offset(fdt, nodeoffset);
-	int address_cells = fdt_address_cells(fdt, parent_offset);
-	int size_cells = fdt_size_cells(fdt, parent_offset);
-	char *p = buf;
-	u64 val;
-	u64 vals;
-
-	debug("%s: addr_cells=%x, size_cell=%x, buf=%p, cell=%p\n",
-	      __func__, address_cells, size_cells, buf, cell);
-
-	/* Check memory bank setup */
-	banks = n % (address_cells + size_cells);
-	if (banks)
-		panic("Incorrect memory setup cells=%d, ac=%d, sc=%d\n",
-		      n, address_cells, size_cells);
-
-	banks = n / (address_cells + size_cells);
-
-	for (b = 0; b < banks; b++) {
-		debug("%s: Bank #%d:\n", __func__, b);
-		if (address_cells == 2) {
-			val = cell[i + 1];
-			val <<= 32;
-			val |= cell[i];
-			val = fdt64_to_cpu(val);
-			debug("%s: addr64=%llx, ptr=%p, cell=%p\n",
-			      __func__, val, p, &cell[i]);
-			*(phys_addr_t *)p = val;
-		} else {
-			debug("%s: addr32=%x, ptr=%p\n",
-			      __func__, fdt32_to_cpu(cell[i]), p);
-			*(phys_addr_t *)p = fdt32_to_cpu(cell[i]);
-		}
-		p += sizeof(phys_addr_t);
-		i += address_cells;
-
-		debug("%s: pa=%p, i=%x, size=%zu\n", __func__, p, i,
-		      sizeof(phys_addr_t));
-
-		if (size_cells == 2) {
-			vals = cell[i + 1];
-			vals <<= 32;
-			vals |= cell[i];
-			vals = fdt64_to_cpu(vals);
-
-			debug("%s: size64=%llx, ptr=%p, cell=%p\n",
-			      __func__, vals, p, &cell[i]);
-			*(phys_size_t *)p = vals;
-		} else {
-			debug("%s: size32=%x, ptr=%p\n",
-			      __func__, fdt32_to_cpu(cell[i]), p);
-			*(phys_size_t *)p = fdt32_to_cpu(cell[i]);
-		}
-		p += sizeof(phys_size_t);
-		i += size_cells;
-
-		debug("%s: ps=%p, i=%x, size=%zu\n",
-		      __func__, p, i, sizeof(phys_size_t));
-	}
-
-	/* Return the first address size */
-	return *(phys_size_t *)((char *)buf + sizeof(phys_addr_t));
-}
-
-#define FDT_REG_SIZE  sizeof(u32)
-/* Temp location for sharing data for storing */
-/* Up to 64-bit address + 64-bit size */
-static u8 tmp[CONFIG_NR_DRAM_BANKS * 16];
-
-void dram_init_banksize(void)
-{
-	int bank;
-
-	memcpy(&gd->bd->bi_dram[0], &tmp, sizeof(tmp));
-
-	for (bank = 0; bank < CONFIG_NR_DRAM_BANKS; bank++) {
-		debug("Bank #%d: start %llx\n", bank,
-		      (unsigned long long)gd->bd->bi_dram[bank].start);
-		debug("Bank #%d: size %llx\n", bank,
-		      (unsigned long long)gd->bd->bi_dram[bank].size);
-	}
+	return fdtdec_setup_memory_banksize();
 }
 
 int dram_init(void)
 {
-	int node, len;
-	const void *blob = gd->fdt_blob;
-	const u32 *cell;
-
-	memset(&tmp, 0, sizeof(tmp));
-
-	/* find or create "/memory" node. */
-	node = fdt_subnode_offset(blob, 0, "memory");
-	if (node < 0) {
-		printf("%s: Can't get memory node\n", __func__);
-		return node;
-	}
-
-	/* Get pointer to cells and lenght of it */
-	cell = fdt_getprop(blob, node, "reg", &len);
-	if (!cell) {
-		printf("%s: Can't get reg property\n", __func__);
-		return -1;
-	}
-
-	gd->ram_size = fdt_get_reg(blob, node, &tmp, cell, len / FDT_REG_SIZE);
-
-	debug("%s: Initial DRAM size %llx\n", __func__, (u64)gd->ram_size);
+	if (fdtdec_setup_memory_size() != 0)
+		return -EINVAL;
 
 	zynq_ddrc_init();
 

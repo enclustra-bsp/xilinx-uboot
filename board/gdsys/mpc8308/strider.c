@@ -106,7 +106,7 @@ int fpga_get_reg(u32 fpga, u16 *reg, off_t regoff, u16 *data)
 
 int checkboard(void)
 {
-	char *s = getenv("serial#");
+	char *s = env_get("serial#");
 	bool hw_type_cat = pca9698_get_value(0x20, 18);
 
 	puts("Board: ");
@@ -179,8 +179,17 @@ int last_stage_init(void)
 	}
 
 	if (hw_type_cat) {
-		miiphy_register(bb_miiphy_buses[0].name, bb_miiphy_read,
-				bb_miiphy_write);
+		int retval;
+		struct mii_dev *mdiodev = mdio_alloc();
+		if (!mdiodev)
+			return -ENOMEM;
+		strncpy(mdiodev->name, bb_miiphy_buses[0].name, MDIO_NAME_LEN);
+		mdiodev->read = bb_miiphy_read;
+		mdiodev->write = bb_miiphy_write;
+
+		retval = mdio_register(mdiodev);
+		if (retval < 0)
+			return retval;
 		for (mux_ch = 0; mux_ch < MAX_MUX_CHANNELS; ++mux_ch) {
 			if ((mux_ch == 1) && !ch0_sgmii2_present)
 				continue;
@@ -252,8 +261,18 @@ int last_stage_init(void)
 		dp501_probe(k, false);
 #endif
 		if (hw_type_cat) {
-			miiphy_register(bb_miiphy_buses[k].name,
-					bb_miiphy_read, bb_miiphy_write);
+			int retval;
+			struct mii_dev *mdiodev = mdio_alloc();
+			if (!mdiodev)
+				return -ENOMEM;
+			strncpy(mdiodev->name, bb_miiphy_buses[k].name,
+				MDIO_NAME_LEN);
+			mdiodev->read = bb_miiphy_read;
+			mdiodev->write = bb_miiphy_write;
+
+			retval = mdio_register(mdiodev);
+			if (retval < 0)
+				return retval;
 			setup_88e1514(bb_miiphy_buses[k].name, 0);
 		}
 	}
@@ -394,7 +413,7 @@ ulong board_flash_get_legacy(ulong base, int banknum, flash_info_t *info)
 int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
-	fdt_fixup_dr_usb(blob, bd);
+	fsl_fdt_fixup_dr_usb(blob, bd);
 	fdt_fixup_esdhc(blob, bd);
 
 	return 0;

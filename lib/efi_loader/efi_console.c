@@ -7,14 +7,49 @@
  */
 
 #include <common.h>
+#include <charset.h>
+#include <dm/device.h>
 #include <efi_loader.h>
+#include <stdio_dev.h>
+#include <video_console.h>
 
-/* If we can't determine the console size, default to 80x24 */
-static int console_columns = 80;
-static int console_rows = 24;
 static bool console_size_queried;
 
+#define EFI_COUT_MODE_2 2
+#define EFI_MAX_COUT_MODE 3
+
+struct cout_mode {
+	unsigned long columns;
+	unsigned long rows;
+	int present;
+};
+
+static struct cout_mode efi_cout_modes[] = {
+	/* EFI Mode 0 is 80x25 and always present */
+	{
+		.columns = 80,
+		.rows = 25,
+		.present = 1,
+	},
+	/* EFI Mode 1 is always 80x50 */
+	{
+		.columns = 80,
+		.rows = 50,
+		.present = 0,
+	},
+	/* Value are unknown until we query the console */
+	{
+		.columns = 0,
+		.rows = 0,
+		.present = 0,
+	},
+};
+
 const efi_guid_t efi_guid_console_control = CONSOLE_CONTROL_GUID;
+const efi_guid_t efi_guid_text_output_protocol =
+			EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL_GUID;
+const efi_guid_t efi_guid_text_input_protocol =
+			EFI_SIMPLE_TEXT_INPUT_PROTOCOL_GUID;
 
 #define cESC '\x1b'
 #define ESC "\x1b"
@@ -50,14 +85,15 @@ static efi_status_t EFIAPI efi_cin_lock_std_in(
 	return EFI_EXIT(EFI_UNSUPPORTED);
 }
 
-const struct efi_console_control_protocol efi_console_control = {
+struct efi_console_control_protocol efi_console_control = {
 	.get_mode = efi_cin_get_mode,
 	.set_mode = efi_cin_set_mode,
 	.lock_std_in = efi_cin_lock_std_in,
 };
 
+/* Default to mode 0 */
 static struct simple_text_output_mode efi_con_mode = {
-	.max_mode = 0,
+	.max_mode = 1,
 	.mode = 0,
 	.attribute = 0,
 	.cursor_column = 0,
@@ -108,45 +144,46 @@ static efi_status_t EFIAPI efi_cout_reset(
 	return EFI_EXIT(EFI_UNSUPPORTED);
 }
 
-static void print_unicode_in_utf8(u16 c)
-{
-	char utf8[4] = { 0 };
-	char *b = utf8;
-
-	if (c < 0x80) {
-		*(b++) = c;
-	} else if (c < 0x800) {
-		*(b++) = 192 + c / 64;
-		*(b++) = 128 + c % 64;
-	} else {
-		*(b++) = 224 + c / 4096;
-		*(b++) = 128 + c / 64 % 64;
-		*(b++) = 128 + c % 64;
-	}
-
-	puts(utf8);
-}
-
 static efi_status_t EFIAPI efi_cout_output_string(
 			struct efi_simple_text_output_protocol *this,
-			const unsigned short *string)
+			const efi_string_t string)
 {
-	u16 ch;
+	struct simple_text_output_mode *con = &efi_con_mode;
+	struct cout_mode *mode = &efi_cout_modes[con->mode];
 
 	EFI_ENTRY("%p, %p", this, string);
-	for (;(ch = *string); string++) {
-		print_unicode_in_utf8(ch);
-		efi_con_mode.cursor_column++;
-		if (ch == '\n') {
-			efi_con_mode.cursor_column = 1;
-			efi_con_mode.cursor_row++;
-		} else if (efi_con_mode.cursor_column > console_columns) {
-			efi_con_mode.cursor_column = 1;
-			efi_con_mode.cursor_row++;
+
+	unsigned int n16 = utf16_strlen(string);
+	char buf[MAX_UTF8_PER_UTF16 * n16 + 1];
+	char *p;
+
+	*utf16_to_utf8((u8 *)buf, string, n16) = '\0';
+
+	fputs(stdout, buf);
+
+	for (p = buf; *p; p++) {
+		switch (*p) {
+		case '\r':   /* carriage-return */
+			con->cursor_column = 0;
+			break;
+		case '\n':   /* newline */
+			con->cursor_column = 0;
+			con->cursor_row++;
+			break;
+		case '\t':   /* tab, assume 8 char align */
+			break;
+		case '\b':   /* backspace */
+			con->cursor_column = max(0, con->cursor_column - 1);
+			break;
+		default:
+			con->cursor_column++;
+			break;
 		}
-		if (efi_con_mode.cursor_row > console_rows) {
-			efi_con_mode.cursor_row = console_rows;
+		if (con->cursor_column >= mode->columns) {
+			con->cursor_column = 0;
+			con->cursor_row++;
 		}
+		con->cursor_row = min(con->cursor_row, (s32)mode->rows - 1);
 	}
 
 	return EFI_EXIT(EFI_SUCCESS);
@@ -154,10 +191,46 @@ static efi_status_t EFIAPI efi_cout_output_string(
 
 static efi_status_t EFIAPI efi_cout_test_string(
 			struct efi_simple_text_output_protocol *this,
-			const unsigned short *string)
+			const efi_string_t string)
 {
 	EFI_ENTRY("%p, %p", this, string);
 	return EFI_EXIT(EFI_SUCCESS);
+}
+
+static bool cout_mode_matches(struct cout_mode *mode, int rows, int cols)
+{
+	if (!mode->present)
+		return false;
+
+	return (mode->rows == rows) && (mode->columns == cols);
+}
+
+static int query_console_serial(int *rows, int *cols)
+{
+	/* Ask the terminal about its size */
+	int n[3];
+	u64 timeout;
+
+	/* Empty input buffer */
+	while (tstc())
+		getc();
+
+	printf(ESC"[18t");
+
+	/* Check if we have a terminal that understands */
+	timeout = timer_get_us() + 1000000;
+	while (!tstc())
+		if (timer_get_us() > timeout)
+			return -1;
+
+	/* Read {depth,rows,cols} */
+	if (term_read_reply(n, 3, 't'))
+		return -1;
+
+	*cols = n[2];
+	*rows = n[1];
+
+	return 0;
 }
 
 static efi_status_t EFIAPI efi_cout_query_mode(
@@ -168,38 +241,55 @@ static efi_status_t EFIAPI efi_cout_query_mode(
 	EFI_ENTRY("%p, %ld, %p, %p", this, mode_number, columns, rows);
 
 	if (!console_size_queried) {
-		/* Ask the terminal about its size */
-		int n[3];
-		u64 timeout;
+		const char *stdout_name = env_get("stdout");
+		int rows, cols;
 
 		console_size_queried = true;
 
-		/* Empty input buffer */
-		while (tstc())
-			getc();
-
-		printf(ESC"[18t");
-
-		/* Check if we have a terminal that understands */
-		timeout = timer_get_us() + 1000000;
-		while (!tstc())
-			if (timer_get_us() > timeout)
-				goto out;
-
-		/* Read {depth,rows,cols} */
-		if (term_read_reply(n, 3, 't')) {
+		if (stdout_name && !strcmp(stdout_name, "vidconsole") &&
+		    IS_ENABLED(CONFIG_DM_VIDEO)) {
+			struct stdio_dev *stdout_dev =
+				stdio_get_by_name("vidconsole");
+			struct udevice *dev = stdout_dev->priv;
+			struct vidconsole_priv *priv =
+				dev_get_uclass_priv(dev);
+			rows = priv->rows;
+			cols = priv->cols;
+		} else if (query_console_serial(&rows, &cols)) {
 			goto out;
 		}
 
-		console_columns = n[2];
-		console_rows = n[1];
+		/* Test if we can have Mode 1 */
+		if (cols >= 80 && rows >= 50) {
+			efi_cout_modes[1].present = 1;
+			efi_con_mode.max_mode = 2;
+		}
+
+		/*
+		 * Install our mode as mode 2 if it is different
+		 * than mode 0 or 1 and set it  as the currently selected mode
+		 */
+		if (!cout_mode_matches(&efi_cout_modes[0], rows, cols) &&
+		    !cout_mode_matches(&efi_cout_modes[1], rows, cols)) {
+			efi_cout_modes[EFI_COUT_MODE_2].columns = cols;
+			efi_cout_modes[EFI_COUT_MODE_2].rows = rows;
+			efi_cout_modes[EFI_COUT_MODE_2].present = 1;
+			efi_con_mode.max_mode = EFI_MAX_COUT_MODE;
+			efi_con_mode.mode = EFI_COUT_MODE_2;
+		}
 	}
+
+	if (mode_number >= efi_con_mode.max_mode)
+		return EFI_EXIT(EFI_UNSUPPORTED);
+
+	if (efi_cout_modes[mode_number].present != 1)
+		return EFI_EXIT(EFI_UNSUPPORTED);
 
 out:
 	if (columns)
-		*columns = console_columns;
+		*columns = efi_cout_modes[mode_number].columns;
 	if (rows)
-		*rows = console_rows;
+		*rows = efi_cout_modes[mode_number].rows;
 
 	return EFI_EXIT(EFI_SUCCESS);
 }
@@ -210,21 +300,48 @@ static efi_status_t EFIAPI efi_cout_set_mode(
 {
 	EFI_ENTRY("%p, %ld", this, mode_number);
 
-	/* We only support text output for now */
-	if (mode_number == EFI_CONSOLE_MODE_TEXT)
-		return EFI_EXIT(EFI_SUCCESS);
 
-	return EFI_EXIT(EFI_UNSUPPORTED);
+	if (mode_number > efi_con_mode.max_mode)
+		return EFI_EXIT(EFI_UNSUPPORTED);
+
+	efi_con_mode.mode = mode_number;
+	efi_con_mode.cursor_column = 0;
+	efi_con_mode.cursor_row = 0;
+
+	return EFI_EXIT(EFI_SUCCESS);
 }
 
+static const struct {
+	unsigned int fg;
+	unsigned int bg;
+} color[] = {
+	{ 30, 40 },     /* 0: black */
+	{ 34, 44 },     /* 1: blue */
+	{ 32, 42 },     /* 2: green */
+	{ 36, 46 },     /* 3: cyan */
+	{ 31, 41 },     /* 4: red */
+	{ 35, 45 },     /* 5: magenta */
+	{ 33, 43 },     /* 6: brown, map to yellow as edk2 does*/
+	{ 37, 47 },     /* 7: light grey, map to white */
+};
+
+/* See EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.SetAttribute(). */
 static efi_status_t EFIAPI efi_cout_set_attribute(
 			struct efi_simple_text_output_protocol *this,
 			unsigned long attribute)
 {
+	unsigned int bold = EFI_ATTR_BOLD(attribute);
+	unsigned int fg = EFI_ATTR_FG(attribute);
+	unsigned int bg = EFI_ATTR_BG(attribute);
+
 	EFI_ENTRY("%p, %lx", this, attribute);
 
-	/* Just ignore attributes (colors) for now */
-	return EFI_EXIT(EFI_UNSUPPORTED);
+	if (attribute)
+		printf(ESC"[%u;%u;%um", bold, color[fg].fg, color[bg].bg);
+	else
+		printf(ESC"[0;37;40m");
+
+	return EFI_EXIT(EFI_SUCCESS);
 }
 
 static efi_status_t EFIAPI efi_cout_clear_screen(
@@ -261,7 +378,7 @@ static efi_status_t EFIAPI efi_cout_enable_cursor(
 	return EFI_EXIT(EFI_SUCCESS);
 }
 
-const struct efi_simple_text_output_protocol efi_con_out = {
+struct efi_simple_text_output_protocol efi_con_out = {
 	.reset = efi_cout_reset,
 	.output_string = efi_cout_output_string,
 	.test_string = efi_cout_test_string,
@@ -353,8 +470,81 @@ static efi_status_t EFIAPI efi_cin_read_key_stroke(
 	return EFI_EXIT(EFI_SUCCESS);
 }
 
-const struct efi_simple_input_interface efi_con_in = {
+struct efi_simple_input_interface efi_con_in = {
 	.reset = efi_cin_reset,
 	.read_key_stroke = efi_cin_read_key_stroke,
 	.wait_for_key = NULL,
 };
+
+static struct efi_event *console_timer_event;
+
+static void EFIAPI efi_key_notify(struct efi_event *event, void *context)
+{
+}
+
+static void EFIAPI efi_console_timer_notify(struct efi_event *event,
+					    void *context)
+{
+	EFI_ENTRY("%p, %p", event, context);
+	if (tstc()) {
+		efi_con_in.wait_for_key->is_signaled = true;
+		efi_signal_event(efi_con_in.wait_for_key);
+		}
+	EFI_EXIT(EFI_SUCCESS);
+}
+
+
+/* This gets called from do_bootefi_exec(). */
+int efi_console_register(void)
+{
+	efi_status_t r;
+	struct efi_object *efi_console_control_obj;
+	struct efi_object *efi_console_output_obj;
+	struct efi_object *efi_console_input_obj;
+
+	/* Create handles */
+	r = efi_create_handle((void **)&efi_console_control_obj);
+	if (r != EFI_SUCCESS)
+		goto out_of_memory;
+	r = efi_add_protocol(efi_console_control_obj->handle,
+			     &efi_guid_console_control, &efi_console_control);
+	if (r != EFI_SUCCESS)
+		goto out_of_memory;
+	r = efi_create_handle((void **)&efi_console_output_obj);
+	if (r != EFI_SUCCESS)
+		goto out_of_memory;
+	r = efi_add_protocol(efi_console_output_obj->handle,
+			     &efi_guid_text_output_protocol, &efi_con_out);
+	if (r != EFI_SUCCESS)
+		goto out_of_memory;
+	r = efi_create_handle((void **)&efi_console_input_obj);
+	if (r != EFI_SUCCESS)
+		goto out_of_memory;
+	r = efi_add_protocol(efi_console_input_obj->handle,
+			     &efi_guid_text_input_protocol, &efi_con_in);
+	if (r != EFI_SUCCESS)
+		goto out_of_memory;
+
+	/* Create console events */
+	r = efi_create_event(EVT_NOTIFY_WAIT, TPL_CALLBACK,
+			     efi_key_notify, NULL, &efi_con_in.wait_for_key);
+	if (r != EFI_SUCCESS) {
+		printf("ERROR: Failed to register WaitForKey event\n");
+		return r;
+	}
+	r = efi_create_event(EVT_TIMER | EVT_NOTIFY_SIGNAL, TPL_CALLBACK,
+			     efi_console_timer_notify, NULL,
+			     &console_timer_event);
+	if (r != EFI_SUCCESS) {
+		printf("ERROR: Failed to register console event\n");
+		return r;
+	}
+	/* 5000 ns cycle is sufficient for 2 MBaud */
+	r = efi_set_timer(console_timer_event, EFI_TIMER_PERIODIC, 50);
+	if (r != EFI_SUCCESS)
+		printf("ERROR: Failed to set console timer\n");
+	return r;
+out_of_memory:
+	printf("ERROR: Out of meemory\n");
+	return r;
+}

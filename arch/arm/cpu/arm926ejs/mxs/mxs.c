@@ -11,10 +11,10 @@
  */
 
 #include <common.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
-#include <asm/imx-common/dma.h>
+#include <asm/mach-imx/dma.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/imx-regs.h>

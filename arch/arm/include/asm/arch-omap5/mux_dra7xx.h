@@ -12,20 +12,6 @@
 
 #include <asm/types.h>
 
-#define FSC	(1 << 19)
-#define SSC	(0 << 19)
-
-#define IEN	(1 << 18)
-#define IDIS	(0 << 18)
-
-#define PTU	(1 << 17)
-#define PTD	(0 << 17)
-#define PEN	(1 << 16)
-#define PDIS	(0 << 16)
-
-#define WKEN	(1 << 24)
-#define WKDIS	(0 << 24)
-
 #define PULL_ENA		(0 << 16)
 #define PULL_DIS		(1 << 16)
 #define PULL_UP			(1 << 17)
@@ -362,7 +348,7 @@
 #define EMU3		0x454
 #define EMU4		0x458
 #define RESETN		0x45C
-#define NMIN		0x460
+#define NMIN_DSP	0x460
 #define RSTOUTN		0x464
 
 #endif /* _MUX_DRA7XX_H_ */

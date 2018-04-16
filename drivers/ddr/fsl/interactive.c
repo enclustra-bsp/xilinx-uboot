@@ -154,7 +154,9 @@ static void lowest_common_dimm_parameters_edit(fsl_ddr_info_t *pinfo,
 	static const struct options_string options[] = {
 		COMMON_TIMING(tckmin_x_ps),
 		COMMON_TIMING(tckmax_ps),
+#if defined(CONFIG_SYS_FSL_DDR3) || defined(CONFIG_SYS_FSL_DDR4)
 		COMMON_TIMING(taamin_ps),
+#endif
 		COMMON_TIMING(trcd_ps),
 		COMMON_TIMING(trp_ps),
 		COMMON_TIMING(tras_ps),
@@ -422,7 +424,9 @@ static void print_lowest_common_dimm_parameters(
 		const common_timing_params_t *plcd_dimm_params)
 {
 	static const struct options_string options[] = {
+#if defined(CONFIG_SYS_FSL_DDR3) || defined(CONFIG_SYS_FSL_DDR4)
 		COMMON_TIMING(taamin_ps),
+#endif
 		COMMON_TIMING(trcd_ps),
 		COMMON_TIMING(trp_ps),
 		COMMON_TIMING(tras_ps),
@@ -670,7 +674,7 @@ static void print_fsl_memctl_config_regs(const fsl_ddr_cfg_regs_t *ddr)
 
 	print_option_table(options, n_opts, ddr);
 
-	for (i = 0; i < 32; i++)
+	for (i = 0; i < 64; i++)
 		printf("debug_%02d = 0x%08X\n", i+1, ddr->debug[i]);
 }
 
@@ -763,7 +767,7 @@ static void fsl_ddr_regs_edit(fsl_ddr_info_t *pinfo,
 	debug("fsl_ddr_regs_edit: ctrl_num = %u, "
 		"regname = %s, value = %s\n",
 		ctrl_num, regname, value_str);
-	if (ctrl_num > CONFIG_NUM_DDR_CONTROLLERS)
+	if (ctrl_num > CONFIG_SYS_NUM_DDR_CTLRS)
 		return;
 
 	ddr = &(pinfo->fsl_ddr_config_reg[ctrl_num]);
@@ -771,7 +775,7 @@ static void fsl_ddr_regs_edit(fsl_ddr_info_t *pinfo,
 	if (handle_option_table(options, n_opts, ddr, regname, value_str))
 		return;
 
-	for (i = 0; i < 32; i++) {
+	for (i = 0; i < 64; i++) {
 		unsigned int value = simple_strtoul(value_str, NULL, 0);
 		sprintf(buf, "debug_%u", i + 1);
 		if (strcmp(buf, regname) == 0) {
@@ -1685,7 +1689,7 @@ static void fsl_ddr_printinfo(const fsl_ddr_info_t *pinfo,
 
 	/* STEP 1:  DIMM SPD data */
 	if (do_mask & STEP_GET_SPD) {
-		for (i = 0; i < CONFIG_NUM_DDR_CONTROLLERS; i++) {
+		for (i = 0; i < CONFIG_SYS_NUM_DDR_CTLRS; i++) {
 			if (!(ctrl_mask & (1 << i)))
 				continue;
 
@@ -1706,7 +1710,7 @@ static void fsl_ddr_printinfo(const fsl_ddr_info_t *pinfo,
 
 	/* STEP 2:  DIMM Parameters */
 	if (do_mask & STEP_COMPUTE_DIMM_PARMS) {
-		for (i = 0; i < CONFIG_NUM_DDR_CONTROLLERS; i++) {
+		for (i = 0; i < CONFIG_SYS_NUM_DDR_CTLRS; i++) {
 			if (!(ctrl_mask & (1 << i)))
 				continue;
 			for (j = 0; j < CONFIG_DIMM_SLOTS_PER_CTLR; j++) {
@@ -1725,7 +1729,7 @@ static void fsl_ddr_printinfo(const fsl_ddr_info_t *pinfo,
 
 	/* STEP 3:  Common Parameters */
 	if (do_mask & STEP_COMPUTE_COMMON_PARMS) {
-		for (i = 0; i < CONFIG_NUM_DDR_CONTROLLERS; i++) {
+		for (i = 0; i < CONFIG_SYS_NUM_DDR_CTLRS; i++) {
 			if (!(ctrl_mask & (1 << i)))
 				continue;
 			printf("\"lowest common\" DIMM parameters:  "
@@ -1739,7 +1743,7 @@ static void fsl_ddr_printinfo(const fsl_ddr_info_t *pinfo,
 
 	/* STEP 4:  User Configuration Options */
 	if (do_mask & STEP_GATHER_OPTS) {
-		for (i = 0; i < CONFIG_NUM_DDR_CONTROLLERS; i++) {
+		for (i = 0; i < CONFIG_SYS_NUM_DDR_CTLRS; i++) {
 			if (!(ctrl_mask & (1 << i)))
 				continue;
 			printf("User Config Options: Controller=%u\n", i);
@@ -1751,7 +1755,7 @@ static void fsl_ddr_printinfo(const fsl_ddr_info_t *pinfo,
 
 	/* STEP 5:  Address assignment */
 	if (do_mask & STEP_ASSIGN_ADDRESSES) {
-		for (i = 0; i < CONFIG_NUM_DDR_CONTROLLERS; i++) {
+		for (i = 0; i < CONFIG_SYS_NUM_DDR_CTLRS; i++) {
 			if (!(ctrl_mask & (1 << i)))
 				continue;
 			for (j = 0; j < CONFIG_DIMM_SLOTS_PER_CTLR; j++) {
@@ -1766,7 +1770,7 @@ static void fsl_ddr_printinfo(const fsl_ddr_info_t *pinfo,
 
 	/* STEP 6:  computed controller register values */
 	if (do_mask & STEP_COMPUTE_REGS) {
-		for (i = 0; i < CONFIG_NUM_DDR_CONTROLLERS; i++) {
+		for (i = 0; i < CONFIG_SYS_NUM_DDR_CTLRS; i++) {
 			if (!(ctrl_mask & (1 << i)))
 				continue;
 			printf("Computed Register Values: Controller=%u\n", i);
@@ -1857,7 +1861,7 @@ int fsl_ddr_interactive_env_var_exists(void)
 {
 	char buffer[CONFIG_SYS_CBSIZE];
 
-	if (getenv_f("ddr_interactive", buffer, CONFIG_SYS_CBSIZE) >= 0)
+	if (env_get_f("ddr_interactive", buffer, CONFIG_SYS_CBSIZE) >= 0)
 		return 1;
 
 	return 0;
@@ -1887,11 +1891,11 @@ unsigned long long fsl_ddr_interactive(fsl_ddr_info_t *pinfo, int var_is_set)
 	};
 
 	if (var_is_set) {
-		if (getenv_f("ddr_interactive", buffer2, CONFIG_SYS_CBSIZE) > 0) {
+		if (env_get_f("ddr_interactive", buffer2,
+			      CONFIG_SYS_CBSIZE) > 0)
 			p = buffer2;
-		} else {
+		else
 			var_is_set = 0;
-		}
 	}
 
 	/*

@@ -23,8 +23,6 @@
 /*
  * Commands configuration
  */
-#define CONFIG_SYS_NO_FLASH		/* Declare no flash (NOR/SPI) */
-#define CONFIG_CMD_ENV
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -38,7 +36,6 @@
 #define CONFIG_SF_DEFAULT_MODE		SPI_MODE_3
 
 /* Environment in SPI NOR flash */
-#define CONFIG_ENV_IS_IN_SPI_FLASH
 #define CONFIG_ENV_OFFSET		0x7E0000   /* RedBoot config partition in DTS */
 #define CONFIG_ENV_SIZE			(64 << 10) /* 64KiB */
 #define CONFIG_ENV_SECT_SIZE		(64 << 10) /* 64KiB sectors */
@@ -51,16 +48,12 @@
 
 /* PCIe support */
 #ifndef CONFIG_SPL_BUILD
-#define CONFIG_PCI
-#define CONFIG_CMD_PCI
-#define CONFIG_CMD_PCI_ENUM
 #define CONFIG_PCI_MVEBU
 #define CONFIG_PCI_SCAN_SHOW
 #endif
 
 /* USB/EHCI/XHCI configuration */
 
-#define CONFIG_DM_USB
 #define CONFIG_USB_MAX_CONTROLLER_COUNT 2
 
 /* FIXME: broken XHCI support
@@ -69,22 +62,12 @@
  * - xhci-pci seems to not support DM_USB, so with that enabled it is not
  *   found.
  * - USB init fails, controller does not respond in time */
-#if 0
-#undef CONFIG_DM_USB
-#define CONFIG_USB_XHCI_PCI
-#define CONFIG_SYS_USB_XHCI_MAX_ROOT_PORTS 2
-#endif
 
 #if !defined(CONFIG_USB_XHCI_HCD)
-#define CONFIG_USB_EHCI
-#define CONFIG_USB_EHCI_MARVELL
 #define CONFIG_EHCI_IS_TDI
 #endif
 
 /* why is this only defined in mv-common.h if CONFIG_DM is undefined? */
-#define CONFIG_USB_STORAGE
-#define CONFIG_DOS_PARTITION
-#define CONFIG_ISO_PARTITION
 #define CONFIG_SUPPORT_VFAT
 #define CONFIG_SYS_MVFS
 
@@ -123,17 +106,8 @@
 #define CONFIG_SPL_STACK		(0x40000000 + ((192 - 16) << 10))
 #define CONFIG_SPL_BOOTROM_SAVE		(CONFIG_SPL_STACK + 4)
 
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
-#define CONFIG_SPL_SERIAL_SUPPORT
-#define CONFIG_SPL_I2C_SUPPORT
-
 /* SPL related SPI defines */
-#define CONFIG_SPL_SPI_SUPPORT
-#define CONFIG_SPL_SPI_FLASH_SUPPORT
 #define CONFIG_SPL_SPI_LOAD
-#define CONFIG_SPL_SPI_BUS		0
-#define CONFIG_SPL_SPI_CS		0
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	0x24000
 
 /* DS414 bus width is 32bits */
@@ -145,7 +119,6 @@
 
 /* Default Environment */
 #define CONFIG_BOOTCOMMAND	"sf read ${loadaddr} 0xd0000 0x700000; bootm"
-#define CONFIG_BOOTARGS		"console=ttyS0,115200"
 #define CONFIG_LOADADDR		0x80000
 #undef CONFIG_PREBOOT		/* override preboot for USB and SPI flash init */
 #define CONFIG_PREBOOT		"usb start; sf probe"

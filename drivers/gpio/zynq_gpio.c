@@ -12,7 +12,7 @@
 #include <common.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <dm.h>
 #include <fdtdec.h>
 
@@ -375,7 +375,7 @@ static int zynq_gpio_ofdata_to_platdata(struct udevice *dev)
 {
 	struct zynq_gpio_privdata *priv = dev_get_priv(dev);
 
-	priv->base = dev_get_addr(dev);
+	priv->base = devfdt_get_addr(dev);
 
 	return 0;
 }

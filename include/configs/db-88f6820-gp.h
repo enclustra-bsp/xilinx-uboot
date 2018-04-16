@@ -24,10 +24,6 @@
 /*
  * Commands configuration
  */
-#define CONFIG_SYS_NO_FLASH		/* Declare no flash (NOR/SPI) */
-#define CONFIG_CMD_ENV
-#define CONFIG_CMD_PCI
-#define CONFIG_SCSI
 
 /* I2C */
 #define CONFIG_SYS_I2C
@@ -43,18 +39,11 @@
 /*
  * SDIO/MMC Card Configuration
  */
-#define CONFIG_MMC
-#define CONFIG_MMC_SDMA
-#define CONFIG_GENERIC_MMC
-#define CONFIG_SDHCI
-#define CONFIG_MV_SDHCI
 #define CONFIG_SYS_MMC_BASE		MVEBU_SDIO_BASE
 
 /*
  * SATA/SCSI/AHCI configuration
  */
-#define CONFIG_LIBATA
-#define CONFIG_SCSI_AHCI
 #define CONFIG_SCSI_AHCI_PLAT
 #define CONFIG_SYS_SCSI_MAX_SCSI_ID	2
 #define CONFIG_SYS_SCSI_MAX_LUN		1
@@ -62,8 +51,6 @@
 					 CONFIG_SYS_SCSI_MAX_LUN)
 
 /* Partition support */
-#define CONFIG_DOS_PARTITION
-#define CONFIG_EFI_PARTITION
 
 /* Additional FS support/configuration */
 #define CONFIG_SUPPORT_VFAT
@@ -72,7 +59,6 @@
 #define CONFIG_EHCI_IS_TDI
 
 /* Environment in SPI NOR flash */
-#define CONFIG_ENV_IS_IN_SPI_FLASH
 #define CONFIG_ENV_OFFSET		(1 << 20) /* 1MiB in */
 #define CONFIG_ENV_SIZE			(64 << 10) /* 64KiB */
 #define CONFIG_ENV_SECT_SIZE		(256 << 10) /* 256KiB sectors */
@@ -82,13 +68,10 @@
 
 /* PCIe support */
 #ifndef CONFIG_SPL_BUILD
-#define CONFIG_PCI
 #define CONFIG_PCI_MVEBU
-#define CONFIG_PCI_PNP
 #define CONFIG_PCI_SCAN_SHOW
 #endif
 
-#define CONFIG_SYS_CONSOLE_INFO_QUIET	/* don't print console @ startup */
 #define CONFIG_SYS_ALT_MEMTEST
 
 /* Keep device tree and initrd in lower memory so the kernel can access them */
@@ -124,31 +107,17 @@
 #define CONFIG_SPL_STACK		(0x40000000 + ((192 - 16) << 10))
 #define CONFIG_SPL_BOOTROM_SAVE		(CONFIG_SPL_STACK + 4)
 
-#define CONFIG_SPL_LIBCOMMON_SUPPORT
-#define CONFIG_SPL_LIBGENERIC_SUPPORT
-#define CONFIG_SPL_SERIAL_SUPPORT
-#define CONFIG_SPL_I2C_SUPPORT
-
 #if CONFIG_SPL_BOOT_DEVICE == SPL_BOOT_SPI_NOR_FLASH
 /* SPL related SPI defines */
-#define CONFIG_SPL_SPI_SUPPORT
-#define CONFIG_SPL_SPI_FLASH_SUPPORT
 #define CONFIG_SPL_SPI_LOAD
-#define CONFIG_SPL_SPI_BUS		0
-#define CONFIG_SPL_SPI_CS		0
 #define CONFIG_SYS_SPI_U_BOOT_OFFS	0x24000
 #define CONFIG_SYS_U_BOOT_OFFS		CONFIG_SYS_SPI_U_BOOT_OFFS
 #endif
 
 #if CONFIG_SPL_BOOT_DEVICE == SPL_BOOT_SDIO_MMC_CARD
 /* SPL related MMC defines */
-#define CONFIG_SPL_MMC_SUPPORT
-#define CONFIG_SPL_LIBDISK_SUPPORT
-#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION 1
 #define CONFIG_SYS_MMC_U_BOOT_OFFS		(160 << 10)
 #define CONFIG_SYS_U_BOOT_OFFS			CONFIG_SYS_MMC_U_BOOT_OFFS
-#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR	(CONFIG_SYS_U_BOOT_OFFS / 512)
-#define CONFIG_SYS_U_BOOT_MAX_SIZE_SECTORS	((512 << 10) / 512) /* 512KiB */
 #ifdef CONFIG_SPL_BUILD
 #define CONFIG_FIXED_SDHCI_ALIGNED_BUFFER	0x00180000	/* in SDRAM */
 #endif

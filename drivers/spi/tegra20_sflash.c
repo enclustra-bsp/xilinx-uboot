@@ -88,10 +88,10 @@ static int tegra20_sflash_ofdata_to_platdata(struct udevice *bus)
 {
 	struct tegra_spi_platdata *plat = bus->platdata;
 	const void *blob = gd->fdt_blob;
-	int node = bus->of_offset;
+	int node = dev_of_offset(bus);
 
-	plat->base = dev_get_addr(bus);
-	plat->periph_id = clock_decode_periph_id(blob, node);
+	plat->base = devfdt_get_addr(bus);
+	plat->periph_id = clock_decode_periph_id(bus);
 
 	if (plat->periph_id == PERIPH_ID_NONE) {
 		debug("%s: could not decode periph id %d\n", __func__,
@@ -121,6 +121,10 @@ static int tegra20_sflash_probe(struct udevice *bus)
 	priv->last_transaction_us = timer_get_us();
 	priv->freq = plat->frequency;
 	priv->periph_id = plat->periph_id;
+
+	/* Change SPI clock to correct frequency, PLLP_OUT0 source */
+	clock_start_periph_pll(priv->periph_id, CLOCK_ID_PERIPH,
+			       priv->freq);
 
 	return 0;
 }

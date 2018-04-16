@@ -54,6 +54,9 @@ static ulong alloc_fb(struct udevice *dev, ulong *addrp)
 	struct video_uc_platdata *plat = dev_get_uclass_platdata(dev);
 	ulong base, align, size;
 
+	if (!plat->size)
+		return 0;
+
 	align = plat->align ? plat->align : 1 << 20;
 	base = *addrp - plat->size;
 	base &= ~(align - 1);
@@ -84,7 +87,7 @@ int video_reserve(ulong *addrp)
 	return 0;
 }
 
-static int video_clear(struct udevice *dev)
+void video_clear(struct udevice *dev)
 {
 	struct video_priv *priv = dev_get_uclass_priv(dev);
 
@@ -97,8 +100,6 @@ static int video_clear(struct udevice *dev)
 	} else {
 		memset(priv->fb, priv->colour_bg, priv->fb_size);
 	}
-
-	return 0;
 }
 
 /* Flush video activity to the caches */
@@ -114,7 +115,8 @@ void video_sync(struct udevice *vid)
 
 	if (priv->flush_dcache) {
 		flush_dcache_range((ulong)priv->fb,
-				   (ulong)priv->fb + priv->fb_size);
+				   ALIGN((ulong)priv->fb + priv->fb_size,
+					 CONFIG_SYS_CACHELINE_SIZE));
 	}
 #elif defined(CONFIG_VIDEO_SANDBOX_SDL)
 	struct video_priv *priv = dev_get_uclass_priv(vid);
@@ -195,7 +197,9 @@ static int video_post_probe(struct udevice *dev)
 #else
 	priv->colour_bg = 0xffffff;
 #endif
-	video_clear(dev);
+
+	if (!CONFIG_IS_ENABLED(NO_FB_CLEAR))
+		video_clear(dev);
 
 	/*
 	 * Create a text console device. For now we always do this, although

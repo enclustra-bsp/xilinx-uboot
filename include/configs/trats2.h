@@ -35,15 +35,11 @@
 
 /* select serial console configuration */
 #define CONFIG_SERIAL2
-#define CONFIG_BAUDRATE			115200
 
 /* Console configuration */
-#define CONFIG_SYS_CONSOLE_INFO_QUIET
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV
 
-#define CONFIG_BOOTARGS			"Please use defined boot"
 #define CONFIG_BOOTCOMMAND		"run autoboot"
-#define CONFIG_DEFAULT_CONSOLE		"console=ttySAC2,115200n8\0"
+#define CONFIG_DEFAULT_CONSOLE		"ttySAC2,115200n8"
 
 #define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_LOAD_ADDR \
 					- GENERATED_GBL_DATA_SIZE)
@@ -52,7 +48,6 @@
 
 #define CONFIG_SYS_MONITOR_BASE	0x00000000
 
-#define CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV		CONFIG_MMC_DEFAULT_DEV
 #define CONFIG_ENV_SIZE			4096
 #define CONFIG_ENV_OFFSET		((32 - 4) << 10) /* 32KiB - 4KiB */
@@ -116,7 +111,7 @@
 	"boottrace=setenv opts initcall_debug; run bootcmd\0" \
 	"verify=n\0" \
 	"rootfstype=ext4\0" \
-	"console=" CONFIG_DEFAULT_CONSOLE \
+	"console=" CONFIG_DEFAULT_CONSOLE "\0" \
 	"kernelname=uImage\0" \
 	"loaduimage=ext4load mmc ${mmcdev}:${mmcbootpart} 0x40007FC0 " \
 		"${kernelname}\0" \
@@ -155,40 +150,6 @@
 	"fdtaddr=40800000\0" \
 
 /* GPT */
-#define CONFIG_RANDOM_UUID
-
-/* I2C */
-#include <asm/arch/gpio.h>
-
-#define CONFIG_SYS_I2C
-#define CONFIG_SYS_I2C_S3C24X0
-#define CONFIG_SYS_I2C_S3C24X0_SPEED	100000
-#define CONFIG_SYS_I2C_S3C24X0_SLAVE	0
-#define CONFIG_MAX_I2C_NUM		8
-#define CONFIG_SYS_I2C_SOFT
-#define CONFIG_SYS_I2C_SOFT_SPEED	50000
-#define CONFIG_SYS_I2C_SOFT_SLAVE	0x00
-#define I2C_SOFT_DECLARATIONS2
-#define CONFIG_SYS_I2C_SOFT_SPEED_2     50000
-#define CONFIG_SYS_I2C_SOFT_SLAVE_2     0x00
-#define CONFIG_SOFT_I2C_READ_REPEATED_START
-#define CONFIG_SYS_I2C_INIT_BOARD
-
-#ifndef __ASSEMBLY__
-int get_soft_i2c_scl_pin(void);
-int get_soft_i2c_sda_pin(void);
-#endif
-#define CONFIG_SOFT_I2C_GPIO_SCL	get_soft_i2c_scl_pin()
-#define CONFIG_SOFT_I2C_GPIO_SDA	get_soft_i2c_sda_pin()
-
-/* POWER */
-#define CONFIG_POWER
-#define CONFIG_POWER_I2C
-#define CONFIG_POWER_MAX77686
-#define CONFIG_POWER_PMIC_MAX77693
-#define CONFIG_POWER_MUIC_MAX77693
-#define CONFIG_POWER_FG_MAX77693
-#define CONFIG_POWER_BATTERY_TRATS2
 
 /* Security subsystem - enable hw_rand() */
 #define CONFIG_EXYNOS_ACE_SHA
@@ -201,11 +162,9 @@ int get_soft_i2c_sda_pin(void);
 
 /* Download menu - Samsung common */
 #define CONFIG_LCD_MENU
-#define CONFIG_LCD_MENU_BOARD
 
 /* Download menu - definitions for check keys */
 #ifndef __ASSEMBLY__
-#include <power/max77686_pmic.h>
 
 #define KEY_PWR_PMIC_NAME		"MAX77686_PMIC"
 #define KEY_PWR_STATUS_REG		MAX77686_REG_PMIC_STATUS1
@@ -219,7 +178,6 @@ int get_soft_i2c_sda_pin(void);
 
 /* LCD console */
 #define LCD_BPP                 LCD_COLOR16
-#define CONFIG_SYS_WHITE_ON_BLACK
 
 /* LCD */
 #define CONFIG_BMP_16BPP

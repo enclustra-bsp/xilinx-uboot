@@ -74,7 +74,7 @@ int arch_cpu_init_dm(void)
 	/*
 	 * We should do as little as possible before the serial console is
 	 * up. Perhaps this should move to later. Our next lot of init
-	 * happens in print_cpuinfo() when we have a console
+	 * happens in checkcpu() when we have a console
 	 */
 	ret = set_flex_ratio_to_tdp_nominal();
 	if (ret)
@@ -125,12 +125,10 @@ static void enable_usb_bar(struct udevice *bus)
 	pci_bus_write_config(bus, usb3, PCI_COMMAND, cmd, PCI_SIZE_32);
 }
 
-int print_cpuinfo(void)
+int checkcpu(void)
 {
 	enum pei_boot_mode_t boot_mode = PEI_BOOT_NONE;
-	char processor_name[CPU_MAX_NAME_LEN];
 	struct udevice *dev, *lpc;
-	const char *name;
 	uint32_t pm1_cnt;
 	uint16_t pm1_sts;
 	int ret;
@@ -146,8 +144,10 @@ int print_cpuinfo(void)
 	}
 
 	ret = cpu_common_init();
-	if (ret)
+	if (ret) {
+		debug("%s: cpu_common_init() failed\n", __func__);
 		return ret;
+	}
 
 	/* Check PM1_STS[15] to see if we are waking from Sx */
 	pm1_sts = inw(DEFAULT_PMBASE + PM1_STS);
@@ -167,8 +167,10 @@ int print_cpuinfo(void)
 
 	/* Enable SPD ROMs and DDR-III DRAM */
 	ret = uclass_first_device_err(UCLASS_I2C, &dev);
-	if (ret)
+	if (ret) {
+		debug("%s: Failed to get I2C (ret=%d)\n", __func__, ret);
 		return ret;
+	}
 
 	/* Prepare USB controller early in S3 resume */
 	if (boot_mode == PEI_BOOT_RESUME) {
@@ -177,6 +179,14 @@ int print_cpuinfo(void)
 	}
 
 	gd->arch.pei_boot_mode = boot_mode;
+
+	return 0;
+}
+
+int print_cpuinfo(void)
+{
+	char processor_name[CPU_MAX_NAME_LEN];
+	const char *name;
 
 	/* Print processor name */
 	name = cpu_get_name(processor_name);

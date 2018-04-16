@@ -12,21 +12,12 @@
 #ifndef __CONFIG_TI_OMAP4_COMMON_H
 #define __CONFIG_TI_OMAP4_COMMON_H
 
-/*
- * High Level Configuration Options
- */
-#define CONFIG_OMAP4430		1	/* which is in a 4430 */
 #define CONFIG_MISC_INIT_R
-#define CONFIG_DISPLAY_CPUINFO		1
-#define CONFIG_DISPLAY_BOARDINFO	1
-
-#define CONFIG_SYS_THUMB_BUILD
 
 #ifndef CONFIG_SYS_L2CACHE_OFF
 #define CONFIG_SYS_L2_PL310		1
 #define CONFIG_SYS_PL310_BASE	0x48242000
 #endif
-#define CONFIG_SYS_CACHELINE_SIZE	32
 
 /* Get CPU defs */
 #include <asm/arch/cpu.h>
@@ -76,7 +67,6 @@
 /* USB device configuration */
 #define CONFIG_USB_DEVICE		1
 #define CONFIG_USB_TTY			1
-#define CONFIG_SYS_CONSOLE_IS_IN_ENV	1
 
 /*
  * Environment setup
@@ -101,16 +91,13 @@
 	func(PXE, pxe, na) \
 	func(DHCP, dhcp, na)
 
-#define CONFIG_BOOTCOMMAND \
-	"run findfdt; " \
-	"run envboot; " \
-	"run distro_bootcmd"
-
 #include <config_distro_bootcmd.h>
+#include <environment/ti/mmc.h>
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
 	DEFAULT_MMC_TI_ARGS \
+	DEFAULT_FIT_TI_ARGS \
 	"console=ttyO2,115200n8\0" \
 	"fdtfile=undefined\0" \
 	"bootpart=0:2\0" \
@@ -118,14 +105,7 @@
 	"bootfile=zImage\0" \
 	"usbtty=cdc_acm\0" \
 	"vram=16M\0" \
-	"loadimage=load mmc ${bootpart} ${loadaddr} ${bootdir}/${bootfile}\0" \
 	"loaduimage=load mmc ${mmcdev} ${loadaddr} uImage\0" \
-	"mmcboot=echo Booting from mmc${mmcdev} ...; " \
-		"run args_mmc; " \
-		"if run loadimage; then " \
-			"run loadfdt; " \
-			"bootz ${loadaddr} - ${fdtaddr}; " \
-		"fi;\0" \
 	"uimageboot=echo Booting from mmc${mmcdev} ...; " \
 		"run args_mmc; " \
 		"bootm ${loadaddr}\0" \
@@ -142,7 +122,6 @@
 			"setenv fdtfile omap4-duovero-parlor.dtb; fi;" \
 		"if test $fdtfile = undefined; then " \
 			"echo WARNING: Could not determine device tree to use; fi; \0" \
-	"loadfdt=load mmc ${bootpart} ${fdtaddr} ${bootdir}/${fdtfile}\0" \
 	BOOTENV
 
 /*
@@ -152,21 +131,12 @@
  * So moving TEXT_BASE down to non-HS limit.
  */
 #define CONFIG_SPL_TEXT_BASE		0x40300000
-#define CONFIG_SPL_MAX_SIZE		(0x4030C000 - CONFIG_SPL_TEXT_BASE)
-#define CONFIG_SPL_DISPLAY_PRINT
-#define CONFIG_SPL_LDSCRIPT "$(CPUDIR)/omap-common/u-boot-spl.lds"
 #define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_SDRAM_BASE + \
 					 (128 << 20))
-
-#ifdef CONFIG_NAND
-#define CONFIG_SPL_NAND_AM33XX_BCH	/* ELM support */
-#endif
 
 #ifdef CONFIG_SPL_BUILD
 /* No need for i2c in SPL mode as we will use SRI2C for PMIC access on OMAP4 */
 #undef CONFIG_SYS_I2C
-#undef CONFIG_SYS_I2C_OMAP24XX
-#undef CONFIG_SPL_I2C_SUPPORT
 #endif
 
 #endif /* __CONFIG_TI_OMAP4_COMMON_H */

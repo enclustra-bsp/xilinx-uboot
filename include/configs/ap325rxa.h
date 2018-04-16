@@ -10,24 +10,11 @@
 #ifndef __AP325RXA_H
 #define __AP325RXA_H
 
-#undef DEBUG
 #define CONFIG_CPU_SH7723	1
 #define CONFIG_AP325RXA	1
 
-#define CONFIG_CMD_SDRAM
-#define CONFIG_CMD_IDE
-#define CONFIG_DOS_PARTITION
-
-#define CONFIG_BAUDRATE		38400
-#define CONFIG_BOOTARGS		"console=ttySC2,38400"
-
-#define CONFIG_VERSION_VARIABLE
+#define CONFIG_DISPLAY_BOARDINFO
 #undef  CONFIG_SHOW_BOOT_PROGRESS
-
-/* SMC9118 */
-#define CONFIG_SMC911X 1
-#define CONFIG_SMC911X_32_BIT 1
-#define CONFIG_SMC911X_BASE 0xB6080000
 
 /* MEMORY */
 #define AP325RXA_SDRAM_BASE		(0x88000000)
@@ -39,26 +26,16 @@
 /* undef to save memory	*/
 #define CONFIG_SYS_LONGHELP
 /* Monitor Command Prompt */
-/* Buffer size for input from the Console */
-#define CONFIG_SYS_CBSIZE		256
 /* Buffer size for Console output */
 #define CONFIG_SYS_PBSIZE		256
-/* max args accepted for monitor commands */
-#define CONFIG_SYS_MAXARGS		16
-/* Buffer size for Boot Arguments passed to kernel */
-#define CONFIG_SYS_BARGSIZE	512
 /* List of legal baudrate settings for this board */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 38400 }
 
 /* SCIF */
-#define CONFIG_SCIF_CONSOLE 1
 #define CONFIG_SCIF_A		1 /* SH7723 has SCIF and SCIFA */
 #define CONFIG_CONS_SCIF5	1
 
 /* Suppress display of console information at boot */
-#undef  CONFIG_SYS_CONSOLE_INFO_QUIET
-#undef  CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE
-#undef  CONFIG_SYS_CONSOLE_ENV_OVERWRITE
 
 #define CONFIG_SYS_MEMTEST_START	(AP325RXA_SDRAM_BASE)
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + (60 * 1024 * 1024))
@@ -131,7 +108,6 @@
 #undef  CONFIG_SYS_DIRECT_FLASH_TFTP
 
 /* ENV setting */
-#define CONFIG_ENV_IS_IN_FLASH
 #define CONFIG_ENV_OVERWRITE	1
 #define CONFIG_ENV_SECT_SIZE	(128 * 1024)
 #define CONFIG_ENV_SIZE		(CONFIG_ENV_SECT_SIZE)

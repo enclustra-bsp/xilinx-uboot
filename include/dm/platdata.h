@@ -22,10 +22,14 @@
  *
  * @name:	Driver name
  * @platdata:	Driver-specific platform data
+ * @platdata_size: Size of platform data structure
  */
 struct driver_info {
 	const char *name;
 	const void *platdata;
+#if CONFIG_IS_ENABLED(OF_PLATDATA)
+	uint platdata_size;
+#endif
 };
 
 /**

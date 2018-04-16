@@ -10,6 +10,7 @@
 #ifdef CONFIG_FSL_DEEP_SLEEP
 #include <fsl_sleep.h>
 #endif
+#include <asm/arch/clock.h>
 #include "ddr.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -96,6 +97,9 @@ found:
 	popts->ddr_cdr1 = DDR_CDR1_DHC_EN | DDR_CDR1_ODT(DDR_CDR_ODT_80ohm);
 	popts->ddr_cdr2 = DDR_CDR2_ODT(DDR_CDR_ODT_80ohm) |
 			  DDR_CDR2_VREF_OVRD(70);	/* Vref = 70% */
+
+	/* optimize cpo for erratum A-009942 */
+	popts->cpo_sample = 0x59;
 #else
 	popts->cswl_override = DDR_CSWL_CS0;
 
@@ -105,12 +109,14 @@ found:
 #endif
 }
 
-phys_size_t initdram(int board_type)
+int fsl_initdram(void)
 {
 	phys_size_t dram_size;
 
 #if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
-	return fsl_ddr_sdram_size();
+	gd->ram_size = fsl_ddr_sdram_size();
+
+	return 0;
 #else
 	puts("Initializing DDR....using SPD\n");
 
@@ -122,33 +128,7 @@ phys_size_t initdram(int board_type)
 	fsl_dp_ddr_restore();
 #endif
 
-	return dram_size;
-}
+	gd->ram_size = dram_size;
 
-void dram_init_banksize(void)
-{
-	/*
-	 * gd->secure_ram tracks the location of secure memory.
-	 * It was set as if the memory starts from 0.
-	 * The address needs to add the offset of its bank.
-	 */
-	gd->bd->bi_dram[0].start = CONFIG_SYS_SDRAM_BASE;
-	if (gd->ram_size > CONFIG_SYS_DDR_BLOCK1_SIZE) {
-		gd->bd->bi_dram[0].size = CONFIG_SYS_DDR_BLOCK1_SIZE;
-		gd->bd->bi_dram[1].start = CONFIG_SYS_DDR_BLOCK2_BASE;
-		gd->bd->bi_dram[1].size = gd->ram_size -
-					  CONFIG_SYS_DDR_BLOCK1_SIZE;
-#ifdef CONFIG_SYS_MEM_RESERVE_SECURE
-		gd->secure_ram = gd->bd->bi_dram[1].start +
-				 gd->secure_ram -
-				 CONFIG_SYS_DDR_BLOCK1_SIZE;
-		gd->secure_ram |= MEM_RESERVE_SECURE_MAINTAINED;
-#endif
-	} else {
-		gd->bd->bi_dram[0].size = gd->ram_size;
-#ifdef CONFIG_SYS_MEM_RESERVE_SECURE
-		gd->secure_ram = gd->bd->bi_dram[0].start + gd->secure_ram;
-		gd->secure_ram |= MEM_RESERVE_SECURE_MAINTAINED;
-#endif
-	}
+	return 0;
 }

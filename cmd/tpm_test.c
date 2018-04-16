@@ -303,12 +303,12 @@ static int test_readonly(void)
 	index_0 += 1;
 	if (tpm_nv_write_value(INDEX0, (uint8_t *)&index_0, sizeof(index_0) !=
 		TPM_SUCCESS)) {
-		error("\tcould not write index 0\n");
+		pr_err("\tcould not write index 0\n");
 	}
 	tpm_nv_write_value_lock(INDEX0);
 	if (tpm_nv_write_value(INDEX0, (uint8_t *)&index_0, sizeof(index_0)) ==
 			TPM_SUCCESS)
-		error("\tindex 0 is not locked\n");
+		pr_err("\tindex 0 is not locked\n");
 
 	printf("\tdone\n");
 	return 0;
@@ -471,7 +471,7 @@ static int test_write_limit(void)
 		case TPM_MAXNVWRITES:
 			assert(i >= TPM_MAX_NV_WRITES_NOOWNER);
 		default:
-			error("\tunexpected error code %d (0x%x)\n",
+			pr_err("\tunexpected error code %d (0x%x)\n",
 			      result, result);
 		}
 	}
@@ -532,15 +532,15 @@ static cmd_tbl_t cmd_cros_tpm_sub[] = {
 static int do_tpmtest(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	cmd_tbl_t *c;
+	int i;
 
 	printf("argc = %d, argv = ", argc);
-	do {
-		int i = 0;
 
-		for (i = 0; i < argc; i++)
-			printf(" %s", argv[i]);
-			printf("\n------\n");
-		} while (0);
+	for (i = 0; i < argc; i++)
+		printf(" %s", argv[i]);
+
+	printf("\n------\n");
+
 	argc--;
 	argv++;
 	c = find_cmd_tbl(argv[0], cmd_cros_tpm_sub,

@@ -9,16 +9,6 @@
 #define _TEGRA20_COMMON_H_
 #include "tegra-common.h"
 
-/* Cortex-A9 uses a cache line size of 32 bytes */
-#define CONFIG_SYS_CACHELINE_SIZE	32
-
-/*
- * Errata configuration
- */
-#define CONFIG_ARM_ERRATA_716044
-#define CONFIG_ARM_ERRATA_742230
-#define CONFIG_ARM_ERRATA_751472
-
 /*
  * NS16550 Configuration
  */
@@ -92,7 +82,6 @@
  */
 #define CONFIG_USB_EHCI_TXFIFO_THRESH	10
 #define CONFIG_EHCI_IS_TDI
-#define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS 1
 
 #define CONFIG_SYS_NAND_SELF_INIT
 #define CONFIG_SYS_NAND_ONFI_DETECTION

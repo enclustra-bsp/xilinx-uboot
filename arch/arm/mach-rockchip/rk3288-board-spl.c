@@ -8,27 +8,34 @@
 #include <debug_uart.h>
 #include <dm.h>
 #include <fdtdec.h>
+#include <i2c.h>
 #include <led.h>
 #include <malloc.h>
 #include <ram.h>
 #include <spl.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
+#include <asm/arch/bootrom.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/periph.h>
+#include <asm/arch/pmu_rk3288.h>
 #include <asm/arch/sdram.h>
+#include <asm/arch/sdram_common.h>
+#include <asm/arch/sys_proto.h>
 #include <asm/arch/timer.h>
 #include <dm/pinctrl.h>
 #include <dm/root.h>
 #include <dm/test.h>
 #include <dm/util.h>
 #include <power/regulator.h>
+#include <power/rk8xx_pmic.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 u32 spl_boot_device(void)
 {
+#if !CONFIG_IS_ENABLED(OF_PLATDATA)
 	const void *blob = gd->fdt_blob;
 	struct udevice *dev;
 	const char *bootdev;
@@ -63,6 +70,11 @@ u32 spl_boot_device(void)
 	}
 
 fallback:
+#elif defined(CONFIG_TARGET_CHROMEBOOK_JERRY) || \
+		defined(CONFIG_TARGET_CHROMEBIT_MICKEY) || \
+		defined(CONFIG_TARGET_CHROMEBOOK_MINNIE)
+	return BOOT_DEVICE_SPI;
+#endif
 	return BOOT_DEVICE_MMC1;
 }
 
@@ -71,50 +83,11 @@ u32 spl_boot_mode(const u32 boot_device)
 	return MMCSD_MODE_RAW;
 }
 
-/* read L2 control register (L2CTLR) */
-static inline uint32_t read_l2ctlr(void)
-{
-	uint32_t val = 0;
-
-	asm volatile ("mrc p15, 1, %0, c9, c0, 2" : "=r" (val));
-
-	return val;
-}
-
-/* write L2 control register (L2CTLR) */
-static inline void write_l2ctlr(uint32_t val)
-{
-	/*
-	 * Note: L2CTLR can only be written when the L2 memory system
-	 * is idle, ie before the MMU is enabled.
-	 */
-	asm volatile("mcr p15, 1, %0, c9, c0, 2" : : "r" (val) : "memory");
-	isb();
-}
-
-static void configure_l2ctlr(void)
-{
-	uint32_t l2ctlr;
-
-	l2ctlr = read_l2ctlr();
-	l2ctlr &= 0xfffc0000; /* clear bit0~bit17 */
-
-	/*
-	* Data RAM write latency: 2 cycles
-	* Data RAM read latency: 2 cycles
-	* Data RAM setup latency: 1 cycle
-	* Tag RAM write latency: 1 cycle
-	* Tag RAM read latency: 1 cycle
-	* Tag RAM setup latency: 1 cycle
-	*/
-	l2ctlr |= (1 << 3 | 1 << 0);
-	write_l2ctlr(l2ctlr);
-}
-
 #ifdef CONFIG_SPL_MMC_SUPPORT
 static int configure_emmc(struct udevice *pinctrl)
 {
-#if !defined(CONFIG_TARGET_ROCK2) && !defined(CONFIG_TARGET_FIREFLY_RK3288)
+#if defined(CONFIG_TARGET_CHROMEBOOK_JERRY)
+
 	struct gpio_desc desc;
 	int ret;
 
@@ -145,6 +118,31 @@ static int configure_emmc(struct udevice *pinctrl)
 		return ret;
 	}
 #endif
+	return 0;
+}
+#endif
+
+#if !defined(CONFIG_SPL_OF_PLATDATA)
+static int phycore_init(void)
+{
+	struct udevice *pmic;
+	int ret;
+
+	ret = uclass_first_device_err(UCLASS_PMIC, &pmic);
+	if (ret)
+		return ret;
+
+#if defined(CONFIG_SPL_POWER_SUPPORT)
+	/* Increase USB input current to 2A */
+	ret = rk818_spl_configure_usb_input_current(pmic, 2000);
+	if (ret)
+		return ret;
+
+	/* Close charger when USB lower then 3.26V */
+	ret = rk818_spl_configure_usb_chrg_shutdown(pmic, 3260000);
+	if (ret)
+		return ret;
+#endif
 
 	return 0;
 }
@@ -157,7 +155,6 @@ void board_init_f(ulong dummy)
 	int ret;
 
 	/* Example code showing how to enable the debug UART on RK3288 */
-#ifdef EARLY_UART
 #include <asm/arch/grf_rk3288.h>
 	/* Enable early UART on the RK3288 */
 #define GRF_BASE	0xff770000
@@ -176,18 +173,17 @@ void board_init_f(ulong dummy)
 	 * printascii("string");
 	 */
 	debug_uart_init();
-#endif
-
-	ret = spl_init();
+	debug("\nspl:debug uart enabled in %s\n", __func__);
+	ret = spl_early_init();
 	if (ret) {
-		debug("spl_init() failed: %d\n", ret);
+		debug("spl_early_init() failed: %d\n", ret);
 		hang();
 	}
 
 	rockchip_timer_init();
 	configure_l2ctlr();
 
-	ret = uclass_get_device(UCLASS_CLK, 0, &dev);
+	ret = rockchip_get_clk(&dev);
 	if (ret) {
 		debug("CLK init failed: %d\n", ret);
 		return;
@@ -199,11 +195,29 @@ void board_init_f(ulong dummy)
 		return;
 	}
 
+#if !defined(CONFIG_SPL_OF_PLATDATA)
+	if (of_machine_is_compatible("phytec,rk3288-phycore-som")) {
+		ret = phycore_init();
+		if (ret) {
+			debug("Failed to set up phycore power settings: %d\n",
+			      ret);
+			return;
+		}
+	}
+#endif
+
+#if !defined(CONFIG_SUPPORT_TPL)
+	debug("\nspl:init dram\n");
 	ret = uclass_get_device(UCLASS_RAM, 0, &dev);
 	if (ret) {
 		debug("DRAM init failed: %d\n", ret);
 		return;
 	}
+#endif
+
+#if CONFIG_IS_ENABLED(ROCKCHIP_BACK_TO_BROM) && !defined(CONFIG_SPL_BOARD_INIT)
+	back_to_bootrom(BROM_BOOT_NEXTSTAGE);
+#endif
 }
 
 static int setup_led(void)
@@ -246,6 +260,7 @@ void spl_board_init(void)
 		debug("%s: Cannot find pinctrl device\n", __func__);
 		goto err;
 	}
+
 #ifdef CONFIG_SPL_MMC_SUPPORT
 	ret = pinctrl_request_noflags(pinctrl, PERIPH_ID_SDCARD);
 	if (ret) {
@@ -267,6 +282,9 @@ void spl_board_init(void)
 	}
 
 	preloader_console_init();
+#if CONFIG_IS_ENABLED(ROCKCHIP_BACK_TO_BROM)
+	back_to_bootrom(BROM_BOOT_NEXTSTAGE);
+#endif
 	return;
 err:
 	printf("spl_board_init: Error %d\n", ret);
@@ -275,6 +293,17 @@ err:
 	hang();
 }
 
-void lowlevel_init(void)
+#ifdef CONFIG_SPL_OS_BOOT
+
+#define PMU_BASE		0xff730000
+int dram_init_banksize(void)
 {
+	struct rk3288_pmu *const pmu = (void *)PMU_BASE;
+	size_t size = rockchip_sdram_size((phys_addr_t)&pmu->sys_reg[2]);
+
+	gd->bd->bi_dram[0].start = CONFIG_SYS_SDRAM_BASE;
+	gd->bd->bi_dram[0].size = size;
+
+	return 0;
 }
+#endif

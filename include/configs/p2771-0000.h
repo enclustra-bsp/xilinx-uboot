@@ -14,16 +14,15 @@
 /* High-level configuration options */
 #define CONFIG_TEGRA_BOARD_STRING	"NVIDIA P2771-0000"
 
-/* SD/MMC */
-#define CONFIG_MMC
-#define CONFIG_GENERIC_MMC
-#define CONFIG_TEGRA_MMC
+/* I2C */
+#define CONFIG_SYS_I2C_TEGRA
 
 /* Environment in eMMC, at the end of 2nd "boot sector" */
-#define CONFIG_ENV_IS_IN_MMC
 #define CONFIG_SYS_MMC_ENV_DEV		0
 #define CONFIG_SYS_MMC_ENV_PART		2
 #define CONFIG_ENV_OFFSET		(-CONFIG_ENV_SIZE)
+
+/* PCI host support */
 
 #include "tegra-common-post.h"
 

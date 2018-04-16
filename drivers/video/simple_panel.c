@@ -25,8 +25,10 @@ static int simple_panel_enable_backlight(struct udevice *dev)
 	struct simple_panel_priv *priv = dev_get_priv(dev);
 	int ret;
 
+	debug("%s: start, backlight = '%s'\n", __func__, priv->backlight->name);
 	dm_gpio_set_value(&priv->enable, 1);
 	ret = backlight_enable(priv->backlight);
+	debug("%s: done, ret = %d\n", __func__, ret);
 	if (ret)
 		return ret;
 
@@ -42,7 +44,7 @@ static int simple_panel_ofdata_to_platdata(struct udevice *dev)
 		ret = uclass_get_device_by_phandle(UCLASS_REGULATOR, dev,
 						   "power-supply", &priv->reg);
 		if (ret) {
-			debug("%s: Warning: cnnot get power supply: ret=%d\n",
+			debug("%s: Warning: cannot get power supply: ret=%d\n",
 			      __func__, ret);
 			if (ret != -ENOENT)
 				return ret;

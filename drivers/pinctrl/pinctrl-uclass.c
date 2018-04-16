@@ -8,10 +8,10 @@
 #include <libfdt.h>
 #include <linux/err.h>
 #include <linux/list.h>
-#include <dm/device.h>
+#include <dm.h>
 #include <dm/lists.h>
 #include <dm/pinctrl.h>
-#include <dm/uclass.h>
+#include <dm/util.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -64,7 +64,7 @@ static int pinctrl_config_one(struct udevice *config)
 static int pinctrl_select_state_full(struct udevice *dev, const char *statename)
 {
 	const void *fdt = gd->fdt_blob;
-	int node = dev->of_offset;
+	int node = dev_of_offset(dev);
 	char propname[32]; /* long enough */
 	const fdt32_t *list;
 	uint32_t phandle;
@@ -72,7 +72,7 @@ static int pinctrl_select_state_full(struct udevice *dev, const char *statename)
 	struct udevice *config;
 	int state, size, i, ret;
 
-	state = fdt_find_string(fdt, node, "pinctrl-names", statename);
+	state = fdt_stringlist_search(fdt, node, "pinctrl-names", statename);
 	if (state < 0) {
 		char *end;
 		/*
@@ -113,7 +113,7 @@ static int pinctrl_select_state_full(struct udevice *dev, const char *statename)
 }
 
 /**
- * pinconfig_post-bind() - post binding for PINCONFIG uclass
+ * pinconfig_post_bind() - post binding for PINCONFIG uclass
  * Recursively bind its children as pinconfig devices.
  *
  * @dev: pinconfig device
@@ -121,34 +121,31 @@ static int pinctrl_select_state_full(struct udevice *dev, const char *statename)
  */
 static int pinconfig_post_bind(struct udevice *dev)
 {
-	const void *fdt = gd->fdt_blob;
-	int offset = dev->of_offset;
 	bool pre_reloc_only = !(gd->flags & GD_FLG_RELOC);
 	const char *name;
+	ofnode node;
 	int ret;
 
-	for (offset = fdt_first_subnode(fdt, offset);
-	     offset > 0;
-	     offset = fdt_next_subnode(fdt, offset)) {
+	dev_for_each_subnode(node, dev) {
 		if (pre_reloc_only &&
-		    !fdt_getprop(fdt, offset, "u-boot,dm-pre-reloc", NULL))
+		    !ofnode_pre_reloc(node))
 			continue;
 		/*
 		 * If this node has "compatible" property, this is not
 		 * a pin configuration node, but a normal device. skip.
 		 */
-		fdt_get_property(fdt, offset, "compatible", &ret);
+		ofnode_get_property(node, "compatible", &ret);
 		if (ret >= 0)
 			continue;
 
 		if (ret != -FDT_ERR_NOTFOUND)
 			return ret;
 
-		name = fdt_get_name(fdt, offset, NULL);
+		name = ofnode_get_name(node);
 		if (!name)
 			return -EINVAL;
 		ret = device_bind_driver_to_node(dev, "pinconfig", name,
-						 offset, NULL);
+						 node, NULL);
 		if (ret)
 			return ret;
 	}
@@ -257,7 +254,7 @@ int pinctrl_get_gpio_mux(struct udevice *dev, int banknum, int index)
 }
 
 /**
- * pinconfig_post-bind() - post binding for PINCTRL uclass
+ * pinconfig_post_bind() - post binding for PINCTRL uclass
  * Recursively bind child nodes as pinconfig devices in case of full pinctrl.
  *
  * @dev: pinctrl device

@@ -77,6 +77,8 @@ found:
 	 */
 #ifdef CONFIG_SYS_FSL_DDR4
 	popts->half_strength_driver_enable = 1;
+	/* optimize cpo for erratum A-009942 */
+	popts->cpo_sample = 0x59;
 #else
 	popts->half_strength_driver_enable = 0;
 #endif
@@ -118,7 +120,7 @@ void board_mem_sleep_setup(void)
 }
 #endif
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	phys_size_t dram_size;
 
@@ -135,5 +137,7 @@ phys_size_t initdram(int board_type)
 	fsl_dp_resume();
 #endif
 
-	return dram_size;
+	gd->ram_size = dram_size;
+
+	return 0;
 }

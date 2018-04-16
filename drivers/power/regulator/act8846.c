@@ -88,7 +88,7 @@ static int reg_get_value(struct udevice *dev)
 	int reg = dev->driver_data;
 	int ret;
 
-	ret = pmic_reg_read(dev->parent, reg);
+	ret = pmic_reg_read(dev->parent, addr_vol[reg]);
 	if (ret < 0)
 		return ret;
 
@@ -115,12 +115,12 @@ static int reg_set_enable(struct udevice *dev, bool enable)
 			       enable ? LDO_EN_MASK : 0);
 }
 
-static bool reg_get_enable(struct udevice *dev)
+static int reg_get_enable(struct udevice *dev)
 {
 	int reg = dev->driver_data;
 	int ret;
 
-	ret = pmic_reg_read(dev->parent, reg);
+	ret = pmic_reg_read(dev->parent, addr_ctl[reg]);
 	if (ret < 0)
 		return ret;
 

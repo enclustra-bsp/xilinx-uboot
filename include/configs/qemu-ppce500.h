@@ -10,13 +10,6 @@
 #ifndef __QEMU_PPCE500_H
 #define __QEMU_PPCE500_H
 
-#define CONFIG_CMD_REGINFO
-
-/* High Level Configuration Options */
-#define CONFIG_BOOKE
-#define CONFIG_E500			/* BOOKE e500 family */
-#define CONFIG_QEMU_E500
-
 #undef CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_TEXT_BASE	0xf01000 /* 15 MB */
 
@@ -24,7 +17,6 @@
 
 #define CONFIG_SYS_RAMBOOT
 
-#define CONFIG_PCI			/* Enable PCI/PCIE */
 #define CONFIG_PCI1		1	/* PCI controller 1 */
 #define CONFIG_FSL_PCI_INIT		/* Use common FSL init code */
 #define CONFIG_SYS_PCI_64BIT		/* enable 64-bit PCI resources */
@@ -39,10 +31,8 @@
 #define CONFIG_SYS_MEMTEST_START	0x00200000	/* memtest works on */
 #define CONFIG_SYS_MEMTEST_END		0x00400000
 #define CONFIG_SYS_ALT_MEMTEST
-#define CONFIG_PANIC_HANG	/* do not reset board on panic */
 
 /* Needed to fill the ccsrbar pointer */
-#define CONFIG_BOARD_EARLY_INIT_F
 
 /* Virtual address to CCSRBAR */
 #define CONFIG_SYS_CCSRBAR		0xe0000000
@@ -55,8 +45,6 @@ extern unsigned long long get_phys_ccsrbar_addr_early(void);
 #define CONFIG_SYS_CCSRBAR_PHYS_HIGH 0x0
 #define CONFIG_SYS_CCSRBAR_PHYS_LOW CONFIG_SYS_CCSRBAR
 #endif
-
-#define CONFIG_PHYS_64BIT
 
 /* Virtual address range for PCI region maps */
 #define CONFIG_SYS_PCI_MAP_START	0x80000000
@@ -76,13 +64,9 @@ extern unsigned long long get_phys_ccsrbar_addr_early(void);
 
 #define CONFIG_SYS_CLK_FREQ        33000000
 
-#define CONFIG_SYS_NO_FLASH
-
 #define CONFIG_SYS_BOOT_BLOCK		0x00000000	/* boot TLB */
 
 #define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
-
-#define CONFIG_ENV_IS_NOWHERE
 
 #define CONFIG_HWCONFIG
 
@@ -120,14 +104,11 @@ extern unsigned long long get_phys_ccsrbar_addr_early(void);
 
 #ifdef CONFIG_PCI
 #define CONFIG_PCI_INDIRECT_BRIDGE
-#define CONFIG_PCI_PNP			/* do pci plug-and-play */
 
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
-#define CONFIG_DOS_PARTITION
 #endif	/* CONFIG_PCI */
 
 #define CONFIG_LBA48
-#define CONFIG_DOS_PARTITION
 
 /*
  * Environment
@@ -141,11 +122,6 @@ extern unsigned long long get_phys_ccsrbar_addr_early(void);
 /*
  * Command line configuration.
  */
-#define CONFIG_CMD_IRQ
-
-#ifdef CONFIG_PCI
-#define CONFIG_CMD_PCI
-#endif
 
 /*
  * Miscellaneous configurable options
@@ -154,10 +130,6 @@ extern unsigned long long get_phys_ccsrbar_addr_early(void);
 #define CONFIG_CMDLINE_EDITING			/* Command-line editing */
 #define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_SYS_CBSIZE	256		/* Console I/O Buffer Size */
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
-#define CONFIG_SYS_MAXARGS	16		/* max number of command args */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE/* Boot Argument Buffer Size */
 
 /*
  * For booting Linux, the board info and command line data
@@ -176,8 +148,6 @@ extern unsigned long long get_phys_ccsrbar_addr_early(void);
 
 /* default location for tftp and bootm */
 #define CONFIG_LOADADDR		1000000
-
-#define CONFIG_BAUDRATE	115200
 
 #define CONFIG_BOOTCOMMAND		\
 	"test -n \"$qemu_kernel_addr\" && bootm $qemu_kernel_addr - $fdt_addr_r\0"

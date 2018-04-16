@@ -71,7 +71,7 @@ static int curr_dev_and_platdata(struct udevice **devp,
 
 	*uc_pdata = dev_get_uclass_platdata(*devp);
 	if (!*uc_pdata) {
-		error("Regulator: %s - missing platform data!", currdev->name);
+		pr_err("Regulator: %s - missing platform data!", currdev->name);
 		return CMD_RET_FAILURE;
 	}
 
@@ -292,7 +292,10 @@ static int do_value(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return CMD_RET_FAILURE;
 	}
 
-	ret = regulator_set_value(dev, value);
+	if (!force)
+		ret = regulator_set_value(dev, value);
+	else
+		ret = regulator_set_value_force(dev, value);
 	if (ret) {
 		printf("Regulator: %s - can't set the Voltage!\n",
 		       uc_pdata->name);

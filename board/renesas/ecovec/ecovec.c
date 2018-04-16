@@ -22,16 +22,6 @@ int checkboard(void)
 	return 0;
 }
 
-int dram_init(void)
-{
-	DECLARE_GLOBAL_DATA_PTR;
-
-	gd->bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
-	gd->bd->bi_memsize = CONFIG_SYS_SDRAM_SIZE;
-	printf("DRAM: %dMB\n", CONFIG_SYS_SDRAM_SIZE / (1024 * 1024));
-	return 0;
-}
-
 static void debug_led(u8 led)
 {
 	/* PDGR[0-4] is debug LED */
@@ -65,7 +55,7 @@ int board_late_init(void)
 	/* Set MAC address */
 	sprintf(env_mac, "%02X:%02X:%02X:%02X:%02X:%02X",
 		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-	setenv("ethaddr", env_mac);
+	env_set("ethaddr", env_mac);
 
 	debug_led(0x0F);
 

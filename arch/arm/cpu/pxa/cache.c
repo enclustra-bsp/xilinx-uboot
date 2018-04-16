@@ -8,11 +8,6 @@
 #include <common.h>
 
 #ifndef CONFIG_SYS_DCACHE_OFF
-
-#ifndef CONFIG_SYS_CACHELINE_SIZE
-#define CONFIG_SYS_CACHELINE_SIZE	32
-#endif
-
 void invalidate_dcache_all(void)
 {
 	/* Flush/Invalidate I cache */
@@ -57,6 +52,6 @@ void flush_dcache_all(void)
 
 __weak void l2_cache_disable(void) {}
 
-#if defined CONFIG_SYS_THUMB_BUILD
+#if CONFIG_IS_ENABLED(SYS_THUMB_BUILD)
 __weak void invalidate_l2_cache(void) {}
 #endif
