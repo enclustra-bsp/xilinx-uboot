@@ -133,8 +133,6 @@ struct apu_regs {
 #define ZYNQMP_CSU_VERSION_VELOCE	0x2
 #define ZYNQMP_CSU_VERSION_QEMU		0x3
 
-#define ZYNQMP_CSU_VERSION_EMPTY_SHIFT		20
-
 #define ZYNQMP_SILICON_VER_MASK		0xF000
 #define ZYNQMP_SILICON_VER_SHIFT	12
 
@@ -144,8 +142,5 @@ struct csu_regs {
 };
 
 #define csu_base ((struct csu_regs *)ZYNQMP_CSU_BASEADDR)
-
-#define ZYNQMP_CSU_IDCODE_ADDR	0xFFCA0040
-#define ZYNQMP_CSU_VER_ADDR	0xFFCA0044
 
 #endif /* _ASM_ARCH_HARDWARE_H */

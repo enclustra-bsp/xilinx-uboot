@@ -32,7 +32,6 @@ static xilinx_desc zynqmppl = XILINX_ZYNQMP_DESC;
 
 static const struct {
 	uint32_t id;
-	uint32_t ver;
 	char *name;
 } zynqmp_devices[] = {
 	{
@@ -40,87 +39,32 @@ static const struct {
 		.name = "3eg",
 	},
 	{
-		.id = 0x10,
-		.ver = 0x2c,
-		.name = "3cg",
-	},
-	{
 		.id = 0x11,
 		.name = "2eg",
-	},
-	{
-		.id = 0x11,
-		.ver = 0x2c,
-		.name = "2cg",
 	},
 	{
 		.id = 0x20,
 		.name = "5ev",
 	},
 	{
-		.id = 0x20,
-		.ver = 0x100,
-		.name = "5eg",
-	},
-	{
-		.id = 0x20,
-		.ver = 0x12c,
-		.name = "5cg",
-	},
-	{
 		.id = 0x21,
 		.name = "4ev",
-	},
-	{
-		.id = 0x21,
-		.ver = 0x100,
-		.name = "4eg",
-	},
-	{
-		.id = 0x21,
-		.ver = 0x12c,
-		.name = "4cg",
 	},
 	{
 		.id = 0x30,
 		.name = "7ev",
 	},
 	{
-		.id = 0x30,
-		.ver = 0x100,
-		.name = "7eg",
-	},
-	{
-		.id = 0x30,
-		.ver = 0x12c,
-		.name = "7cg",
-	},
-	{
 		.id = 0x38,
 		.name = "9eg",
-	},
-	{
-		.id = 0x38,
-		.ver = 0x2c,
-		.name = "9cg",
 	},
 	{
 		.id = 0x39,
 		.name = "6eg",
 	},
 	{
-		.id = 0x39,
-		.ver = 0x2c,
-		.name = "6cg",
-	},
-	{
 		.id = 0x40,
 		.name = "11eg",
-	},
-	{ /* For testing purpose only */
-		.id = 0x50,
-		.ver = 0x2c,
-		.name = "15cg",
 	},
 	{
 		.id = 0x50,
@@ -134,101 +78,39 @@ static const struct {
 		.id = 0x59,
 		.name = "17eg",
 	},
-	{
-		.id = 0x61,
-		.name = "21dr",
-	},
-	{
-		.id = 0x63,
-		.name = "23dr",
-	},
-	{
-		.id = 0x65,
-		.name = "25dr",
-	},
-	{
-		.id = 0x64,
-		.name = "27dr",
-	},
-	{
-		.id = 0x60,
-		.name = "28dr",
-	},
-	{
-		.id = 0x62,
-		.name = "29dr",
-	},
 };
 
-static int chip_id(unsigned char id)
+static int chip_id(void)
 {
 	struct pt_regs regs;
-	int val = -EINVAL;
+	regs.regs[0] = ZYNQMP_SIP_SVC_CSU_DMA_CHIPID;
+	regs.regs[1] = 0;
+	regs.regs[2] = 0;
+	regs.regs[3] = 0;
 
-	if (current_el() != 3) {
-		regs.regs[0] = ZYNQMP_SIP_SVC_CSU_DMA_CHIPID;
-		regs.regs[1] = 0;
-		regs.regs[2] = 0;
-		regs.regs[3] = 0;
+	smc_call(&regs);
 
-		smc_call(&regs);
+	/*
+	 * SMC returns:
+	 * regs[0][31:0]  = status of the operation
+	 * regs[0][63:32] = CSU.IDCODE register
+	 * regs[1][31:0]  = CSU.version register
+	 */
+	regs.regs[0] = upper_32_bits(regs.regs[0]);
+	regs.regs[0] &= ZYNQMP_CSU_IDCODE_DEVICE_CODE_MASK |
+			ZYNQMP_CSU_IDCODE_SVD_MASK;
+	regs.regs[0] >>= ZYNQMP_CSU_IDCODE_SVD_SHIFT;
 
-		/*
-		 * SMC returns:
-		 * regs[0][31:0]  = status of the operation
-		 * regs[0][63:32] = CSU.IDCODE register
-		 * regs[1][31:0]  = CSU.version register
-		 * regs[1][63:32] = CSU.IDCODE2 register
-		 */
-		switch (id) {
-		case IDCODE:
-			regs.regs[0] = upper_32_bits(regs.regs[0]);
-			regs.regs[0] &= ZYNQMP_CSU_IDCODE_DEVICE_CODE_MASK |
-					ZYNQMP_CSU_IDCODE_SVD_MASK;
-			regs.regs[0] >>= ZYNQMP_CSU_IDCODE_SVD_SHIFT;
-			val = regs.regs[0];
-			break;
-		case VERSION:
-			regs.regs[1] = lower_32_bits(regs.regs[1]);
-			regs.regs[1] &= ZYNQMP_CSU_SILICON_VER_MASK;
-			val = regs.regs[1];
-			break;
-		case IDCODE2:
-			regs.regs[1] = lower_32_bits(regs.regs[1]);
-			regs.regs[1] >>= ZYNQMP_CSU_VERSION_EMPTY_SHIFT;
-			val = regs.regs[1];
-			break;
-		default:
-			printf("%s, Invalid Req:0x%x\n", __func__, id);
-		}
-	} else {
-		switch (id) {
-		case IDCODE:
-			val = readl(ZYNQMP_CSU_IDCODE_ADDR);
-			val &= ZYNQMP_CSU_IDCODE_DEVICE_CODE_MASK |
-			       ZYNQMP_CSU_IDCODE_SVD_MASK;
-			val >>= ZYNQMP_CSU_IDCODE_SVD_SHIFT;
-			break;
-		case VERSION:
-			val = readl(ZYNQMP_CSU_VER_ADDR);
-			val &= ZYNQMP_CSU_SILICON_VER_MASK;
-			break;
-		default:
-			printf("%s, Invalid Req:0x%x\n", __func__, id);
-		}
-	}
-
-	return val;
+	return regs.regs[0];
 }
 
 static char *zynqmp_get_silicon_idcode_name(void)
 {
-	uint32_t i, id, ver;
+	uint32_t i, id;
 
-	id = chip_id(IDCODE);
-	ver = chip_id(IDCODE2);
+	id = chip_id();
 	for (i = 0; i < ARRAY_SIZE(zynqmp_devices); i++) {
-		if (zynqmp_devices[i].id == id && zynqmp_devices[i].ver == ver)
+		if (zynqmp_devices[i].id == id)
 			return zynqmp_devices[i].name;
 	}
 	return "unknown";
@@ -247,10 +129,10 @@ int board_init(void)
 	if (current_el() != 3) {
 		static char version[ZYNQMP_VERSION_SIZE];
 
-		strncat(version, "xczu", 4);
+		strncat(version, "xczu", ZYNQMP_VERSION_SIZE);
 		zynqmppl.name = strncat(version,
 					zynqmp_get_silicon_idcode_name(),
-					ZYNQMP_VERSION_SIZE - 5);
+					ZYNQMP_VERSION_SIZE);
 		printf("Chip ID:\t%s\n", zynqmppl.name);
 		fpga_init();
 		fpga_add(fpga_xilinx, &zynqmppl);
