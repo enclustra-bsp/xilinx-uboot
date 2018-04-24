@@ -28,11 +28,6 @@ DECLARE_GLOBAL_DATA_PTR;
 
 DECLARE_GLOBAL_DATA_PTR;
 
-struct arasan_sdhci_priv {
-	struct sdhci_host *host;
-	u8 is_emmc;
-};
-
 struct arasan_sdhci_plat {
 	struct mmc_config cfg;
 	struct mmc mmc;
@@ -44,6 +39,7 @@ struct arasan_sdhci_priv {
 	u8 deviceid;
 	u8 bank;
 	u8 no_1p8;
+	u8 is_emmc;
 	bool pwrseq;
 };
 
@@ -269,8 +265,6 @@ static int arasan_sdhci_ofdata_to_platdata(struct udevice *dev)
 		priv->is_emmc = 1;
 	else
 		priv->is_emmc = 0;
-
-	priv->host->ioaddr = (void *)devfdt_get_addr(dev);
 
 	plat->f_max = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
 				"max-frequency", CONFIG_ZYNQ_SDHCI_MAX_FREQ);
