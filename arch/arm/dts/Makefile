@@ -116,6 +116,7 @@ dtb-$(CONFIG_ARCH_ZYNQMP) += \
 	zynqmp-zc1751-xm019-dc5.dtb		\
 	zynqmp-mini-qspi.dtb			\
 	mercury-xu1.dtb				\
+	mercury-xu5.dtb				\
 	mars-xu3.dtb				\
 	zynqmp-mini-nand.dtb
 dtb-$(CONFIG_AM33XX) += am335x-boneblack.dtb am335x-bone.dtb \
