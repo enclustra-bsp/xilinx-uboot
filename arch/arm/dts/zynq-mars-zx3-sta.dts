@@ -17,6 +17,7 @@
 		mmc0 = &sdhci0;
 		serial0 = &uart0;
 		spi0 = &qspi;
+		usb0 = &usb0;
 	};
 
 	memory {
@@ -51,3 +52,9 @@
 		reg = <3>;
 	};
 };
+
+&usb0 {
+	status = "okay";
+};
+
+
