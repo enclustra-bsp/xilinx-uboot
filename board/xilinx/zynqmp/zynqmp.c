@@ -251,7 +251,7 @@ static char *zynqmp_get_silicon_idcode_name(void)
 		if ((zynqmp_devices[i].id == id) &&
 		    (zynqmp_devices[i].ver == (ver &
 		    ZYNQMP_CSU_VERSION_MASK))) {
-			strncat(name, "zu", 2);
+			snprintf(name, 3, "zu");
 			strncat(name, zynqmp_devices[i].name,
 				ZYNQMP_VERSION_SIZE - 3);
 			break;
