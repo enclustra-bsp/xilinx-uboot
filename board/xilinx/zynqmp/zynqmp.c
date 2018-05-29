@@ -499,6 +499,17 @@ int board_late_init(void)
 			if(eeproms[i].mac_reader(eeproms[i].i2c_addr, hwaddr))
 				continue;
 
+			/* Workaround for incorrect MAC address caused by
+			 * flashing to EEPROM adresses like 20:B0:F0:XX:XX:XX
+			 * instead of 20:B0:F7:XX:XX:XX */
+			hwaddr[2] = (hwaddr[2] == 0xF0) ? 0xF7 : hwaddr[2];
+
+			/* Check if the value is a valid mac registered for
+			 * Enclustra  GmbH */
+			hwaddr_h = hwaddr[0] | hwaddr[1] << 8 | hwaddr[2] << 16;
+			if ((hwaddr_h & 0xFFFFFF) != ENCLUSTRA_MAC)
+				continue;
+
 			/* Format the address using a string */
 			sprintf(hwaddr_str,
 				"%02X:%02X:%02X:%02X:%02X:%02X",
@@ -508,22 +519,16 @@ int board_late_init(void)
 				hwaddr[3],
 				hwaddr[4],
 				hwaddr[5]);
-
-			/* Check if the value is a valid mac registered for
-			 * Enclustra  GmbH */
-			hwaddr_h = hwaddr[0] | hwaddr[1] << 8 | hwaddr[2] << 16;
-			if ((hwaddr_h & 0xFFFFFF) != ENCLUSTRA_MAC)
-				continue;
 
 			/* Set the actual env variable */
 			setenv("ethaddr", hwaddr_str);
 
-            /* increment MAC addr */
-            hwaddr_h = (hwaddr[3] << 16) | (hwaddr[4] << 8) | hwaddr[5];
-            hwaddr_h = (hwaddr_h + 1) & 0xFFFFFF;
-            hwaddr[3] = (hwaddr_h >> 16) & 0xFF;
-            hwaddr[4] = (hwaddr_h >> 8) & 0xFF;
-            hwaddr[5] = hwaddr_h & 0xFF;
+			/* increment MAC addr */
+			hwaddr_h = (hwaddr[3] << 16) | (hwaddr[4] << 8) | hwaddr[5];
+			hwaddr_h = (hwaddr_h + 1) & 0xFFFFFF;
+			hwaddr[3] = (hwaddr_h >> 16) & 0xFF;
+			hwaddr[4] = (hwaddr_h >> 8) & 0xFF;
+			hwaddr[5] = hwaddr_h & 0xFF;
 
 			/* Format the address using a string */
 			sprintf(hwaddr_str,
@@ -534,12 +539,6 @@ int board_late_init(void)
 				hwaddr[3],
 				hwaddr[4],
 				hwaddr[5]);
-
-			/* Check if the value is a valid mac registered for
-			 * Enclustra  GmbH */
-			hwaddr_h = hwaddr[0] | hwaddr[1] << 8 | hwaddr[2] << 16;
-			if ((hwaddr_h & 0xFFFFFF) != ENCLUSTRA_MAC)
-				continue;
 
 			/* Set the actual env variable */
 			setenv("eth1addr", hwaddr_str);
