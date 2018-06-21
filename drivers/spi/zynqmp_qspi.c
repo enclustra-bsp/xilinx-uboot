@@ -575,6 +575,9 @@ static void zynqmp_qspi_genfifo_cmd(struct zynqmp_qspi_priv *priv)
 	u32 gen_fifo_cmd;
 	u32 bytecount = 0;
 
+	if (priv->bytemode == SPI_3BYTE_MODE)
+		priv->dummy_bytes = 0;
+
 	if (priv->dummy_bytes)
 		priv->len -= priv->dummy_bytes;
 
