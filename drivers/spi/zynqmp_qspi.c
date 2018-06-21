@@ -191,6 +191,8 @@ static int zynqmp_qspi_ofdata_to_platdata(struct udevice *bus)
 	plat->regs = (struct zynqmp_qspi_regs *)(devfdt_get_addr(bus) + 0x100);
 	plat->dma_regs = (struct zynqmp_qspi_dma_regs *)(devfdt_get_addr(bus) +
 							 0x800);
+	plat->bytemode = fdtdec_get_int(gd->fdt_blob, dev_of_offset(bus),
+					"bytemode", SPI_4BYTE_MODE);
 
 	ret = clk_get_by_index(bus, 0, &clk);
 	if (ret < 0) {
