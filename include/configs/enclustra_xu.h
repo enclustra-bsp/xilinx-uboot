@@ -8,7 +8,7 @@
  */
 
 #ifndef __CONFIG_ENCLUSTRA_XU_H
-#define __CONFIG_ECNLUSTRA_XU_H
+#define __CONFIG_ENCLUSTRA_XU_H
 
 #define CONFIG_ZYNQ_SDHCI1
 #define CONFIG_ZYNQ_I2C0
