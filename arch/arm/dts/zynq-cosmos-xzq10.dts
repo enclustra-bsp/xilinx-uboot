@@ -15,7 +15,6 @@
 	aliases {
 		ethernet0 = &gem0;
 		mmc0 = &sdhci0;
-		mmc1 = &sdhci1;
 		serial0 = &uart0;
 		spi0 = &qspi;
 	};
@@ -41,12 +40,6 @@
 &sdhci0 {
 	u-boot,dm-pre-reloc;
 	status = "okay";
-};
-
-&sdhci1 {
-	u-boot,dm-pre-reloc;
-	status = "okay";
-	non-removable;
 };
 
 &gem0 {
