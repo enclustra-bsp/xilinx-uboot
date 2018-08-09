@@ -516,14 +516,14 @@ int board_late_init(void)
 
 	switch (ver) {
 	case ZYNQMP_CSU_VERSION_VELOCE:
-		env_set("setup", "env_set baudrate 4800 && env_set bootcmd run veloce");
+		env_set("setup", "env set baudrate 4800 && env set bootcmd run veloce");
 	case ZYNQMP_CSU_VERSION_EP108:
 	case ZYNQMP_CSU_VERSION_SILICON:
 	case ZYNQMP_CSU_VERSION_QEMU:
-		env_set("setup", "env_set partid auto");
+		env_set("setup", "env set partid auto");
 		break;
 	default:
-		env_set("setup", "env_set partid 0");
+		env_set("setup", "env set partid 0");
 	}
 
 	ret = zynqmp_mmio_read((ulong)&crlapb_base->boot_mode, &reg);
@@ -596,14 +596,14 @@ int board_late_init(void)
 
 	switch (ver) {
 	case ZYNQMP_CSU_VERSION_VELOCE:
-		env_set("setup", "env_set baudrate 4800 && env_set bootcmd run veloce");
+		env_set("setup", "env set baudrate 4800 && env set bootcmd run veloce");
 	case ZYNQMP_CSU_VERSION_EP108:
 	case ZYNQMP_CSU_VERSION_SILICON:
-		env_set("setup", "env_set partid auto");
+		env_set("setup", "env set partid auto");
 		break;
 	case ZYNQMP_CSU_VERSION_QEMU:
 	default:
-		env_set("setup", "env_set partid 0");
+		env_set("setup", "env set partid 0");
 	}
 
 	/*
