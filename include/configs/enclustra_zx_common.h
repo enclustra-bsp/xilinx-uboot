@@ -115,6 +115,7 @@
     "ubifs_loadaddr=0x2000000\0"                \
     "bootscript_loadaddr=0x1000000\0"           \
     "bootimage_loadaddr=0x4000000\0"		\
+    "bootfull_loadaddr=0x2B000000\0"		\
     "nand_kernel_size=0x500000\0"               \
     "nand_devicetree_size=0x10000\0"            \
                                                 \
