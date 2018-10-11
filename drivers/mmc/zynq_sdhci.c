@@ -41,6 +41,7 @@ struct arasan_sdhci_priv {
 	u8 no_1p8;
 	u8 is_emmc;
 	bool pwrseq;
+	struct gpio_desc *cd_gpio;
 };
 
 #if defined(CONFIG_ARCH_ZYNQMP)
@@ -185,6 +186,15 @@ static int arasan_sdhci_probe(struct udevice *dev)
 	unsigned long clock;
 	int ret;
 
+	if(!(priv->cd_gpio)){
+		if (gpio_get_number(priv->cd_gpio) >= 0) {
+			if (dm_gpio_is_valid(priv->cd_gpio)) {
+				if(!dm_gpio_get_value(priv->cd_gpio))
+					return -ENXIO;
+			}
+		}
+        }
+
 	ret = clk_get_by_index(dev, 0, &clk);
 	if (ret < 0) {
 		dev_err(dev, "failed to get clock\n");
@@ -265,6 +275,9 @@ static int arasan_sdhci_ofdata_to_platdata(struct udevice *dev)
 		priv->is_emmc = 1;
 	else
 		priv->is_emmc = 0;
+
+	gpio_request_by_name(dev, "cd-gpios", 0, priv->cd_gpio,
+                                  GPIOD_IS_IN);
 
 	plat->f_max = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
 				"max-frequency", CONFIG_ZYNQ_SDHCI_MAX_FREQ);
