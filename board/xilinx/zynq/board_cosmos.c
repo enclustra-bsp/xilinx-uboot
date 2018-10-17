@@ -173,7 +173,10 @@ static int mgt_set_routing(uint8_t mgt_dev, uint8_t mgt_input,
 	if (mgt_outputs[mgt_output - 1].cross == MGT_CROSS_ENABLED)
 		i2c_buf |= (1 << 5);
 
-	i2c_write(mgt_devices[mgt_dev].i2c_addr, MGT_SW_CTRL, 1, &i2c_buf, 1);
+	if(i2c_write(mgt_devices[mgt_dev].i2c_addr, MGT_SW_CTRL, 1, &i2c_buf, 1)) {
+		printf("Error: I2C write operation failed\n");
+		return CMD_RET_FAILURE;
+        }
 
 	return CMD_RET_SUCCESS;
 }
