@@ -7,6 +7,7 @@
  */
 /dts-v1/;
 #include "zynq-7000.dtsi"
+#include <dt-bindings/gpio/gpio.h>
 
 / {
 	model = "Enclustra Mars ZX2 SOM";
@@ -18,6 +19,7 @@
 		serial0 = &uart0;
 		spi0 = &qspi;
 		usb0 = &usb0;
+		gpio0 = &gpio0;
 	};
 
 	memory {
@@ -41,6 +43,7 @@
 &sdhci0 {
 	u-boot,dm-pre-reloc;
 	status = "okay";
+	cd-gpios = <&gpio0 50 GPIO_ACTIVE_LOW>;
 };
 
 &gem0 {
