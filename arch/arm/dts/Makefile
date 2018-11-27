@@ -189,6 +189,7 @@ dtb-$(CONFIG_ARCH_ZYNQMP) += \
 	zynqmp-zc1751-xm019-dc5.dtb		\
 	mercury-xu1.dtb				\
 	mercury-xu5.dtb				\
+	mercury-xu8.dtb				\
 	mars-xu3.dtb				\
 	zynqmp-mini-nand.dtb \
 	zynqmp-zc1751-xm019-dc5.dtb
