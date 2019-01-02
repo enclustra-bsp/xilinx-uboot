@@ -423,7 +423,7 @@ int board_late_init(void)
 	char *new_targets;
 	u8 hwaddr[6] = {0, 0, 0, 0, 0, 0};
 	u32 hwaddr_h;
-	char hwaddr_str[16];
+	char hwaddr_str[18];
 	bool hwaddr_set;
 	char *env_targets;
 
