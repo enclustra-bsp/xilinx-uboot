@@ -124,17 +124,6 @@
 # define CONFIG_SUPPORT_VFAT
 #endif
 
-#if defined(CONFIG_ZYNQ_I2C0) || defined(CONFIG_ZYNQ_I2C1)
-#define CONFIG_SYS_I2C_ZYNQ
-#endif
-
-/* I2C */
-#if defined(CONFIG_SYS_I2C_ZYNQ)
-# define CONFIG_SYS_I2C
-# define CONFIG_SYS_I2C_ZYNQ_SPEED		100000
-# define CONFIG_SYS_I2C_ZYNQ_SLAVE		0
-#endif
-
 /* EEPROM */
 #ifdef CONFIG_ZYNQ_EEPROM
 # define CONFIG_SYS_I2C_EEPROM_ADDR_LEN		1

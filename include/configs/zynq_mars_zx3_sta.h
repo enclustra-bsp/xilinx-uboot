@@ -13,7 +13,6 @@
 
 #define ENCLUSTRA_MARS_ZX
 #define CONFIG_CPU_FREQ_HZ		666666666
-#define CONFIG_ZYNQ_I2C0
 
 #include <configs/zynq-common.h>
 #include <configs/enclustra_zx_common.h>

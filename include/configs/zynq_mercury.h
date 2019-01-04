@@ -13,7 +13,6 @@
 
 #define CONFIG_CPU_FREQ_HZ		800000000
 #define ENCLUSTRA_MERCURY_ZX
-#define CONFIG_ZYNQ_I2C0
 
 #include <configs/zynq-common.h>
 #include <configs/enclustra_zx_common.h>
