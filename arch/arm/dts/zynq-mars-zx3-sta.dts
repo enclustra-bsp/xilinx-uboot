@@ -18,6 +18,7 @@
 		serial0 = &uart0;
 		spi0 = &qspi;
 		usb0 = &usb0;
+		i2c0 = &i2c0;
 	};
 
 	memory {
@@ -57,4 +58,6 @@
 	status = "okay";
 };
 
-
+&i2c0 {
+	status = "okay";
+};

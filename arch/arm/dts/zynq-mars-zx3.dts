@@ -20,6 +20,7 @@
 		spi0 = &qspi;
 		usb0 = &usb0;
 		gpio0 = &gpio0;
+		i2c0 = &i2c0;
 	};
 
 	memory {
@@ -60,3 +61,6 @@
 	status = "okay";
 };
 
+&i2c0 {
+	status = "okay";
+};
