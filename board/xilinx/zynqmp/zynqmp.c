@@ -405,13 +405,8 @@ void scsi_init(void)
 
 #if defined(CONFIG_ENCLUSTRA_EEPROM_MAC)
 static struct eeprom_mem eeproms[] = {
-	{ .i2c_addr = 0x64,
-	  .mac_reader = atsha204_get_mac,
-	  .wakeup = atsha204_wakeup,
-	},
-	{ .i2c_addr = 0x5C,
-	  .mac_reader = ds28_get_mac,
-	  .wakeup = NULL,}
+	{.mac_reader = atsha204_get_mac },
+	{.mac_reader = ds28_get_mac }
 };
 #endif
 
@@ -442,30 +437,20 @@ int board_late_init(void)
 #if defined(CONFIG_ENCLUSTRA_EEPROM_MAC)
 	/* setup ethaddr */
 	hwaddr_set = false;
-	if (env_get("ethaddr") == NULL) {
-		/* Init i2c */
-		i2c_init(0, 0);
-		i2c_set_bus_num(0);
-
+	if (!env_get("ethaddr")) {
 		for (i = 0; i < ARRAY_SIZE(eeproms); i++) {
-
-			if(eeproms[i].wakeup)
-				eeproms[i].wakeup(eeproms[i].i2c_addr);
-
-			/* Probe the chip */
-			ret = i2c_probe(eeproms[i].i2c_addr);
-			if (ret != 0) continue;
-
-			if(eeproms[i].mac_reader(eeproms[i].i2c_addr, hwaddr))
+			if (eeproms[i].mac_reader(hwaddr))
 				continue;
 
 			/* Workaround for incorrect MAC address caused by
-			 * flashing to EEPROM adresses like 20:B0:F0:XX:XX:XX
-			 * instead of 20:B0:F7:XX:XX:XX */
+			 * flashing to EEPROM addresses like 20:B0:F0:XX:XX:XX
+			 * instead of 20:B0:F7:XX:XX:XX
+			 */
 			hwaddr[2] = (hwaddr[2] == 0xF0) ? 0xF7 : hwaddr[2];
 
 			/* Check if the value is a valid mac registered for
-			 * Enclustra  GmbH */
+			 * Enclustra  GmbH
+			 */
 			hwaddr_h = hwaddr[0] | hwaddr[1] << 8 | hwaddr[2] << 16;
 			if ((hwaddr_h & 0xFFFFFF) != ENCLUSTRA_MAC)
 				continue;
@@ -505,7 +490,8 @@ int board_late_init(void)
 			hwaddr_set = true;
 			break;
 		}
-		if(!hwaddr_set){
+
+		if (!hwaddr_set) {
 			env_set("ethaddr", ENCLUSTRA_ETHADDR_DEFAULT);
 			env_set("eth1addr", ENCLUSTRA_ETH1ADDR_DEFAULT);
 		}
