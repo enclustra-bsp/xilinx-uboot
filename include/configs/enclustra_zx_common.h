@@ -15,11 +15,12 @@
 	                                "nand:5M(nand-linux),"  \
                                 "1M(nand-device-tree)," \
                                 "1M(nand-bootscript),"  \
+				"11M(ubi-env),"		\
                                 "-(nand-rootfs)"
 #define CONFIG_MTD_DEVICE
-#define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_PARTITIONS
-#define CONFIG_RBTREE
+#define ENVIRONMENT_SIZE "0x18000"
+
 #ifndef CONFIG_CMD_ELF
 #define CONFIG_CMD_ELF
 #endif
@@ -32,18 +33,32 @@
 #define QSPI_BOOT_OFFSET           0x00000000 // Storage for Bootimage
 #define QSPI_BOOTARGS_SIZE         0x00080000 // size 512kB
 
-/* U-Boot environment is placed at the end of the flash */
-#define QSPI_BOOTARGS_OFFSET       QSPI_SIZE - QSPI_BOOTARGS_SIZE
-
 #ifdef CONFIG_ENV_SIZE
 #undef CONFIG_ENV_SIZE
 #endif
-#define CONFIG_ENV_SIZE QSPI_BOOTARGS_SIZE
+
+/* U-Boot environment is placed at the end of the nor flash */
+#ifdef CONFIG_ENV_IS_IN_SPI_FLASH
 
 #ifdef CONFIG_ENV_OFFSET
 #undef CONFIG_ENV_OFFSET
 #endif
-#define CONFIG_ENV_OFFSET QSPI_BOOTARGS_OFFSET
+#define CONFIG_ENV_OFFSET QSPI_SIZE - QSPI_BOOTARGS_SIZE
+#define CONFIG_ENV_SIZE QSPI_BOOTARGS_SIZE
+
+
+/* U-Boot environment is placed at the ubi */
+#elif CONFIG_ENV_IS_IN_UBI
+
+#define CONFIG_ENV_UBI_PART		"ubi-env"
+#define CONFIG_ENV_UBI_VOLUME		"uboot-env"
+#define CONFIG_ENV_SIZE                 (96 << 10)      /*  96 KiB */
+#define CONFIG_UBI_SILENCE_MSG          1
+
+/* U-Boot environment is placed at the mmc device */
+#elif CONFIG_ENV_IS_IN_MMC
+#define CONFIG_SYS_MMC_ENV_DEV		1  // mmc1 = emmc, mmc0 = sd
+#endif
 
 #define ENCLUSTRA_MAC               0xF7B020
 
@@ -122,7 +137,7 @@
     "def_args=console=ttyPS0,115200 rw earlyprintk\0"\
     "ramdisk_args=setenv bootargs ${def_args} root=/dev/ram\0"\
     "mmc_args=setenv bootargs ${def_args} rootwait root=/dev/mmcblk${mmcdev}p2\0"\
-    "nand_args=setenv bootargs ${def_args} rootwait=1 ubi.mtd=3 rootfstype=ubifs root=ubi0:rootfs\0"\
+    "nand_args=setenv bootargs ${def_args} rootwait=1 ubi.mtd=4 rootfstype=ubifs root=ubi0:rootfs\0"\
     "qspi_args=setenv bootargs ${def_args} root=/dev/mtdblock5 rootfstype=jffs2 rootwait\0"\
     "net_args=setenv bootargs ${def_args} rootwait root=/dev/nfs nfsroot=${serverip}:${serverpath},v3 ip=dhcp\0"\
                                                 \
@@ -130,6 +145,7 @@
     "initrd_high=0x20000000\0"                  \
     "mtdids=" MTDIDS_DEFAULT "\0"               \
     "mtdparts=" MTDPARTS_DEFAULT "\0"           \
+    "env_size=" ENVIRONMENT_SIZE "\0"           \
                                                 \
     QSPIBOOT_CMD                                \
                                                 \
