@@ -139,6 +139,10 @@
 &i2c0 {
 	status = "okay";
 	clock-frequency = <100000>;
+	atsha204a@64 {
+		compatible = "atmel,atsha204a";
+		reg = <0 0x64>;
+	};
 };
 
 &i2c1 {

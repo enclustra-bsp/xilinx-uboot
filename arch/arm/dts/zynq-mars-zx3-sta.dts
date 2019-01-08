@@ -60,4 +60,8 @@
 
 &i2c0 {
 	status = "okay";
+	atsha204a@64 {
+		compatible = "atmel,atsha204a";
+		reg = <0x64>;
+	};
 };
