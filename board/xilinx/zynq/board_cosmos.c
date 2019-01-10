@@ -119,6 +119,7 @@ static int mgt_set_routing(uint8_t mgt_dev, uint8_t mgt_input,
 		uint8_t mgt_output, uint8_t cross)
 {
 	uint8_t i2c_buf;
+	struct udevice *mux, *dev;
 
 	if (mgt_dev > ARRAY_SIZE(mgt_devices)) {
 		printf("Error: Wrong MGT device\n");
@@ -140,30 +141,37 @@ static int mgt_set_routing(uint8_t mgt_dev, uint8_t mgt_input,
 		return CMD_RET_FAILURE;
 	}
 
+	if (i2c_get_chip_for_busnum(0, MGT_I2C_MUX_ADDR, 0, &mux)) {
+		printf("Cannot find MUX on the I2C bus\n");
+		return CMD_RET_FAILURE;
+	}
+
+	if (i2c_get_chip_for_busnum(0, mgt_devices[mgt_dev].i2c_addr, 1,
+				    &dev)) {
+		printf("Cannot find MGT device on the I2C bus\n");
+		return CMD_RET_FAILURE;
+	}
+
 	/* Configure I2C MUX to appropriate port */
 	i2c_buf = 0x08 | mgt_devices[mgt_dev].i2c_mux_port;
-	i2c_write(MGT_I2C_MUX_ADDR, 0, 0, &i2c_buf, 1);
+	dm_i2c_write(mux, 0, &i2c_buf, 1);
 
 	/* Write 1 to SWITCH_EN bit to ensure device is active */
 	i2c_buf = MGT_SWITCH_EN;
-	i2c_write(mgt_devices[mgt_dev].i2c_addr,
-		  MGT_SYS_CTRL, 1, &i2c_buf, 1);
+	dm_i2c_write(dev, MGT_SYS_CTRL, &i2c_buf, 1);
 
 	/* Configure MGT mux port */
 	i2c_buf = (1 << (mgt_input - 1));
-	i2c_write(mgt_devices[mgt_dev].i2c_addr,
-		  mgt_output + 1, 1, &i2c_buf, 1);
+	dm_i2c_write(dev, mgt_output + 1, &i2c_buf, 1);
 
 	/* Configure cross connection in case of output 5 */
 	if (mgt_outputs[mgt_output - 1].cross == MGT_CROSS_ENABLED) {
 		if (cross) {
 			i2c_buf = (1 << MGT_CROSS);
-			i2c_write(mgt_devices[mgt_dev].i2c_addr,
-				  MGT_CROSS5_CTRL, 1, &i2c_buf, 1);
+			dm_i2c_write(dev, MGT_CROSS5_CTRL, &i2c_buf, 1);
 		} else {
 			i2c_buf = (1 << MGT_PASS);
-			i2c_write(mgt_devices[mgt_dev].i2c_addr,
-				  MGT_CROSS5_CTRL, 1, &i2c_buf, 1);
+			dm_i2c_write(dev, MGT_CROSS5_CTRL, &i2c_buf, 1);
 		}
 	}
 
@@ -173,10 +181,10 @@ static int mgt_set_routing(uint8_t mgt_dev, uint8_t mgt_input,
 	if (mgt_outputs[mgt_output - 1].cross == MGT_CROSS_ENABLED)
 		i2c_buf |= (1 << 5);
 
-	if(i2c_write(mgt_devices[mgt_dev].i2c_addr, MGT_SW_CTRL, 1, &i2c_buf, 1)) {
+	if (dm_i2c_write(dev, MGT_SW_CTRL, &i2c_buf, 1)) {
 		printf("Error: I2C write operation failed\n");
 		return CMD_RET_FAILURE;
-        }
+	}
 
 	return CMD_RET_SUCCESS;
 }
