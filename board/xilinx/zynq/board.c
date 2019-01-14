@@ -299,7 +299,7 @@ int board_late_init(void)
 	}
 
 #if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX)
-	int i, ret;
+	int i;
 	u8 hwaddr[6] = {0, 0, 0, 0, 0, 0};
 	u32 hwaddr_h;
 	char hwaddr_str[18];
