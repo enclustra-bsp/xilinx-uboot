@@ -36,6 +36,7 @@
 #ifdef CONFIG_ENV_SIZE
 #undef CONFIG_ENV_SIZE
 #endif
+#define CONFIG_ENV_SIZE QSPI_BOOTARGS_SIZE
 
 /* U-Boot environment is placed at the end of the nor flash */
 #ifdef CONFIG_ENV_IS_IN_SPI_FLASH
@@ -44,7 +45,6 @@
 #undef CONFIG_ENV_OFFSET
 #endif
 #define CONFIG_ENV_OFFSET QSPI_SIZE - QSPI_BOOTARGS_SIZE
-#define CONFIG_ENV_SIZE QSPI_BOOTARGS_SIZE
 
 
 /* U-Boot environment is placed at the ubi */
