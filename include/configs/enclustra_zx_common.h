@@ -52,8 +52,12 @@
 
 #define CONFIG_ENV_UBI_PART		"ubi-env"
 #define CONFIG_ENV_UBI_VOLUME		"uboot-env"
-#define CONFIG_ENV_SIZE                 (96 << 10)      /*  96 KiB */
 #define CONFIG_UBI_SILENCE_MSG          1
+
+#ifdef CONFIG_ENV_SIZE
+#undef CONFIG_ENV_SIZE
+#endif
+#define CONFIG_ENV_SIZE                 (96 << 10)      /*  96 KiB */
 
 /* U-Boot environment is placed at the mmc device */
 #elif CONFIG_ENV_IS_IN_MMC
