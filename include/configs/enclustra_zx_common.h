@@ -24,9 +24,6 @@
 #ifndef CONFIG_CMD_ELF
 #define CONFIG_CMD_ELF
 #endif
-/*#define CONFIG_CMD_UBI
- * #define CONFIG_CMD_UBIFS
- * #define CONFIG_LZO*/
 
 /* QSPI Flash Memory Map */
 #define QSPI_SIZE                  0x04000000 // We support only 64 MB flashes
