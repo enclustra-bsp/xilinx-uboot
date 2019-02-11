@@ -210,6 +210,7 @@
 	no-1-8-v;	/* for 1.0 silicon */
 	xlnx,mio_bank = <1>;
 	cd-gpios = <&gpio 45 GPIO_ACTIVE_LOW>; /* PS_MIO45_SDCD# */
+	enable-gpios = <&gpio 44 GPIO_ACTIVE_LOW>; /* PS_MIO44_SDIOSEL# */
 };
 
 &sdhci0 {
