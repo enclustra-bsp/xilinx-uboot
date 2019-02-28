@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
  * (C) Copyright 2002-2006
@@ -6,8 +7,6 @@
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Marius Groeger <mgroeger@sysgo.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -23,10 +22,6 @@
 #include <fdtdec.h>
 #include <ide.h>
 #include <initcall.h>
-#include <init_helpers.h>
-#ifdef CONFIG_PS2KBD
-#include <keyboard.h>
-#endif
 #if defined(CONFIG_CMD_KGDB)
 #include <kgdb.h>
 #endif
@@ -41,7 +36,6 @@
 #include <onenand_uboot.h>
 #include <scsi.h>
 #include <serial.h>
-#include <spi.h>
 #include <stdio_dev.h>
 #include <timer.h>
 #include <trace.h>
@@ -126,7 +120,7 @@ static int initr_reloc_global_data(void)
 {
 #ifdef __ARM__
 	monitor_flash_len = _end - __image_copy_start;
-#elif defined(CONFIG_NDS32)
+#elif defined(CONFIG_NDS32) || defined(CONFIG_RISCV)
 	monitor_flash_len = (ulong)&_end - (ulong)&_start;
 #elif !defined(CONFIG_SANDBOX) && !defined(CONFIG_NIOS2)
 	monitor_flash_len = (ulong)&__init_end - gd->relocaddr;
@@ -145,21 +139,18 @@ static int initr_reloc_global_data(void)
 	 */
 	fixup_cpu();
 #endif
-#ifdef CONFIG_SYS_EXTRA_ENV_RELOC
+#if !defined(CONFIG_ENV_ADDR) || defined(ENV_IS_EMBEDDED)
 	/*
-	 * Some systems need to relocate the env_addr pointer early because the
-	 * location it points to will get invalidated before env_relocate is
-	 * called.  One example is on systems that might use a L2 or L3 cache
-	 * in SRAM mode and initialize that cache from SRAM mode back to being
-	 * a cache in cpu_init_r.
+	 * Relocate the early env_addr pointer unless we know it is not inside
+	 * the binary. Some systems need this and for the rest, it doesn't hurt.
 	 */
-	gd->env_addr += gd->relocaddr - CONFIG_SYS_MONITOR_BASE;
+	gd->env_addr += gd->reloc_off;
 #endif
 #ifdef CONFIG_OF_EMBED
 	/*
-	* The fdt_blob needs to be moved to new relocation address
-	* incase of FDT blob is embedded with in image
-	*/
+	 * The fdt_blob needs to be moved to new relocation address
+	 * incase of FDT blob is embedded with in image
+	 */
 	gd->fdt_blob += gd->reloc_off;
 #endif
 #ifdef CONFIG_EFI_LOADER
@@ -351,14 +342,16 @@ static int initr_flash(void)
 	print_size(flash_size, "");
 #ifdef CONFIG_SYS_FLASH_CHECKSUM
 	/*
-	* Compute and print flash CRC if flashchecksum is set to 'y'
-	*
-	* NOTE: Maybe we should add some WATCHDOG_RESET()? XXX
-	*/
+	 * Compute and print flash CRC if flashchecksum is set to 'y'
+	 *
+	 * NOTE: Maybe we should add some WATCHDOG_RESET()? XXX
+	 */
 	if (env_get_yesno("flashchecksum") == 1) {
+		const uchar *flash_base = (const uchar *)CONFIG_SYS_FLASH_BASE;
+
 		printf("  CRC: %08X", crc32(0,
-			(const unsigned char *) CONFIG_SYS_FLASH_BASE,
-			flash_size));
+					    flash_base,
+					    flash_size));
 	}
 #endif /* CONFIG_SYS_FLASH_CHECKSUM */
 	putc('\n');
@@ -375,26 +368,11 @@ static int initr_flash(void)
 	update_flash_size(flash_size);
 #endif
 
-
 #if defined(CONFIG_OXC) || defined(CONFIG_RMU)
 	/* flash mapped at end of memory map */
 	bd->bi_flashoffset = CONFIG_SYS_TEXT_BASE + flash_size;
 #elif CONFIG_SYS_MONITOR_BASE == CONFIG_SYS_FLASH_BASE
 	bd->bi_flashoffset = monitor_flash_len;	/* reserved area for monitor */
-#endif
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_PPC) && !defined(CONFIG_DM_SPI)
-static int initr_spi(void)
-{
-	/* PPC does this here */
-#ifdef CONFIG_SPI
-#if !defined(CONFIG_ENV_IS_IN_EEPROM)
-	spi_init_f();
-#endif
-	spi_init_r();
 #endif
 	return 0;
 }
@@ -458,9 +436,10 @@ static int initr_env(void)
 	if (should_load_env())
 		env_relocate();
 	else
-		set_default_env(NULL);
+		set_default_env(NULL, 0);
 #ifdef CONFIG_OF_CONTROL
-	env_set_addr("fdtcontroladdr", gd->fdt_blob);
+	env_set_hex("fdtcontroladdr",
+		    (unsigned long)map_to_sysmem(gd->fdt_blob));
 #endif
 
 	/* Initialize from environment */
@@ -557,6 +536,7 @@ static int initr_scsi(void)
 {
 	puts("SCSI:  ");
 	scsi_init();
+	puts("\n");
 
 	return 0;
 }
@@ -600,7 +580,7 @@ static int initr_pcmcia(void)
 }
 #endif
 
-#if defined(CONFIG_IDE)
+#if defined(CONFIG_IDE) && !defined(CONFIG_BLK)
 static int initr_ide(void)
 {
 	puts("IDE:   ");
@@ -624,10 +604,8 @@ int initr_mem(void)
 	ulong pram = 0;
 	char memsz[32];
 
-# ifdef CONFIG_PRAM
 	pram = env_get_ulong("pram", 10, CONFIG_PRAM);
-# endif
-	sprintf(memsz, "%ldk", (long int) ((gd->ram_size / 1024) - pram));
+	sprintf(memsz, "%ldk", (long int)((gd->ram_size / 1024) - pram));
 	env_set("mem", memsz);
 
 	return 0;
@@ -639,15 +617,6 @@ static int initr_bedbug(void)
 {
 	bedbug_init();
 
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_PS2KBD
-static int initr_kbd(void)
-{
-	puts("PS/2:  ");
-	kbd_init();
 	return 0;
 }
 #endif
@@ -665,7 +634,7 @@ static int run_main_loop(void)
 
 /*
  * Over time we hope to remove these functions with code fragments and
- * stub funtcions, and instead call the relevant function directly.
+ * stub functions, and instead call the relevant function directly.
  *
  * We also hope to remove most of the driver-related init and do it if/when
  * the driver is later used.
@@ -680,7 +649,7 @@ static init_fnc_t init_sequence_r[] = {
 	initr_caches,
 	/* Note: For Freescale LS2 SoCs, new MMU table is created in DDR.
 	 *	 A temporary mapping of IFC high region is since removed,
-	 *	 so environmental variables in NOR flash is not availble
+	 *	 so environmental variables in NOR flash is not available
 	 *	 until board_init() is called below to remap IFC to high
 	 *	 region.
 	 */
@@ -704,7 +673,8 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_DM
 	initr_dm,
 #endif
-#if defined(CONFIG_ARM) || defined(CONFIG_NDS32)
+#if defined(CONFIG_ARM) || defined(CONFIG_NDS32) || defined(CONFIG_RISCV) || \
+	defined(CONFIG_SANDBOX)
 	board_init,	/* Setup chipselects */
 #endif
 	/*
@@ -743,7 +713,7 @@ static init_fnc_t init_sequence_r[] = {
 #if defined(CONFIG_PCI) && defined(CONFIG_SYS_EARLY_PCI_INIT)
 	/*
 	 * Do early PCI configuration _before_ the flash gets initialised,
-	 * because PCU ressources are crucial for flash access on some boards.
+	 * because PCU resources are crucial for flash access on some boards.
 	 */
 	initr_pci,
 #endif
@@ -758,9 +728,6 @@ static init_fnc_t init_sequence_r[] = {
 #if defined(CONFIG_PPC) || defined(CONFIG_M68K) || defined(CONFIG_X86)
 	/* initialize higher level parts of CPU like time base and timers */
 	cpu_init_r,
-#endif
-#ifdef CONFIG_PPC
-	initr_spi,
 #endif
 #ifdef CONFIG_CMD_NAND
 	initr_nand,
@@ -841,7 +808,7 @@ static init_fnc_t init_sequence_r[] = {
 #if defined(CONFIG_CMD_PCMCIA) && !defined(CONFIG_IDE)
 	initr_pcmcia,
 #endif
-#if defined(CONFIG_IDE)
+#if defined(CONFIG_IDE) && !defined(CONFIG_BLK)
 	initr_ide,
 #endif
 #ifdef CONFIG_LAST_STAGE_INIT
@@ -859,9 +826,6 @@ static init_fnc_t init_sequence_r[] = {
 #endif
 #if defined(CONFIG_PRAM)
 	initr_mem,
-#endif
-#ifdef CONFIG_PS2KBD
-	initr_kbd,
 #endif
 	run_main_loop,
 };

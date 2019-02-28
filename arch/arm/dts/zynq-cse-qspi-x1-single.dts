@@ -1,13 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Xilinx CSE QSPI x1 Single DTS
  *
  * Copyright (C) 2015 - 2017 Xilinx, Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include "zynq-cse-qspi.dtsi"
 
-&qspi {
+&flash0 {
 	spi-rx-bus-width = <1>;
 };

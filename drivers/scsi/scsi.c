@@ -1,13 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2001
  * Denis Peter, MPL AG Switzerland
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
 #include <dm.h>
-#include <inttypes.h>
 #include <pci.h>
 #include <scsi.h>
 #include <dm/device-internal.h>
@@ -197,7 +195,7 @@ static ulong scsi_read(struct blk_desc *block_dev, lbaint_t blknr,
 			blks = 0;
 		}
 		debug("scsi_read_ext: startblk " LBAF
-		      ", blccnt %x buffer %" PRIXPTR "\n",
+		      ", blccnt %x buffer %lX\n",
 		      start, smallblks, buf_addr);
 		if (scsi_exec(bdev, pccb)) {
 			scsi_print_error(pccb);
@@ -207,7 +205,7 @@ static ulong scsi_read(struct blk_desc *block_dev, lbaint_t blknr,
 		buf_addr += pccb->datalen;
 	} while (blks != 0);
 	debug("scsi_read_ext: end startblk " LBAF
-	      ", blccnt %x buffer %" PRIXPTR "\n", start, smallblks, buf_addr);
+	      ", blccnt %x buffer %lX\n", start, smallblks, buf_addr);
 	return blkcnt;
 }
 
@@ -261,7 +259,7 @@ static ulong scsi_write(struct blk_desc *block_dev, lbaint_t blknr,
 			start += blks;
 			blks = 0;
 		}
-		debug("%s: startblk " LBAF ", blccnt %x buffer %" PRIXPTR "\n",
+		debug("%s: startblk " LBAF ", blccnt %x buffer %lx\n",
 		      __func__, start, smallblks, buf_addr);
 		if (scsi_exec(bdev, pccb)) {
 			scsi_print_error(pccb);
@@ -270,7 +268,7 @@ static ulong scsi_write(struct blk_desc *block_dev, lbaint_t blknr,
 		}
 		buf_addr += pccb->datalen;
 	} while (blks != 0);
-	debug("%s: end startblk " LBAF ", blccnt %x buffer %" PRIXPTR "\n",
+	debug("%s: end startblk " LBAF ", blccnt %x buffer %lX\n",
 	      __func__, start, smallblks, buf_addr);
 	return blkcnt;
 }
@@ -594,7 +592,6 @@ static int do_scsi_scan_one(struct udevice *dev, int id, int lun, bool verbose)
 	memcpy(&bdesc->vendor, &bd.vendor, sizeof(bd.vendor));
 	memcpy(&bdesc->product, &bd.product, sizeof(bd.product));
 	memcpy(&bdesc->revision, &bd.revision,	sizeof(bd.revision));
-	part_init(bdesc);
 
 	if (verbose) {
 		printf("  Device %d: ", 0);

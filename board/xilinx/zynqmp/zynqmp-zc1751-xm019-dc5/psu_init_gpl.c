@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (c) Copyright 2015 Xilinx, Inc. All rights reserved.
- *
- * SPDX-License-Identifier: GPL-2.0+
  */
 
 #include <asm/arch/psu_init_gpl.h>
@@ -678,7 +677,6 @@ static unsigned long psu_ddr_phybringup_data(void)
 	unsigned int pll_locked = 0;
 
 	while ((pll_retry > 0) && (!pll_locked)) {
-
 		Xil_Out32(0xFD080004, 0x00040010);
 		Xil_Out32(0xFD080004, 0x00040011);
 

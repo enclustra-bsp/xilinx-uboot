@@ -22,6 +22,7 @@
 		serial1 = &dcc;
 		spi0 = &qspi;
 		mmc0 = &sdhci1;
+		ethernet0 = &gem1;
 	};
 
 	chosen {
@@ -39,15 +40,29 @@
 	status = "okay";
 };
 
+&gem1 {
+	status = "okay";
+	phy-mode = "gmii";
+	phy-handle = <&gmiitorgmii>;
+	phy: ethernet-phy@0 {
+		reg = <0x0>;
+	};
+	gmiitorgmii: gmiitorgmii@8 {
+		compatible = "xlnx,gmii-to-rgmii-1.0";
+		reg = <8>;
+		phy-handle = <&phy>;
+	};
+};
+
 &qspi {
 	status = "okay";
 	flash@0 {
-		compatible = "m25p80"; /* 32MB */
+		compatible = "m25p80", "spi-flash"; /* 32MB */
 		#address-cells = <1>;
 		#size-cells = <1>;
 		reg = <0x0>;
 		spi-tx-bus-width = <1>;
-		spi-rx-bus-width = <4>;
+		spi-rx-bus-width = <1>;
 		spi-max-frequency = <108000000>; /* Based on DC1 spec */
 		partition@qspi-fsbl-uboot { /* for testing purpose */
 			label = "qspi-fsbl-uboot";

@@ -1,10 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2014
  * NVIDIA Corporation <www.nvidia.com>
  *
  * Copyright 2014 Red Hat, Inc.
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #ifndef _CONFIG_CMD_DISTRO_BOOTCMD_H
@@ -71,10 +70,15 @@
 #ifdef CONFIG_CMD_UBIFS
 #define BOOTENV_SHARED_UBIFS \
 	"ubifs_boot=" \
-		"if ubi part UBI && ubifsmount ubi${devnum}:boot; then "  \
-			"setenv devtype ubi; "                            \
-			"setenv bootpart 0; "                             \
-			"run scan_dev_for_boot; "                         \
+		"env exists bootubipart || " \
+			"env set bootubipart UBI; " \
+		"env exists bootubivol || " \
+			"env set bootubivol boot; " \
+		"if ubi part ${bootubipart} && " \
+			"ubifsmount ubi${devnum}:${bootubivol}; " \
+		"then " \
+			"setenv devtype ubi; " \
+			"run scan_dev_for_boot; " \
 		"fi\0"
 #define BOOTENV_DEV_UBIFS	BOOTENV_DEV_BLKDEV
 #define BOOTENV_DEV_NAME_UBIFS	BOOTENV_DEV_NAME_BLKDEV
@@ -95,6 +99,10 @@
 #define BOOTEFI_NAME "bootia32.efi"
 #elif defined(CONFIG_X86_RUN_64BIT)
 #define BOOTEFI_NAME "bootx64.efi"
+#elif defined(CONFIG_ARCH_RV32I)
+#define BOOTEFI_NAME "bootriscv32.efi"
+#elif defined(CONFIG_ARCH_RV64I)
+#define BOOTEFI_NAME "bootriscv64.efi"
 #endif
 #endif
 
@@ -125,7 +133,7 @@
 			"${kernel_addr_r} efi/boot/"BOOTEFI_NAME"; "      \
 		"if fdt addr ${fdt_addr_r}; then "                        \
 			"bootefi ${kernel_addr_r} ${fdt_addr_r};"         \
-		"else "                                                    \
+		"else "                                                   \
 			"bootefi ${kernel_addr_r} ${fdtcontroladdr};"     \
 		"fi\0"                                                    \
 	\
@@ -234,18 +242,41 @@
 	BOOT_TARGET_DEVICES_references_USB_without_CONFIG_CMD_USB
 #endif
 
+#ifdef CONFIG_CMD_VIRTIO
+#define BOOTENV_SHARED_VIRTIO	BOOTENV_SHARED_BLKDEV(virtio)
+#define BOOTENV_DEV_VIRTIO	BOOTENV_DEV_BLKDEV
+#define BOOTENV_DEV_NAME_VIRTIO	BOOTENV_DEV_NAME_BLKDEV
+#else
+#define BOOTENV_SHARED_VIRTIO
+#define BOOTENV_DEV_VIRTIO \
+	BOOT_TARGET_DEVICES_references_VIRTIO_without_CONFIG_CMD_VIRTIO
+#define BOOTENV_DEV_NAME_VIRTIO \
+	BOOT_TARGET_DEVICES_references_VIRTIO_without_CONFIG_CMD_VIRTIO
+#endif
+
 #if defined(CONFIG_CMD_DHCP)
 #if defined(CONFIG_EFI_LOADER)
-#if defined(CONFIG_ARM64)
+/* http://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xml */
+#if defined(CONFIG_ARM64) || defined(__aarch64__)
 #define BOOTENV_EFI_PXE_ARCH "0xb"
 #define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00011:UNDI:003000"
-#elif defined(CONFIG_ARM)
+#elif defined(CONFIG_ARM) || defined(__arm__)
 #define BOOTENV_EFI_PXE_ARCH "0xa"
 #define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00010:UNDI:003000"
-#elif defined(CONFIG_X86)
-/* Always assume we're running 64bit */
+#elif defined(CONFIG_X86) || defined(__x86_64__)
 #define BOOTENV_EFI_PXE_ARCH "0x7"
 #define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00007:UNDI:003000"
+#elif defined(__i386__)
+#define BOOTENV_EFI_PXE_ARCH "0x6"
+#define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00006:UNDI:003000"
+#elif defined(CONFIG_ARCH_RV32I) || ((defined(__riscv) && __riscv_xlen == 32))
+#define BOOTENV_EFI_PXE_ARCH "0x19"
+#define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00025:UNDI:003000"
+#elif defined(CONFIG_ARCH_RV64I) || ((defined(__riscv) && __riscv_xlen == 64))
+#define BOOTENV_EFI_PXE_ARCH "0x1b"
+#define BOOTENV_EFI_PXE_VCI "PXEClient:Arch:00027:UNDI:003000"
+#elif defined(CONFIG_SANDBOX)
+# error "sandbox EFI support is only supported on ARM and x86"
 #else
 #error Please specify an EFI client identifier
 #endif
@@ -331,20 +362,22 @@
 	BOOTENV_SHARED_IDE \
 	BOOTENV_SHARED_UBIFS \
 	BOOTENV_SHARED_EFI \
+	BOOTENV_SHARED_VIRTIO \
 	"boot_prefixes=/ /boot/\0" \
 	"boot_scripts=boot.scr.uimg boot.scr\0" \
 	"boot_script_dhcp=boot.scr.uimg\0" \
 	BOOTENV_BOOT_TARGETS \
 	\
+	"boot_syslinux_conf=extlinux/extlinux.conf\0" \
 	"boot_extlinux="                                                  \
 		"sysboot ${devtype} ${devnum}:${distro_bootpart} any "    \
-			"${scriptaddr} ${prefix}extlinux/extlinux.conf\0" \
+			"${scriptaddr} ${prefix}${boot_syslinux_conf}\0"  \
 	\
 	"scan_dev_for_extlinux="                                          \
 		"if test -e ${devtype} "                                  \
 				"${devnum}:${distro_bootpart} "           \
-				"${prefix}extlinux/extlinux.conf; then "  \
-			"echo Found ${prefix}extlinux/extlinux.conf; "    \
+				"${prefix}${boot_syslinux_conf}; then "   \
+			"echo Found ${prefix}${boot_syslinux_conf}; "     \
 			"run boot_extlinux; "                             \
 			"echo SCRIPT FAILED: continuing...; "             \
 		"fi\0"                                                    \

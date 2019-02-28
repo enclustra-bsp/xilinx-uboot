@@ -29,6 +29,7 @@
 #define SCR_EL3_HCE_EN		(1 << 8)  /* Hypervisor Call enable          */
 #define SCR_EL3_SMD_DIS		(1 << 7)  /* Secure Monitor Call disable     */
 #define SCR_EL3_RES1		(3 << 4)  /* Reserved, RES1                  */
+#define SCR_EL3_EA_EN		(1 << 3)  /* External aborts taken to EL3    */
 #define SCR_EL3_NS_EN		(1 << 0)  /* EL0 and EL1 in Non-scure state  */
 
 /*
@@ -451,7 +452,7 @@ enum dcache_option {
 	DCACHE_WRITEBACK = TTB_SECT | TTB_SECT_MAIR(2),
 	DCACHE_WRITEALLOC = TTB_SECT | TTB_SECT_MAIR(3),
 };
-#elif defined(CONFIG_CPU_V7)
+#elif defined(CONFIG_CPU_V7A)
 /* Short-Descriptor Translation Table Level 1 Bits */
 #define TTB_SECT_NS_MASK	(1 << 19)
 #define TTB_SECT_NG_MASK	(1 << 17)
@@ -493,7 +494,7 @@ enum {
 	MMU_SECTION_SIZE	= 1 << MMU_SECTION_SHIFT,
 };
 
-#ifdef CONFIG_CPU_V7
+#ifdef CONFIG_CPU_V7A
 /* TTBR0 bits */
 #define TTBR0_BASE_ADDR_MASK	0xFFFFC000
 #define TTBR0_RGN_NC			(0 << 3)

@@ -1,8 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
 # Copyright (c) 2014 Google, Inc
-#
-# SPDX-License-Identifier:	GPL-2.0+
-#
 
 # We don't want the bootrom-helper present in a full U-Boot build, as
 # this may have entered from ATF with the stack-pointer pointing to
@@ -35,12 +33,15 @@ obj-$(CONFIG_ROCKCHIP_RK322X) += rk322x-board.o
 obj-$(CONFIG_ROCKCHIP_RK3288) += rk3288-board.o
 obj-$(CONFIG_ROCKCHIP_RK3036) += rk3036-board.o
 obj-$(CONFIG_ROCKCHIP_RK3399) += rk3399-board.o
+obj-$(CONFIG_ROCKCHIP_RV1108) += rv1108-board.o
 endif
 
 obj-$(CONFIG_$(SPL_TPL_)RAM) += sdram_common.o
 
 ifndef CONFIG_ARM64
+ifndef CONFIG_ROCKCHIP_RK3188
 obj-y += rk_timer.o
+endif
 endif
 
 obj-$(CONFIG_ROCKCHIP_RK3036) += rk3036/

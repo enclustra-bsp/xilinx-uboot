@@ -17,8 +17,7 @@
                                 "1M(nand-bootscript),"  \
 				"11M(ubi-env),"		\
                                 "-(nand-rootfs)"
-#define CONFIG_MTD_DEVICE
-#define CONFIG_MTD_PARTITIONS
+
 #define ENVIRONMENT_SIZE "0x18000"
 
 #ifndef CONFIG_CMD_ELF

@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * dts file for Xilinx ZynqMP zc1751-xm018-dc4
  *
- * (C) Copyright 2015 - 2016, Xilinx, Inc.
+ * (C) Copyright 2015 - 2018, Xilinx, Inc.
  *
  * Michal Simek <michal.simek@xilinx.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /dts-v1/;
@@ -52,7 +51,6 @@
 	status = "okay";
 };
 
-/* fpd_dma clk 667MHz, lpd_dma 500MHz */
 &fpd_dma_chan1 {
 	status = "okay";
 };
@@ -117,7 +115,7 @@
 	status = "okay";
 };
 
-&xlnx_dp {
+&zynqmp_dpsub {
 	status = "okay";
 };
 
@@ -182,12 +180,12 @@
 &qspi {
 	status = "okay";
 	flash@0 {
-		compatible = "m25p80"; /* 32MB */
+		compatible = "m25p80", "spi-flash"; /* 32MB */
 		#address-cells = <1>;
 		#size-cells = <1>;
 		reg = <0x0>;
 		spi-tx-bus-width = <1>;
-		spi-rx-bus-width = <4>; /* FIXME also DUAL configuration possible */
+		spi-rx-bus-width = <4>; /* also DUAL configuration possible */
 		spi-max-frequency = <108000000>; /* Based on DC1 spec */
 		partition@qspi-fsbl-uboot { /* for testing purpose */
 			label = "qspi-fsbl-uboot";

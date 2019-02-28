@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2010
  * Texas Instruments, <www.ti.com>
  *
  * Aneesh V <aneesh@ti.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <dm.h>
@@ -15,11 +14,6 @@
 #include <errno.h>
 #include <mmc.h>
 #include <image.h>
-#include <fat.h>
-#include <fpga.h>
-#include <xilinx.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 static int mmc_load_legacy(struct spl_image_info *spl_image, struct mmc *mmc,
 			   ulong sector, struct image_header *header)
@@ -61,13 +55,13 @@ int mmc_load_image_raw_sector(struct spl_image_info *spl_image,
 {
 	unsigned long count;
 	struct image_header *header;
+	struct blk_desc *bd = mmc_get_blk_desc(mmc);
 	int ret = 0;
 
-	header = (struct image_header *)(CONFIG_SYS_TEXT_BASE -
-					 sizeof(struct image_header));
+	header = spl_get_load_buffer(-sizeof(*header), bd->blksz);
 
 	/* read image header to find the image size & load address */
-	count = blk_dread(mmc_get_blk_desc(mmc), sector, 1, header);
+	count = blk_dread(bd, sector, 1, header);
 	debug("hdr read sector %lx, count=%lu\n", sector, count);
 	if (count == 0) {
 		ret = -EIO;
@@ -146,7 +140,8 @@ static int spl_mmc_find_device(struct mmc **mmcp, u32 boot_device)
 #endif
 	if (err) {
 #ifdef CONFIG_SPL_LIBCOMMON_SUPPORT
-		printf("spl: could not find mmc device. error: %d\n", err);
+		printf("spl: could not find mmc device %d. error: %d\n",
+		       mmc_dev, err);
 #endif
 		return err;
 	}
@@ -197,8 +192,10 @@ static int mmc_load_image_raw_partition(struct spl_image_info *spl_image,
 static int mmc_load_image_raw_os(struct spl_image_info *spl_image,
 				 struct mmc *mmc)
 {
-	unsigned long count;
 	int ret;
+
+#if defined(CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR)
+	unsigned long count;
 
 	count = blk_dread(mmc_get_blk_desc(mmc),
 		CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR,
@@ -210,6 +207,7 @@ static int mmc_load_image_raw_os(struct spl_image_info *spl_image,
 #endif
 		return -1;
 	}
+#endif	/* CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR */
 
 	ret = mmc_load_image_raw_sector(spl_image, mmc,
 		CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR);
@@ -232,36 +230,6 @@ static int mmc_load_image_raw_os(struct spl_image_info *spl_image,
 				 struct mmc *mmc)
 {
 	return -ENOSYS;
-}
-#endif
-
-#ifdef CONFIG_SPL_FPGA_SUPPORT
-static int mmc_load_fpga_image_fat(struct spl_image_info *spl_image,
-				   struct mmc *mmc)
-{
-	int err;
-	int devnum = 0;
-	const fpga_desc *const desc = fpga_get_desc(devnum);
-	xilinx_desc *desc_xilinx = desc->devdesc;
-
-	err = spl_load_image_fat(spl_image, mmc_get_blk_desc(mmc),
-					CONFIG_SYS_MMCSD_FS_BOOT_PARTITION,
-					CONFIG_SPL_FPGA_LOAD_ARGS_NAME);
-
-	if (err) {
-#ifdef CONFIG_SPL_LIBCOMMON_SUPPORT
-		printf("spl: error reading image %s, err - %d\n",
-		       CONFIG_SPL_FPGA_LOAD_ARGS_NAME, err);
-#endif
-		return -1;
-	}
-#ifdef CONFIG_SPL_FPGA_BIT
-	return fpga_loadbitstream(devnum, (char *)spl_image->load_addr,
-				  desc_xilinx->size, BIT_FULL);
-#else
-	return fpga_load(devnum, (const void *)spl_image->load_addr,
-			 desc_xilinx->size, BIT_FULL);
-#endif
 }
 #endif
 
@@ -311,6 +279,25 @@ static int spl_mmc_do_fs_boot(struct spl_image_info *spl_image, struct mmc *mmc)
 static int spl_mmc_do_fs_boot(struct spl_image_info *spl_image, struct mmc *mmc)
 {
 	return -ENOSYS;
+}
+#endif
+
+u32 __weak spl_boot_mode(const u32 boot_device)
+{
+#if defined(CONFIG_SPL_FAT_SUPPORT) || defined(CONFIG_SPL_EXT_SUPPORT)
+	return MMCSD_MODE_FS;
+#elif defined(CONFIG_SUPPORT_EMMC_BOOT)
+	return MMCSD_MODE_EMMCBOOT;
+#else
+	return MMCSD_MODE_RAW;
+#endif
+}
+
+#ifdef CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION
+__weak
+int spl_boot_partition(const u32 boot_device)
+{
+	return CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION;
 }
 #endif
 
@@ -369,8 +356,11 @@ int spl_mmc_load_image(struct spl_image_info *spl_image,
 				return err;
 		}
 #ifdef CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION
-		err = mmc_load_image_raw_partition(spl_image, mmc,
-			CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION);
+		err = spl_boot_partition(bootdev->boot_device);
+		if (!err)
+			return err;
+
+		err = mmc_load_image_raw_partition(spl_image, mmc, err);
 		if (!err)
 			return err;
 #endif
@@ -383,10 +373,6 @@ int spl_mmc_load_image(struct spl_image_info *spl_image,
 		/* If RAW mode fails, try FS mode. */
 	case MMCSD_MODE_FS:
 		debug("spl: mmc boot mode: fs\n");
-
-#ifdef CONFIG_SPL_FPGA_SUPPORT
-		mmc_load_fpga_image_fat(spl_image, mmc);
-#endif
 
 		err = spl_mmc_do_fs_boot(spl_image, mmc);
 		if (!err)

@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2017 Weidmüller Interface GmbH & Co. KG
  * Stefan Herbrechtsmeier <stefan.herbrechtsmeier@weidmueller.com>
  *
  * Copyright (C) 2013 Soren Brinkmann <soren.brinkmann@xilinx.com>
  * Copyright (C) 2013 Xilinx, Inc. All rights reserved.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -481,7 +480,6 @@ U_BOOT_DRIVER(zynq_clk) = {
 	.name		= "zynq_clk",
 	.id		= UCLASS_CLK,
 	.of_match	= zynq_clk_ids,
-	.flags		= DM_FLAG_PRE_RELOC,
 	.ops		= &zynq_clk_ops,
 	.priv_auto_alloc_size = sizeof(struct zynq_clk_priv),
 	.probe		= zynq_clk_probe,

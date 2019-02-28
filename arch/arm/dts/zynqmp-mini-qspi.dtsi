@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * dts file for Xilinx ZynqMP Mini Configuration
  *
@@ -5,8 +6,6 @@
  *
  * Siva Durga Prasad <siva.durga.paladugu@xilinx.com>
  * Michal Simek <michal.simek@xilinx.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /dts-v1/;
@@ -64,7 +63,7 @@
 
 &qspi {
 	status = "okay";
-	flash@0 {
+	flash0: flash@0 {
 		compatible = "n25q512a11";
 		#address-cells = <1>;
 		#size-cells = <1>;

@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * dts file for Xilinx ZynqMP zc1751-xm015-dc1
  *
- * (C) Copyright 2015, Xilinx, Inc.
+ * (C) Copyright 2015 - 2018, Xilinx, Inc.
  *
  * Michal Simek <michal.simek@xilinx.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 /dts-v1/;
@@ -43,7 +42,6 @@
 	};
 };
 
-/* fpd_dma clk 667MHz, lpd_dma 500MHz */
 &fpd_dma_chan1 {
 	status = "okay";
 };
@@ -106,8 +104,8 @@
 	scl-gpios = <&gpio 36 GPIO_ACTIVE_HIGH>;
 	sda-gpios = <&gpio 37 GPIO_ACTIVE_HIGH>;
 
-	eeprom@55 {
-		compatible = "at,24c64"; /* 24AA64 */
+	eeprom: eeprom@55 {
+		compatible = "atmel,24c64"; /* 24AA64 */
 		reg = <0x55>;
 	};
 };
@@ -241,12 +239,12 @@
 		};
 
 		mux-cd {
-			groups = "sdio0_0_cd_grp";
+			groups = "sdio0_cd_0_grp";
 			function = "sdio0_cd";
 		};
 
 		conf-cd {
-			groups = "sdio0_0_cd_grp";
+			groups = "sdio0_cd_0_grp";
 			bias-high-impedance;
 			bias-pull-up;
 			slew-rate = <SLEW_RATE_SLOW>;
@@ -254,12 +252,12 @@
 		};
 
 		mux-wp {
-			groups = "sdio0_0_wp_grp";
+			groups = "sdio0_wp_0_grp";
 			function = "sdio0_wp";
 		};
 
 		conf-wp {
-			groups = "sdio0_0_wp_grp";
+			groups = "sdio0_wp_0_grp";
 			bias-high-impedance;
 			bias-pull-up;
 			slew-rate = <SLEW_RATE_SLOW>;
@@ -281,12 +279,12 @@
 		};
 
 		mux-cd {
-			groups = "sdio1_0_cd_grp";
+			groups = "sdio1_cd_0_grp";
 			function = "sdio1_cd";
 		};
 
 		conf-cd {
-			groups = "sdio1_0_cd_grp";
+			groups = "sdio1_cd_0_grp";
 			bias-high-impedance;
 			bias-pull-up;
 			slew-rate = <SLEW_RATE_SLOW>;
@@ -294,12 +292,12 @@
 		};
 
 		mux-wp {
-			groups = "sdio1_0_wp_grp";
+			groups = "sdio1_wp_0_grp";
 			function = "sdio1_wp";
 		};
 
 		conf-wp {
-			groups = "sdio1_0_wp_grp";
+			groups = "sdio1_wp_0_grp";
 			bias-high-impedance;
 			bias-pull-up;
 			slew-rate = <SLEW_RATE_SLOW>;
@@ -325,7 +323,7 @@
 &qspi {
 	status = "okay";
 	flash@0 {
-		compatible = "m25p80"; /* Micron MT25QU512ABB8ESF */
+		compatible = "m25p80", "spi-flash"; /* Micron MT25QU512ABB8ESF */
 		#address-cells = <1>;
 		#size-cells = <1>;
 		reg = <0x0>;
@@ -412,35 +410,26 @@
 	phys = <&lane2 PHY_TYPE_USB3 0 2 26000000>;
 };
 
-&xilinx_drm {
-	status = "okay";
-};
-
-&xlnx_dp {
+&zynqmp_dpsub {
 	status = "okay";
 	phy-names = "dp-phy0", "dp-phy1";
 	phys = <&lane1 PHY_TYPE_DP 0 0 27000000>,
 	       <&lane0 PHY_TYPE_DP 1 1 27000000>;
 };
 
-&xlnx_dp_sub {
-	status = "okay";
-	xlnx,vid-clk-pl;
-};
-
-&xlnx_dp_snd_pcm0 {
+&zynqmp_dp_snd_pcm0 {
 	status = "okay";
 };
 
-&xlnx_dp_snd_pcm1 {
+&zynqmp_dp_snd_pcm1 {
 	status = "okay";
 };
 
-&xlnx_dp_snd_card {
+&zynqmp_dp_snd_card0 {
 	status = "okay";
 };
 
-&xlnx_dp_snd_codec0 {
+&zynqmp_dp_snd_codec0 {
 	status = "okay";
 };
 

@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2012
  * Altera Corporation <www.altera.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -208,11 +207,11 @@ static int cadence_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	} else {
 		data_bytes = bitlen / 8;
 	}
-	debug("%s: len=%d [bytes]\n", __func__, data_bytes);
+	debug("%s: len=%zu [bytes]\n", __func__, data_bytes);
 
 	/* Set Chip select */
 	cadence_qspi_apb_chipselect(base, spi_chip_select(dev),
-				    CONFIG_CQSPI_DECODER);
+				    plat->is_decoded_cs);
 
 	if ((flags & SPI_XFER_END) || (flags == 0)) {
 		if (priv->cmd_len == 0) {
@@ -229,7 +228,7 @@ static int cadence_spi_xfer(struct udevice *dev, unsigned int bitlen,
 				mode = CQSPI_INDIRECT_READ;
 		} else if (dout && !(flags & SPI_XFER_BEGIN)) {
 			/* write */
-			if (!CQSPI_IS_ADDR(priv->cmd_len))
+			if (!CQSPI_IS_ADDR(priv->cmd_len) || plat->stg_pgm)
 				mode = CQSPI_STIG_WRITE;
 			else
 				mode = CQSPI_INDIRECT_WRITE;
@@ -243,9 +242,10 @@ static int cadence_spi_xfer(struct udevice *dev, unsigned int bitlen,
 
 		break;
 		case CQSPI_STIG_WRITE:
-			err = cadence_qspi_apb_command_write(base,
-				priv->cmd_len, cmd_buf,
-				data_bytes, dout);
+			err = cadence_qspi_apb_command_write(plat,
+							     priv->cmd_len,
+							     cmd_buf,
+							     data_bytes, dout);
 		break;
 		case CQSPI_INDIRECT_READ:
 			err = cadence_qspi_apb_indirect_read_setup(plat,
@@ -284,19 +284,16 @@ static int cadence_spi_ofdata_to_platdata(struct udevice *bus)
 	const void *blob = gd->fdt_blob;
 	int node = dev_of_offset(bus);
 	int subnode;
-	u32 data[4];
-	int ret;
 
-	/* 2 base addresses are needed, lets get them from the DT */
-	ret = fdtdec_get_int_array(blob, node, "reg", data, ARRAY_SIZE(data));
-	if (ret) {
-		printf("Error: Can't get base addresses (ret=%d)!\n", ret);
-		return -ENODEV;
-	}
-
-	plat->regbase = (void *)data[0];
-	plat->ahbbase = (void *)data[2];
-	plat->sram_size = fdtdec_get_int(blob, node, "sram-size", 128);
+	plat->regbase = (void *)devfdt_get_addr_index(bus, 0);
+	plat->ahbbase = (void *)devfdt_get_addr_index(bus, 1);
+	plat->is_decoded_cs = fdtdec_get_bool(blob, node, "cdns,is-decoded-cs");
+	plat->fifo_depth = fdtdec_get_uint(blob, node, "cdns,fifo-depth", 128);
+	plat->fifo_width = fdtdec_get_uint(blob, node, "cdns,fifo-width", 4);
+	plat->trigger_address = fdtdec_get_uint(blob, node,
+						"cdns,trigger-address", 0);
+	plat->is_dma = fdtdec_get_bool(blob, node, "cdns,is-dma");
+	plat->stg_pgm = fdtdec_get_bool(blob, node, "cdns,is-stig-pgm");
 
 	/* All other paramters are embedded in the child node */
 	subnode = fdt_first_subnode(blob, node);
@@ -310,12 +307,12 @@ static int cadence_spi_ofdata_to_platdata(struct udevice *bus)
 				       500000);
 
 	/* Read other parameters from DT */
-	plat->page_size = fdtdec_get_int(blob, subnode, "page-size", 256);
-	plat->block_size = fdtdec_get_int(blob, subnode, "block-size", 16);
-	plat->tshsl_ns = fdtdec_get_int(blob, subnode, "tshsl-ns", 200);
-	plat->tsd2d_ns = fdtdec_get_int(blob, subnode, "tsd2d-ns", 255);
-	plat->tchsh_ns = fdtdec_get_int(blob, subnode, "tchsh-ns", 20);
-	plat->tslch_ns = fdtdec_get_int(blob, subnode, "tslch-ns", 20);
+	plat->page_size = fdtdec_get_uint(blob, subnode, "page-size", 256);
+	plat->block_size = fdtdec_get_uint(blob, subnode, "block-size", 16);
+	plat->tshsl_ns = fdtdec_get_uint(blob, subnode, "cdns,tshsl-ns", 200);
+	plat->tsd2d_ns = fdtdec_get_uint(blob, subnode, "cdns,tsd2d-ns", 255);
+	plat->tchsh_ns = fdtdec_get_uint(blob, subnode, "cdns,tchsh-ns", 20);
+	plat->tslch_ns = fdtdec_get_uint(blob, subnode, "cdns,tslch-ns", 20);
 
 	debug("%s: regbase=%p ahbbase=%p max-frequency=%d page-size=%d\n",
 	      __func__, plat->regbase, plat->ahbbase, plat->max_hz,
@@ -335,7 +332,7 @@ static const struct dm_spi_ops cadence_spi_ops = {
 };
 
 static const struct udevice_id cadence_spi_ids[] = {
-	{ .compatible = "cadence,qspi" },
+	{ .compatible = "cdns,qspi-nor" },
 	{ }
 };
 

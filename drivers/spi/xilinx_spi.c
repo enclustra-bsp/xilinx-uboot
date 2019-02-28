@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Xilinx SPI driver
  *
@@ -9,8 +10,6 @@
  * Copyright (c) 2010 Graeme Smecher <graeme.smecher@mail.mcgill.ca>
  * Copyright (c) 2010 Thomas Chou <thomas@wytron.com.tw>
  * Copyright (c) 2005-2008 Analog Devices Inc.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <config.h>
@@ -20,6 +19,7 @@
 #include <malloc.h>
 #include <spi.h>
 #include <asm/io.h>
+#include <wait_bit.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -80,6 +80,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CONFIG_XILINX_SPI_IDLE_VAL	GENMASK(7, 0)
 #endif
 
+#define XILINX_SPISR_TIMEOUT	10000 /* in milliseconds */
+
 #define XILINX_SPI_QUAD_MODE	2
 
 #define XILINX_SPI_QUAD_EXTRA_DUMMY	3
@@ -110,6 +112,7 @@ struct xilinx_spi_priv {
 	unsigned int freq;
 	unsigned int mode;
 	unsigned int fifo_depth;
+	u8 startup;
 };
 
 static int xilinx_spi_child_pre_probe(struct udevice *bus)
@@ -156,7 +159,6 @@ static void spi_cs_deactivate(struct udevice *dev)
 	reg = readl(&regs->spicr) | SPICR_RXFIFO_RESEST | SPICR_TXFIFO_RESEST;
 	writel(reg, &regs->spicr);
 	writel(SPISSR_OFF, &regs->spissr);
-
 }
 
 static int xilinx_spi_claim_bus(struct udevice *dev)
@@ -182,6 +184,7 @@ static int xilinx_spi_release_bus(struct udevice *dev)
 
 	return 0;
 }
+
 static u32 xilinx_spi_fill_txfifo(struct udevice *bus, const u8 *txp,
 				  u32 txbytes)
 {
@@ -199,6 +202,7 @@ static u32 xilinx_spi_fill_txfifo(struct udevice *bus, const u8 *txp,
 		txbytes--;
 		i++;
 	}
+
 	return i;
 }
 
@@ -222,6 +226,39 @@ static u32 xilinx_spi_read_rxfifo(struct udevice *bus, u8 *rxp, u32 rxbytes)
 	return i;
 }
 
+static void xilinx_spi_startup_block(struct udevice *dev, unsigned int bytes,
+				     const void *dout, void *din)
+{
+	struct udevice *bus = dev_get_parent(dev);
+	struct xilinx_spi_priv *priv = dev_get_priv(bus);
+	struct xilinx_spi_regs *regs = priv->regs;
+	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
+	const unsigned char *txp = dout;
+	unsigned char *rxp = din;
+	u32 reg, count;
+	u32 txbytes = bytes;
+	u32 rxbytes = bytes;
+
+	/*
+	 * This loop runs two times. First time to send the command.
+	 * Second time to transfer data. After transferring data,
+	 * it sets txp to the initial value for the normal operation.
+	 */
+	for ( ; priv->startup < 2; priv->startup++) {
+		count = xilinx_spi_fill_txfifo(bus, txp, txbytes);
+		reg = readl(&regs->spicr) & ~SPICR_MASTER_INHIBIT;
+		writel(reg, &regs->spicr);
+		count = xilinx_spi_read_rxfifo(bus, rxp, rxbytes);
+		txp = din;
+
+		if (priv->startup) {
+			spi_cs_deactivate(dev);
+			spi_cs_activate(dev, slave_plat->cs);
+			txp = dout;
+		}
+	}
+}
+
 static int xilinx_spi_xfer(struct udevice *dev, unsigned int bitlen,
 			    const void *dout, void *din, unsigned long flags)
 {
@@ -236,6 +273,7 @@ static int xilinx_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	u32 txbytes = bytes;
 	u32 rxbytes = bytes;
 	u32 reg, count, timeout;
+	int ret;
 
 	debug("spi_xfer: bus:%i cs:%i bitlen:%i bytes:%i flags:%lx\n",
 	      bus->seq, slave_plat->cs, bitlen, bytes, flags);
@@ -263,27 +301,34 @@ static int xilinx_spi_xfer(struct udevice *dev, unsigned int bitlen,
 		}
 	}
 
+	/*
+	 * This is the work around for the startup block issue in
+	 * the spi controller. SPI clock is passing through STARTUP
+	 * block to FLASH. STARTUP block don't provide clock as soon
+	 * as QSPI provides command. So first command fails.
+	 */
+	xilinx_spi_startup_block(dev, bytes, dout, din);
+
 	while (txbytes && rxbytes) {
 		count = xilinx_spi_fill_txfifo(bus, txp, txbytes);
 		reg = readl(&regs->spicr) & ~SPICR_MASTER_INHIBIT;
 		writel(reg, &regs->spicr);
 		txbytes -= count;
-		txp += count;
+		if (txp)
+			txp += count;
 
-		timeout = 10000000;
-		do {
-			udelay(1);
-		} while (!(readl(&regs->spisr) & SPISR_TX_EMPTY) && timeout--);
-
-		if (!timeout) {
+		ret = wait_for_bit_le32(&regs->spisr, SPISR_TX_EMPTY, true,
+					XILINX_SPISR_TIMEOUT, false);
+		if (ret < 0) {
 			printf("XILSPI error: Xfer timeout\n");
-			return -1;
+			return ret;
 		}
 
 		debug("txbytes:0x%x,txp:0x%p\n", txbytes, txp);
 		count = xilinx_spi_read_rxfifo(bus, rxp, rxbytes);
 		rxbytes -= count;
-		rxp += count;
+		if (rxp)
+			rxp += count;
 		debug("rxbytes:0x%x rxp:0x%p\n", rxbytes, rxp);
 	}
 

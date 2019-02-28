@@ -1,7 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2014-2016 Stefan Roese <sr@denx.de>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -262,6 +261,9 @@ int print_cpuinfo(void)
 		case MV_88F68XX_A0_ID:
 			puts("A0");
 			break;
+		case MV_88F68XX_B0_ID:
+			puts("B0");
+			break;
 		default:
 			printf("?? (%x)", revid);
 			break;
@@ -281,10 +283,8 @@ int print_cpuinfo(void)
  * and sets the correct windows sizes and base addresses accordingly.
  *
  * These values are set in the scratch registers by the Marvell
- * DDR3 training code, which is executed by the BootROM before the
- * main payload (U-Boot) is executed. This training code is currently
- * only available in the Marvell U-Boot version. It needs to be
- * ported to mainline U-Boot SPL at some point.
+ * DDR3 training code, which is executed by the SPL before the
+ * main payload (U-Boot) is executed.
  */
 static void update_sdram_window_sizes(void)
 {

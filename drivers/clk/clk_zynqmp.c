@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * ZynqMP clock driver
  *
  * Copyright (C) 2016 Xilinx, Inc.
- *
- * SPDX-License-Identifier:     GPL-2.0+
  */
 
 #include <common.h>
@@ -12,8 +11,6 @@
 #include <clk.h>
 #include <asm/arch/sys_proto.h>
 #include <dm.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 static const resource_size_t zynqmp_crf_apb_clkc_base = 0xfd1a0020;
 static const resource_size_t zynqmp_crl_apb_clkc_base = 0xff5e0020;
@@ -106,6 +103,8 @@ static const resource_size_t zynqmp_crl_apb_clkc_base = 0xff5e0020;
 #define PLLCTRL_BYPASS_SHFT	3
 #define PLLCTRL_POST_SRC_SHFT	24
 #define PLLCTRL_POST_SRC_MASK	(0x7 << PLLCTRL_POST_SRC_SHFT)
+#define PLLCTRL_PRE_SRC_SHFT	20
+#define PLLCTRL_PRE_SRC_MASK	(0x7 << PLLCTRL_PRE_SRC_SHFT)
 
 
 #define NUM_MIO_PINS	77
@@ -313,8 +312,8 @@ static ulong zynqmp_clk_get_pll_src(ulong clk_ctrl,
 	u32 src_sel;
 
 	if (is_pre_src)
-		src_sel = (clk_ctrl & PLLCTRL_POST_SRC_MASK) >>
-			   PLLCTRL_POST_SRC_SHFT;
+		src_sel = (clk_ctrl & PLLCTRL_PRE_SRC_MASK) >>
+			   PLLCTRL_PRE_SRC_SHFT;
 	else
 		src_sel = (clk_ctrl & PLLCTRL_POST_SRC_MASK) >>
 			   PLLCTRL_POST_SRC_SHFT;

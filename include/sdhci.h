@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2011, Marvell Semiconductor Inc.
  * Lei Wen <leiwen@marvell.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  *
  * Back ported to the 8xx platform (from the 8260 platform) by
  * Murray.Jensen@cmst.csiro.au, 27-Jan-01.
@@ -64,8 +63,6 @@
 #define  SDHCI_CARD_STATE_STABLE	BIT(17)
 #define  SDHCI_CARD_DETECT_PIN_LEVEL	BIT(18)
 #define  SDHCI_WRITE_PROTECT	BIT(19)
-#define  SDHCI_DATA_BUSY	0xF00000
-#define  SDHCI_CMD_BUSY		0x1000000
 
 #define SDHCI_HOST_CONTROL	0x28
 #define  SDHCI_CTRL_LED		BIT(0)
@@ -148,12 +145,6 @@
 #define SDHCI_ACMD12_ERR	0x3C
 
 /* 3E-3F reserved */
-#define SDHCI_HOST_CTRL2	0x3E
-#define SDHCI_CTRL2_MODE_MASK	0x7
-
-#define SDHCI_18V_SIGNAL	0x8
-#define SDHCI_CTRL_EXEC_TUNING	0x0040
-#define SDHCI_CTRL_TUNED_CLK	0x80
 
 #define SDHCI_CAPABILITIES	0x40
 #define  SDHCI_TIMEOUT_CLK_MASK	0x0000003F
@@ -178,8 +169,7 @@
 #define  SDHCI_SUPPORT_SDR50	0x00000001
 #define  SDHCI_SUPPORT_SDR104	0x00000002
 #define  SDHCI_SUPPORT_DDR50	0x00000004
-#define  SDHCI_USE_SDR50_TUNING		0x00002000
-#define  SDHCI_SUPPORT_HS400	0x80000000 /* Non-standard */
+#define  SDHCI_USE_SDR50_TUNING	0x00002000
 
 #define  SDHCI_CLOCK_MUL_MASK	0x00FF0000
 #define  SDHCI_CLOCK_MUL_SHIFT	16
@@ -227,10 +217,15 @@
 #define SDHCI_QUIRK_BROKEN_R1B		(1 << 2)
 #define SDHCI_QUIRK_NO_HISPD_BIT	(1 << 3)
 #define SDHCI_QUIRK_BROKEN_VOLTAGE	(1 << 4)
+/*
+ * SDHCI_QUIRK_BROKEN_HISPD_MODE
+ * the hardware cannot operate correctly in high-speed mode,
+ * this quirk forces the sdhci host-controller to non high-speed mode
+ */
+#define SDHCI_QUIRK_BROKEN_HISPD_MODE	BIT(5)
 #define SDHCI_QUIRK_WAIT_SEND_CMD	(1 << 6)
 #define SDHCI_QUIRK_USE_WIDE8		(1 << 8)
 #define SDHCI_QUIRK_NO_1_8_V		(1 << 9)
-#define SDHCI_QUIRK_USE_ACMD12		(1 << 10)
 
 #define SDHCI_QUIRK_EMMC_INIT		(1 << 11)
 /* to make gcc happy */
@@ -254,6 +249,8 @@ struct sdhci_ops {
 	void	(*set_control_reg)(struct sdhci_host *host);
 	void	(*set_ios_post)(struct sdhci_host *host);
 	void	(*set_clock)(struct sdhci_host *host, u32 div);
+	int (*platform_execute_tuning)(struct mmc *host, u8 opcode);
+	void (*set_delay)(struct sdhci_host *host);
 };
 
 struct sdhci_host {
@@ -266,21 +263,16 @@ struct sdhci_host {
 	unsigned int clk_mul;   /* Clock Multiplier value */
 	unsigned int clock;
 	struct mmc *mmc;
-	struct sdhci_ops *ops;
+	const struct sdhci_ops *ops;
 	int index;
 
 	int bus_width;
 	struct gpio_desc pwr_gpio;	/* Power GPIO */
 	struct gpio_desc cd_gpio;		/* Card Detect GPIO */
 
-	void (*set_control_reg)(struct sdhci_host *host);
-	void (*set_clock)(int dev_index, unsigned int div);
-	int (*platform_execute_tuning)(struct mmc *host, u8 opcode);
-	void (*set_delay)(struct sdhci_host *host);
 	uint	voltages;
 
 	struct mmc_config cfg;
-	unsigned int last_cmd;
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS

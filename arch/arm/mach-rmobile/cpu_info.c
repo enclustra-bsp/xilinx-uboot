@@ -1,11 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012 Nobuhiro Iwamatsu <nobuhiro.iwamatsu.yj@renesas.com>
  * (C) Copyright 2012 Renesas Solutions Corp.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 #include <common.h>
 #include <asm/io.h>
+#include <linux/ctype.h>
 
 #ifdef CONFIG_ARCH_CPU_INIT
 int arch_cpu_init(void)
@@ -15,14 +15,14 @@ int arch_cpu_init(void)
 }
 #endif
 
+/* R-Car Gen3 D-cache is enabled in memmap-gen3.c */
+#ifndef CONFIG_RCAR_GEN3
 #ifndef CONFIG_SYS_DCACHE_OFF
 void enable_caches(void)
 {
-#if defined(CONFIG_RCAR_GEN3)
-	rcar_gen3_memmap_fixup();
-#endif
 	dcache_enable();
 }
+#endif
 #endif
 
 #ifdef CONFIG_DISPLAY_CPUINFO
@@ -61,24 +61,48 @@ static const struct {
 	{ RMOBILE_CPU_TYPE_R8A7794, "R8A7794" },
 	{ RMOBILE_CPU_TYPE_R8A7795, "R8A7795" },
 	{ RMOBILE_CPU_TYPE_R8A7796, "R8A7796" },
+	{ RMOBILE_CPU_TYPE_R8A77965, "R8A77965" },
 	{ RMOBILE_CPU_TYPE_R8A77970, "R8A77970" },
+	{ RMOBILE_CPU_TYPE_R8A77990, "R8A77990" },
 	{ RMOBILE_CPU_TYPE_R8A77995, "R8A77995" },
 	{ 0x0, "CPU" },
 };
 
-int print_cpuinfo(void)
+static int rmobile_cpuinfo_idx(void)
 {
 	int i = 0;
 	u32 cpu_type = rmobile_get_cpu_type();
-	for (; i < ARRAY_SIZE(rmobile_cpuinfo); i++) {
-		if (rmobile_cpuinfo[i].cpu_type == cpu_type) {
-			printf("CPU: Renesas Electronics %s rev %d.%d\n",
-			       rmobile_cpuinfo[i].cpu_name,
-			       rmobile_get_cpu_rev_integer(),
-			       rmobile_get_cpu_rev_fraction());
+
+	for (; i < ARRAY_SIZE(rmobile_cpuinfo); i++)
+		if (rmobile_cpuinfo[i].cpu_type == cpu_type)
 			break;
-		}
-	}
+
+	return i;
+}
+
+#ifdef CONFIG_ARCH_MISC_INIT
+int arch_misc_init(void)
+{
+	int i, idx = rmobile_cpuinfo_idx();
+	char cpu[10] = { 0 };
+
+	for (i = 0; i < sizeof(cpu); i++)
+		cpu[i] = tolower(rmobile_cpuinfo[idx].cpu_name[i]);
+
+	env_set("platform", cpu);
+
+	return 0;
+}
+#endif
+
+int print_cpuinfo(void)
+{
+	int i = rmobile_cpuinfo_idx();
+
+	printf("CPU: Renesas Electronics %s rev %d.%d\n",
+		rmobile_cpuinfo[i].cpu_name, rmobile_get_cpu_rev_integer(),
+		rmobile_get_cpu_rev_fraction());
+
 	return 0;
 }
 #endif /* CONFIG_DISPLAY_CPUINFO */

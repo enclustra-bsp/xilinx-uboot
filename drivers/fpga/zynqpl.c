@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012-2013, Xilinx, Michal Simek
  *
  * (C) Copyright 2012
  * Joe Hershberger <joe.hershberger@ni.com>
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -19,6 +18,7 @@
 #define DEVCFG_CTRL_PCFG_PROG_B		0x40000000
 #define DEVCFG_CTRL_PCFG_AES_EFUSE_MASK	0x00001000
 #define DEVCFG_CTRL_PCAP_RATE_EN_MASK	0x02000000
+#define DEVCFG_CTRL_PCFG_AES_EN_MASK	0x00000E00
 #define DEVCFG_ISR_FATAL_ERROR_MASK	0x00740040
 #define DEVCFG_ISR_ERROR_FLAGS_MASK	0x00340840
 #define DEVCFG_ISR_RX_FIFO_OV		0x00040000
@@ -505,18 +505,24 @@ struct xilinx_fpga_op zynq_op = {
  * Load the encrypted image from src addr and decrypt the image and
  * place it back the decrypted image into dstaddr.
  */
-int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen,
-		      u8 bstype)
+int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen)
 {
 	u32 isr_status, ts;
 
-	if ((srcaddr < SZ_1M) || (dstaddr < SZ_1M)) {
+	if (srcaddr < SZ_1M || dstaddr < SZ_1M) {
 		printf("%s: src and dst addr should be > 1M\n",
 		       __func__);
 		return FPGA_FAIL;
 	}
 
-	if (zynq_dma_xfer_init(bstype)) {
+	/* Check AES engine is enabled */
+	if (!(readl(&devcfg_base->ctrl) &
+	      DEVCFG_CTRL_PCFG_AES_EN_MASK)) {
+		printf("%s: AES engine is not enabled\n", __func__);
+		return FPGA_FAIL;
+	}
+
+	if (zynq_dma_xfer_init(BIT_NONE)) {
 		printf("%s: zynq_dma_xfer_init FAIL\n", __func__);
 		return FPGA_FAIL;
 	}
@@ -529,131 +535,34 @@ int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen,
 
 	/* flush(clean & invalidate) d-cache range buf */
 	flush_dcache_range((u32)srcaddr, (u32)srcaddr +
-			   roundup(srclen << 2, ARCH_DMA_MINALIGN));
+			roundup(srclen << 2, ARCH_DMA_MINALIGN));
 	/*
 	 * Flush destination address range only if image is not
 	 * bitstream.
 	 */
-	if (bstype == BIT_NONE)
+	if (dstaddr != 0xFFFFFFFF)
 		flush_dcache_range((u32)dstaddr, (u32)dstaddr +
 				   roundup(dstlen << 2, ARCH_DMA_MINALIGN));
 
 	if (zynq_dma_transfer(srcaddr | 1, srclen, dstaddr | 1, dstlen))
 		return FPGA_FAIL;
 
-	if (bstype == BIT_FULL) {
-		isr_status = readl(&devcfg_base->int_sts);
-		/* Check FPGA configuration completion */
-		ts = get_timer(0);
-		while (!(isr_status & DEVCFG_ISR_PCFG_DONE)) {
-			if (get_timer(ts) > CONFIG_SYS_FPGA_WAIT) {
-				printf("%s: Timeout wait for FPGA to config\n",
-				       __func__);
-				return FPGA_FAIL;
-			}
-			isr_status = readl(&devcfg_base->int_sts);
+	isr_status = readl(&devcfg_base->int_sts);
+	/* Check FPGA configuration completion */
+	ts = get_timer(0);
+	while (!(isr_status & DEVCFG_ISR_PCFG_DONE)) {
+		if (get_timer(ts) > CONFIG_SYS_FPGA_WAIT) {
+			printf("%s: Timeout wait for FPGA to config\n",
+			       __func__);
+			return FPGA_FAIL;
 		}
-
-		printf("%s: FPGA config done\n", __func__);
-
-		if (bstype != BIT_PARTIAL)
-			zynq_slcr_devcfg_enable();
+		isr_status = readl(&devcfg_base->int_sts);
 	}
+
+	printf("%s: FPGA config done\n", __func__);
+
+	zynq_slcr_devcfg_enable();
 
 	return FPGA_SUCCESS;
 }
-
-
-static int do_zynq_decrypt_image(cmd_tbl_t *cmdtp, int flag, int argc,
-				 char * const argv[])
-{
-	char *endp;
-	u32 srcaddr;
-	u32 srclen;
-	u32 dstaddr;
-	u32 dstlen;
-	u8 imgtype = BIT_NONE;
-	int status;
-	u8 i = 1;
-
-	if (argc < 4 && argc > 5)
-		goto usage;
-
-	if (argc == 4) {
-		if (!strcmp("load", argv[i]))
-			imgtype = BIT_FULL;
-		else if (!strcmp("loadp", argv[i]))
-			imgtype = BIT_PARTIAL;
-		else
-			goto usage;
-		i++;
-	}
-
-	srcaddr = simple_strtoul(argv[i], &endp, 16);
-	if (*argv[i++] == 0 || *endp != 0)
-		goto usage;
-	srclen = simple_strtoul(argv[i], &endp, 16);
-	if (*argv[i++] == 0 || *endp != 0)
-		goto usage;
-	if (argc == 4) {
-		dstaddr = 0xFFFFFFFF;
-		dstlen = srclen;
-	} else {
-		dstaddr = simple_strtoul(argv[i], &endp, 16);
-		if (*argv[i++] == 0 || *endp != 0)
-			goto usage;
-		dstlen = simple_strtoul(argv[i], &endp, 16);
-		if (*argv[i++] == 0 || *endp != 0)
-			goto usage;
-	}
-
-	/*
-	 * If the image is not bitstream but destination address is
-	 * 0xFFFFFFFF
-	 */
-	if (imgtype == BIT_NONE && dstaddr == 0xFFFFFFFF) {
-		printf("ERR:use zynqaes load/loadp encrypted bitstream\n");
-		goto usage;
-	}
-
-	/*
-	 * Roundup source and destination lengths to
-	 * word size
-	 */
-	if (srclen % 4)
-		srclen = roundup(srclen, 4);
-	if (dstlen % 4)
-		dstlen = roundup(dstlen, 4);
-
-	status = zynq_decrypt_load(srcaddr, srclen >> 2, dstaddr, dstlen >> 2,
-				   imgtype);
-	if (status != 0)
-		return -1;
-
-	return 0;
-
-usage:
-	return CMD_RET_USAGE;
-}
-
-#ifdef CONFIG_SYS_LONGHELP
-static char zynqaes_help_text[] =
-"zynqaes [operation type] <srcaddr> <srclen> <dstaddr> <dstlen>  -\n"
-"Decrypts the encrypted image present in source address\n"
-"and places the decrypted image at destination address\n"
-"zynqaes operations:\n"
-"   zynqaes <srcaddr> <srclen> <dstaddr> <dstlen>\n"
-"   zynqaes load <srcaddr> <srclen>\n"
-"   zynqaes loadp <srcaddr> <srclen>\n"
-"if operation type is load or loadp, it loads the encrypted\n"
-"full or partial bitstream on to PL respectively. If no valid\n"
-"operation type specified then it loads decrypted image back\n"
-"to memory and it doesnt support loading PL bistsream\n";
-#endif
-
-U_BOOT_CMD(
-	zynqaes,        5,      0,      do_zynq_decrypt_image,
-	"Zynq AES decryption ", zynqaes_help_text
-);
-
 #endif

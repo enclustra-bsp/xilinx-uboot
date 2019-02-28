@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2015 Moritz Fischer <moritz.fischer@ettus.com>
  * IP from Cadence (ID T-CS-PE-0007-100, Version R1p10f2)
  *
  * This file is based on: drivers/i2c/zynq_i2c.c,
  * with added driver-model support and code cleanup.
- *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -19,8 +18,6 @@
 #include <mapmem.h>
 #include <wait_bit.h>
 #include <clk.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 /* i2c register set */
 struct cdns_i2c_regs {
@@ -422,7 +419,7 @@ static int cdns_i2c_ofdata_to_platdata(struct udevice *dev)
 	struct clk clk;
 	int ret;
 
-	i2c_bus->regs = (struct cdns_i2c_regs *)devfdt_get_addr(dev);
+	i2c_bus->regs = (struct cdns_i2c_regs *)dev_read_addr(dev);
 	if (!i2c_bus->regs)
 		return -ENOMEM;
 
@@ -430,7 +427,6 @@ static int cdns_i2c_ofdata_to_platdata(struct udevice *dev)
 		i2c_bus->quirks = pdata->quirks;
 
 	ret = clk_get_by_index(dev, 0, &clk);
-
 	if (ret)
 		return ret;
 

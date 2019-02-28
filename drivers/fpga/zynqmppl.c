@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * (C) Copyright 2015 - 2016, Xilinx, Inc,
  * Michal Simek <michal.simek@xilinx.com>
  * Siva Durga Prasad <siva.durga.paladugu@xilinx.com>
- *
- * SPDX-License-Identifier:	GPL-2.0
  */
 
 #include <console.h>
@@ -151,7 +150,8 @@ static ulong zynqmp_align_dma_buffer(u32 *buf, u32 len, u32 swap)
 			new_buf[i] = load_word(&buf[i], swap);
 
 		buf = new_buf;
-	} else if (swap != SWAP_DONE) {
+	} else if ((swap != SWAP_DONE) &&
+		   (zynqmp_pmufw_version() <= PMUFW_V1_0)) {
 		/* For bitstream which are aligned */
 		u32 *new_buf = (u32 *)buf;
 
@@ -197,52 +197,68 @@ static int zynqmp_load(xilinx_desc *desc, const void *buf, size_t bsize,
 		     bitstream_type bstype)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(u32, bsizeptr, 1);
-	u32 swap;
+	u32 swap = 0;
 	ulong bin_buf;
 	int ret;
 	u32 buf_lo, buf_hi;
 	u32 ret_payload[PAYLOAD_ARG_CNT];
+	bool xilfpga_old = false;
 
-	if (zynqmp_validate_bitstream(desc, buf, bsize, bsize, &swap))
-		return FPGA_FAIL;
+	if (zynqmp_pmufw_version() <= PMUFW_V1_0) {
+		puts("WARN: PMUFW v1.0 or less is detected\n");
+		puts("WARN: Not all bitstream formats are supported\n");
+		puts("WARN: Please upgrade PMUFW\n");
+		xilfpga_old = true;
+		if (zynqmp_validate_bitstream(desc, buf, bsize, bsize, &swap))
+			return FPGA_FAIL;
+		bsizeptr = (u32 *)&bsize;
+		flush_dcache_range((ulong)bsizeptr,
+				   (ulong)bsizeptr + sizeof(size_t));
+		bstype |= BIT(ZYNQMP_FPGA_BIT_NS);
+	}
 
 	bin_buf = zynqmp_align_dma_buffer((u32 *)buf, bsize, swap);
-	bsizeptr = (u32 *)&bsize;
 
 	debug("%s called!\n", __func__);
 	flush_dcache_range(bin_buf, bin_buf + bsize);
-	flush_dcache_range((ulong)bsizeptr, (ulong)bsizeptr + sizeof(size_t));
 
 	buf_lo = (u32)bin_buf;
 	buf_hi = upper_32_bits(bin_buf);
-	bstype |= BIT(ZYNQMP_FPGA_BIT_NS);
-	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_FPGA_LOAD, buf_lo, buf_hi,
-			 (u32)(uintptr_t)bsizeptr, bstype, ret_payload);
+
+	if (xilfpga_old)
+		ret = invoke_smc(ZYNQMP_SIP_SVC_PM_FPGA_LOAD, buf_lo, buf_hi,
+				 (u32)(uintptr_t)bsizeptr, bstype, ret_payload);
+	else
+		ret = invoke_smc(ZYNQMP_SIP_SVC_PM_FPGA_LOAD, buf_lo, buf_hi,
+				 (u32)bsize, 0, ret_payload);
+
 	if (ret)
-		debug("PL FPGA LOAD fail\n");
+		puts("PL FPGA LOAD fail\n");
 
 	return ret;
 }
 
 #if defined(CONFIG_CMD_FPGA_LOAD_SECURE) && !defined(CONFIG_SPL_BUILD)
 static int zynqmp_loads(xilinx_desc *desc, const void *buf, size_t bsize,
-		       fpga_secure_info *fpga_sec_info)
+			struct fpga_secure_info *fpga_sec_info)
 {
 	int ret;
 	u32 buf_lo, buf_hi;
 	u32 ret_payload[PAYLOAD_ARG_CNT];
 	u8 flag = 0;
 
-	flush_dcache_range((ulong)buf, (ulong)buf + bsize);
+	flush_dcache_range((ulong)buf, (ulong)buf +
+			   ALIGN(bsize, CONFIG_SYS_CACHELINE_SIZE));
 
 	if (!fpga_sec_info->encflag)
 		flag |= BIT(ZYNQMP_FPGA_BIT_ENC_DEV_KEY);
 
 	if (fpga_sec_info->userkey_addr &&
-	    fpga_sec_info->encflag == ZYNQMP_FPGA_ENC_USR_KEY) {
+	    fpga_sec_info->encflag == FPGA_ENC_USR_KEY) {
 		flush_dcache_range((ulong)fpga_sec_info->userkey_addr,
 				   (ulong)fpga_sec_info->userkey_addr +
-				   KEY_PTR_LEN);
+				   ALIGN(KEY_PTR_LEN,
+					 CONFIG_SYS_CACHELINE_SIZE));
 		flag |= BIT(ZYNQMP_FPGA_BIT_ENC_USR_KEY);
 	}
 
@@ -252,16 +268,16 @@ static int zynqmp_loads(xilinx_desc *desc, const void *buf, size_t bsize,
 	if (fpga_sec_info->authflag == ZYNQMP_FPGA_AUTH_DDR)
 		flag |= BIT(ZYNQMP_FPGA_BIT_AUTH_DDR);
 
-	buf_lo = (u32)(ulong)buf;
+	buf_lo = lower_32_bits((ulong)buf);
 	buf_hi = upper_32_bits((ulong)buf);
 
 	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_FPGA_LOAD, buf_lo, buf_hi,
 			 (u32)(uintptr_t)fpga_sec_info->userkey_addr,
 			 flag, ret_payload);
 	if (ret)
-		printf("PL FPGA LOAD fail\n");
+		puts("PL FPGA LOAD fail\n");
 	else
-		printf("Bitstream successfully loaded\n");
+		puts("Bitstream successfully loaded\n");
 
 	return ret;
 }

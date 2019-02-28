@@ -24,6 +24,4 @@
 #undef CONFIG_SCSI
 #endif
 
-#define CONFIG_ENV_SECT_SIZE CONFIG_ENV_SIZE
-
 #endif /* __CONFIG_ENCLUSTRA_XU_H */
