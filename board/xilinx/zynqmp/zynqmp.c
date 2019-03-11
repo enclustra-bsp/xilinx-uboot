@@ -580,7 +580,8 @@ int board_late_init(void)
 	struct spi_flash *env_flash;
 	u32 flash_size;
 
-	env_flash = spi_flash_probe(0, 0, 1000000, SPI_MODE_3);
+	env_flash = spi_flash_probe(0, 0, 1000000,
+				    SPI_RX_QUAD | SPI_TX_QUAD | SPI_MODE_2);
 	if (env_flash) {
 		flash_size = env_flash->size / 1024 / 1024;
 		setup_qspi_args(flash_size, zynqmp_get_silicon_idcode_name());
