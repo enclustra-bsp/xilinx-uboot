@@ -333,7 +333,8 @@ int board_late_init(void)
 	uint32_t flash_size;
 
 	/* Probe the QSPI flash */
-	env_flash = spi_flash_probe(0, 0, 1000000, SPI_MODE_3);
+	env_flash = spi_flash_probe(0, 0, 1000000,
+				    SPI_RX_QUAD | SPI_TX_QUAD | SPI_MODE_3);
 
 	if (env_flash) {
 		/* Calculate the size in megabytes */
