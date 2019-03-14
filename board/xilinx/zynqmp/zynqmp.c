@@ -584,7 +584,7 @@ int board_late_init(void)
 				    SPI_RX_QUAD | SPI_TX_QUAD | SPI_MODE_2);
 	if (env_flash) {
 		flash_size = env_flash->size / 1024 / 1024;
-		setup_qspi_args(flash_size, zynqmp_get_silicon_idcode_name());
+		setup_qspi_args(flash_size, zynqmppl.name);
 	}
 #endif
 
