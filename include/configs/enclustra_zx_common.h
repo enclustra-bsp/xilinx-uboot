@@ -71,7 +71,7 @@
 /* Kernel image name */
 #ifdef CONFIG_ARCH_ZYNQMP
 #define KERNEL_IMAGE_FILE "Image"
-#define DTB_LOADADDR "0x7100000"
+#define DTB_LOADADDR "0x7180000"
 #define QSPI_STRING "/amba/spi@ff0f0000/flash@0/partition"
 #else
 #define KERNEL_IMAGE_FILE "uImage"
