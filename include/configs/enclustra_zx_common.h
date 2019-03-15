@@ -54,11 +54,6 @@
 #undef CONFIG_ENV_SIZE
 #endif
 #define CONFIG_ENV_SIZE                 (96 << 10)      /*  96 KiB */
-
-/* U-Boot environment is placed at the mmc device */
-#elif CONFIG_ENV_IS_IN_MMC
-#define CONFIG_SYS_MMC_ENV_DEV		1  // mmc1 = emmc, mmc0 = sd
-#define CONFIG_SYS_MMC_ENV_PART 	2
 #endif
 
 #define ENCLUSTRA_MAC               0xF7B020
