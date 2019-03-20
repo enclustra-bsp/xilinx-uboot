@@ -758,11 +758,6 @@ static int zynqmp_qspi_start_dma(struct zynqmp_qspi_priv *priv,
 
 	while (priv->len) {
 		len = zynqmp_qspi_calc_exp(priv, &gen_fifo_cmd);
-		if (!(gen_fifo_cmd & GQSPI_GFIFO_EXP_MASK) &&
-		    (len % GQSPI_DMA_ALIGN)) {
-			gen_fifo_cmd &= ~GENMASK(7, 0);
-			gen_fifo_cmd |= roundup(len, GQSPI_DMA_ALIGN);
-		}
 		zynqmp_qspi_fill_gen_fifo(priv, gen_fifo_cmd);
 
 		debug("GFIFO_CMD_RX:0x%x\n", gen_fifo_cmd);
