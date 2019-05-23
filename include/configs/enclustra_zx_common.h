@@ -46,10 +46,6 @@
 /* U-Boot environment is placed at the ubi */
 #elif CONFIG_ENV_IS_IN_UBI
 
-#define CONFIG_ENV_UBI_PART		"ubi-env"
-#define CONFIG_ENV_UBI_VOLUME		"uboot-env"
-#define CONFIG_UBI_SILENCE_MSG          1
-
 #ifdef CONFIG_ENV_SIZE
 #undef CONFIG_ENV_SIZE
 #endif
