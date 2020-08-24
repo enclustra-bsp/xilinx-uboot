@@ -42,20 +42,16 @@
 #endif
 
 /* QSPI */
-#ifdef CONFIG_ZYNQ_QSPI
-# define CONFIG_SF_DEFAULT_SPEED	30000000
-#endif
 
 /* NOR */
 #ifdef CONFIG_MTD_NOR_FLASH
-# define CONFIG_SYS_FLASH_BASE		0xE2000000
-# define CONFIG_SYS_FLASH_SIZE		(16 * 1024 * 1024)
 # define CONFIG_SYS_MAX_FLASH_BANKS	1
 # define CONFIG_SYS_MAX_FLASH_SECT	512
 # define CONFIG_SYS_FLASH_ERASE_TOUT	1000
 # define CONFIG_SYS_FLASH_WRITE_TOUT	5000
 # define CONFIG_FLASH_SHOW_PROGRESS	10
 # undef CONFIG_SYS_FLASH_EMPTY_INFO
+# define CONFIG_SYS_FLASH_QUIET_TEST
 #endif
 
 #ifdef CONFIG_NAND_ZYNQ
@@ -68,11 +64,10 @@
 
 # define CONFIG_SYS_DFU_DATA_BUF_SIZE	0x600000
 # define DFU_DEFAULT_POLL_TIMEOUT	300
-# define CONFIG_USB_CABLE_CHECK
 # define CONFIG_THOR_RESET_OFF
 # define DFU_ALT_INFO_RAM \
 	"dfu_ram_info=" \
-	"set dfu_alt_info " \
+	"setenv dfu_alt_info " \
 	"${kernel_image} ram 0x3000000 0x500000\\\\;" \
 	"${devicetree_image} ram 0x2A00000 0x20000\\\\;" \
 	"${ramdisk_image} ram 0x2000000 0x600000\0" \
@@ -82,7 +77,7 @@
 # if defined(CONFIG_MMC_SDHCI_ZYNQ)
 #  define DFU_ALT_INFO_MMC \
 	"dfu_mmc_info=" \
-	"set dfu_alt_info " \
+	"setenv dfu_alt_info " \
 	"${kernel_image} fat 0 1\\\\;" \
 	"${devicetree_image} fat 0 1\\\\;" \
 	"${ramdisk_image} fat 0 1\0" \
@@ -120,7 +115,6 @@
 #define CONFIG_ENV_OVERWRITE
 
 /* enable preboot to be loaded before CONFIG_BOOTDELAY */
-#define CONFIG_PREBOOT
 
 /* Boot configuration */
 #define CONFIG_SYS_LOAD_ADDR		0 /* default? */
@@ -130,13 +124,13 @@
 #else
 
 #ifdef CONFIG_CMD_MMC
-#define BOOT_TARGET_DEVICES_MMC(func) func(MMC, mmc, 0)
+#define BOOT_TARGET_DEVICES_MMC(func) func(MMC, mmc, 0) func(MMC, mmc, 1)
 #else
 #define BOOT_TARGET_DEVICES_MMC(func)
 #endif
 
 #ifdef CONFIG_CMD_USB
-#define BOOT_TARGET_DEVICES_USB(func) func(USB, usb, 0)
+#define BOOT_TARGET_DEVICES_USB(func) func(USB, usb, 0) func(USB, usb, 1)
 #else
 #define BOOT_TARGET_DEVICES_USB(func)
 #endif
@@ -171,15 +165,9 @@
 # define BOOT_TARGET_DEVICES_NOR(func)
 #endif
 
-#define BOOTENV_DEV_XILINX(devtypeu, devtypel, instance) \
-	"bootcmd_xilinx=run $modeboot\0"
-
-#define BOOTENV_DEV_NAME_XILINX(devtypeu, devtypel, instance) \
-	"xilinx "
-
 #define BOOTENV_DEV_QSPI(devtypeu, devtypel, instance) \
 	"bootcmd_qspi=sf probe 0 0 0 && " \
-		      "sf read $scriptaddr $script_offset_f $script_size_f && " \
+		      "sf read ${scriptaddr} ${script_offset_f} ${script_size_f} && " \
 		      "source ${scriptaddr}; echo SCRIPT FAILED: continuing...;\0"
 
 #define BOOTENV_DEV_NAME_QSPI(devtypeu, devtypel, instance) \
@@ -187,28 +175,37 @@
 
 #define BOOTENV_DEV_NAND(devtypeu, devtypel, instance) \
 	"bootcmd_nand=nand info && " \
-		      "nand read $scriptaddr $script_offset_f $script_size_f && " \
+		      "nand read ${scriptaddr} ${script_offset_f} ${script_size_f} && " \
 		      "source ${scriptaddr}; echo SCRIPT FAILED: continuing...;\0"
 
 #define BOOTENV_DEV_NAME_NAND(devtypeu, devtypel, instance) \
 	"nand "
 
 #define BOOTENV_DEV_NOR(devtypeu, devtypel, instance) \
-	"bootcmd_nor=cp.b $scropt_offset_nor $scriptaddr $script_size_f && " \
+	"script_offset_nor=0xE2FC0000\0"        \
+	"bootcmd_nor=cp.b ${script_offset_nor} ${scriptaddr} ${script_size_f} && " \
 		     "source ${scriptaddr}; echo SCRIPT FAILED: continuing...;\0"
 
 #define BOOTENV_DEV_NAME_NOR(devtypeu, devtypel, instance) \
 	"nor "
 
+#define BOOT_TARGET_DEVICES_JTAG(func)  func(JTAG, jtag, na)
+
+#define BOOTENV_DEV_JTAG(devtypeu, devtypel, instance) \
+	"bootcmd_jtag=source $scriptaddr; echo SCRIPT FAILED: continuing...;\0"
+
+#define BOOTENV_DEV_NAME_JTAG(devtypeu, devtypel, instance) \
+	"jtag "
+
 #define BOOT_TARGET_DEVICES(func) \
+	BOOT_TARGET_DEVICES_JTAG(func) \
 	BOOT_TARGET_DEVICES_MMC(func) \
 	BOOT_TARGET_DEVICES_QSPI(func) \
 	BOOT_TARGET_DEVICES_NAND(func) \
 	BOOT_TARGET_DEVICES_NOR(func) \
 	BOOT_TARGET_DEVICES_USB(func) \
 	BOOT_TARGET_DEVICES_PXE(func) \
-	BOOT_TARGET_DEVICES_DHCP(func) \
-	func(XILINX, xilinx, na)
+	BOOT_TARGET_DEVICES_DHCP(func)
 
 #include <config_distro_bootcmd.h>
 #endif /* CONFIG_SPL_BUILD */
@@ -216,121 +213,17 @@
 /* Default environment */
 #ifndef CONFIG_EXTRA_ENV_SETTINGS
 #define CONFIG_EXTRA_ENV_SETTINGS	\
-	"kernel_image=uImage\0"	\
-	"kernel_load_address=0x2080000\0" \
-	"ramdisk_image=uramdisk.image.gz\0"	\
-	"ramdisk_load_address=0x4000000\0"	\
-	"devicetree_image=devicetree.dtb\0"	\
-	"devicetree_load_address=0x2000000\0"	\
-	"bitstream_image=system.bit.bin\0"	\
-	"boot_image=BOOT.bin\0"	\
-	"loadbit_addr=0x100000\0"	\
-	"loadbootenv_addr=0x2000000\0" \
-	"kernel_size=0x500000\0"	\
-	"devicetree_size=0x20000\0"	\
-	"ramdisk_size=0x5E0000\0"	\
-	"boot_size=0xF00000\0"	\
-	"fdt_high=0x20000000\0"	\
+	"fdt_high=0x20000000\0"		\
 	"initrd_high=0x20000000\0"	\
 	"scriptaddr=0x20000\0"	\
-	"script_offser_nor=0xE2FC0000\0"	\
-	"script_offset_f=0xFC0000\0"	\
 	"script_size_f=0x40000\0"	\
-	"bootenv=uEnv.txt\0" \
-	"loadbootenv=load mmc 0 ${loadbootenv_addr} ${bootenv}\0" \
-	"importbootenv=echo Importing environment from SD ...; " \
-		"env import -t ${loadbootenv_addr} $filesize\0" \
-	"sd_uEnvtxt_existence_test=test -e mmc 0 /uEnv.txt\0" \
-	"preboot=if test $modeboot = sdboot && env run sd_uEnvtxt_existence_test; " \
-			"then if env run loadbootenv; " \
-				"then env run importbootenv; " \
-			"fi; " \
-		"fi; \0" \
-	"mmc_loadbit=echo Loading bitstream from SD/MMC/eMMC to RAM.. && " \
-		"mmcinfo && " \
-		"load mmc 0 ${loadbit_addr} ${bitstream_image} && " \
-		"fpga load 0 ${loadbit_addr} ${filesize}\0" \
-	"norboot=run xilinxcmd && " \
-		"echo Copying Linux from NOR flash to RAM... && " \
-		"cp.b 0xE2100000 ${kernel_load_address} ${kernel_size} && " \
-		"cp.b 0xE2600000 ${devicetree_load_address} ${devicetree_size} && " \
-		"echo Copying ramdisk... && " \
-		"cp.b 0xE2620000 ${ramdisk_load_address} ${ramdisk_size} && " \
-		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"qspiboot=run xilinxcmd && " \
-		" echo Copying Linux from QSPI flash to RAM... && " \
-		"sf probe 0 0 0 && " \
-		"sf read ${kernel_load_address} 0x100000 ${kernel_size} && " \
-		"sf read ${devicetree_load_address} 0x600000 ${devicetree_size} && " \
-		"echo Copying ramdisk... && " \
-		"sf read ${ramdisk_load_address} 0x620000 ${ramdisk_size} && " \
-		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"uenvboot=" \
-		"if run loadbootenv; then " \
-			"echo Loaded environment from ${bootenv}; " \
-			"run importbootenv; " \
-		"fi; " \
-		"if test -n $uenvcmd; then " \
-			"echo Running uenvcmd ...; " \
-			"run uenvcmd; " \
-		"fi\0" \
-	"sdboot=run xilinxcmd && if mmcinfo; then " \
-			"run uenvboot; " \
-			"echo Copying Linux from SD to RAM... && " \
-			"load mmc 0 ${kernel_load_address} ${kernel_image} && " \
-			"load mmc 0 ${devicetree_load_address} ${devicetree_image} && " \
-			"load mmc 0 ${ramdisk_load_address} ${ramdisk_image} && " \
-			"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}; " \
-		"fi\0" \
-	"usbboot=run xilinxcmd && if usb start; then " \
-			"run uenvboot; " \
-			"echo Copying Linux from USB to RAM... && " \
-			"load usb 0 ${kernel_load_address} ${kernel_image} && " \
-			"load usb 0 ${devicetree_load_address} ${devicetree_image} && " \
-			"load usb 0 ${ramdisk_load_address} ${ramdisk_image} && " \
-			"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}; " \
-		"fi\0" \
-	"nandboot=run xilinxcmd && " \
-		"echo Copying Linux from NAND flash to RAM... && " \
-		"nand read ${kernel_load_address} 0x100000 ${kernel_size} && " \
-		"nand read ${devicetree_load_address} 0x600000 ${devicetree_size} && " \
-		"echo Copying ramdisk... && " \
-		"nand read ${ramdisk_load_address} 0x620000 ${ramdisk_size} && " \
-		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"jtagboot=run xilinxcmd && echo TFTPing Linux to RAM... && " \
-		"tftpboot ${kernel_load_address} ${kernel_image} && " \
-		"tftpboot ${devicetree_load_address} ${devicetree_image} && " \
-		"tftpboot ${ramdisk_load_address} ${ramdisk_image} && " \
-		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"rsa_norboot=run xilinxcmd && " \
-		"echo Copying Image from NOR flash to RAM... && " \
-		"cp.b 0xE2100000 0x100000 ${boot_size} && " \
-		"zynqrsa 0x100000 && " \
-		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"rsa_nandboot=run xilinxcmd && " \
-		"echo Copying Image from NAND flash to RAM... && " \
-		"nand read 0x100000 0x0 ${boot_size} && " \
-		"zynqrsa 0x100000 && " \
-		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"rsa_qspiboot=run xilinxcmd && " \
-		"echo Copying Image from QSPI flash to RAM... && " \
-		"sf probe 0 0 0 && " \
-		"sf read 0x100000 0x0 ${boot_size} && " \
-		"zynqrsa 0x100000 && " \
-		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"rsa_sdboot=run xilinxcmd && echo Copying Image from SD to RAM... && " \
-		"load mmc 0 0x100000 ${boot_image} && " \
-		"zynqrsa 0x100000 && " \
-		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-	"rsa_jtagboot=run xilinxcmd && echo TFTPing Image to RAM... && " \
-		"tftpboot 0x100000 ${boot_image} && " \
-		"zynqrsa 0x100000 && " \
-		"bootm ${kernel_load_address} ${ramdisk_load_address} ${devicetree_load_address}\0" \
-		DFU_ALT_INFO \
-	"xilinxcmd=echo !!! && " \
-		"echo !!! Booting cmd is deprecated (will be removed in 2020). && " \
-		"echo !!! Please move to distro bootcmd. && echo !!!\0" \
-		BOOTENV
+	"fdt_addr_r=0x1f00000\0"        \
+	"pxefile_addr_r=0x2000000\0"    \
+	"kernel_addr_r=0x2000000\0"     \
+	"scriptaddr=0x3000000\0"        \
+	"ramdisk_addr_r=0x3100000\0"    \
+	DFU_ALT_INFO \
+	BOOTENV
 #endif
 
 /* Miscellaneous configurable options */
@@ -338,8 +231,6 @@
 #define CONFIG_CLOCKS
 #define CONFIG_SYS_MAXARGS		32 /* max number of command args */
 #define CONFIG_SYS_CBSIZE		2048 /* Console I/O Buffer Size */
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
-					sizeof(CONFIG_SYS_PROMPT) + 16)
 
 #define CONFIG_SYS_MEMTEST_START	0
 #define CONFIG_SYS_MEMTEST_END		0x1000
@@ -357,19 +248,10 @@
 /* Boot FreeBSD/vxWorks from an ELF image */
 #define CONFIG_SYS_MMC_MAX_DEVICE	1
 
-#define CONFIG_SYS_LDSCRIPT  "arch/arm/mach-zynq/u-boot.lds"
-
-#undef CONFIG_BOOTM_NETBSD
-
 /* MMC support */
 #ifdef CONFIG_MMC_SDHCI_ZYNQ
 #define CONFIG_SYS_MMCSD_FS_BOOT_PARTITION     1
 #define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME     "u-boot.img"
-#endif
-
-/* Disable dcache for SPL just for sure */
-#ifdef CONFIG_SPL_BUILD
-#define CONFIG_SYS_DCACHE_OFF
 #endif
 
 /* Address in RAM where the parameters must be copied by SPL. */
@@ -385,7 +267,6 @@
 
 /* qspi mode is working fine */
 #ifdef CONFIG_ZYNQ_QSPI
-#define CONFIG_SYS_SPI_U_BOOT_OFFS	0x100000
 #define CONFIG_SYS_SPI_ARGS_OFFS	0x200000
 #define CONFIG_SYS_SPI_ARGS_SIZE	0x80000
 #define CONFIG_SYS_SPI_KERNEL_OFFS	(CONFIG_SYS_SPI_ARGS_OFFS + \
@@ -393,7 +274,6 @@
 #endif
 
 /* SP location before relocation, must use scratch RAM */
-#define CONFIG_SPL_TEXT_BASE	0x0
 
 /* 3 * 64kB blocks of OCM - one is on the top because of bootrom */
 #define CONFIG_SPL_MAX_SIZE	0x30000

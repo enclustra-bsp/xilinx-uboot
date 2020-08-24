@@ -5,7 +5,9 @@
  */
 
 #include <common.h>
+#include <init.h>
 #include <dm/uclass.h>
+#include <env.h>
 #include <fdtdec.h>
 #include <fpga.h>
 #include <malloc.h>
@@ -25,6 +27,8 @@
 #include <enclustra_qspi.h>
 #include <enclustra/eeprom-mac.h>
 #include <asm/arch/ps7_init_gpl.h>
+
+#include "../common/board.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -218,27 +222,6 @@ static char *zx_get_idcode_name(void)
 
 int board_init(void)
 {
-#if defined(CONFIG_ENV_IS_IN_EEPROM) && !defined(CONFIG_SPL_BUILD)
-	unsigned char eepromsel = CONFIG_SYS_I2C_MUX_EEPROM_SEL;
-#endif
-
-#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_WDT)
-	if (uclass_get_device_by_seq(UCLASS_WDT, 0, &watchdog_dev)) {
-		debug("Watchdog: Not found by seq!\n");
-		if (uclass_get_device(UCLASS_WDT, 0, &watchdog_dev)) {
-			puts("Watchdog: Not found!\n");
-			return 0;
-		}
-	}
-
-	wdt_start(watchdog_dev, 0, 0);
-	puts("Watchdog: Started\n");
-# endif
-
-#if defined(CONFIG_ENV_IS_IN_EEPROM) && !defined(CONFIG_SPL_BUILD)
-	if (eeprom_write(CONFIG_SYS_I2C_MUX_ADDR, 0, &eepromsel, 1))
-		puts("I2C:EEPROM selection failed\n");
-#endif
 	return 0;
 }
 
@@ -268,11 +251,11 @@ int board_late_init(void)
 		env_set("modeboot", "norboot");
 		break;
 	case ZYNQ_BM_SD:
-		mode = "mmc";
+		mode = "mmc0";
 		env_set("modeboot", "sdboot");
 		break;
 	case ZYNQ_BM_JTAG:
-		mode = "pxe dhcp";
+		mode = "jtag pxe dhcp";
 		env_set("modeboot", "jtagboot");
 		break;
 	default:
@@ -362,7 +345,7 @@ int board_late_init(void)
 
 	env_set("boot_targets", new_targets);
 
-	return 0;
+	return board_late_init_xilinx();
 }
 
 /* Setup clock skews for ethernet PHY on Enclustra ZX boards */
@@ -423,27 +406,5 @@ int dram_init(void)
 	zynq_ddrc_init();
 
 	return 0;
-}
-#endif
-
-#if defined(CONFIG_WATCHDOG)
-/* Called by macro WATCHDOG_RESET */
-void watchdog_reset(void)
-{
-# if !defined(CONFIG_SPL_BUILD)
-	static ulong next_reset;
-	ulong now;
-
-	if (!watchdog_dev)
-		return;
-
-	now = timer_get_us();
-
-	/* Do not reset the watchdog too often */
-	if (now > next_reset) {
-		wdt_reset(watchdog_dev);
-		next_reset = now + 1000;
-	}
-# endif
 }
 #endif

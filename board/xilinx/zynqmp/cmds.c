@@ -5,8 +5,11 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
+#include <env.h>
 #include <malloc.h>
 #include <memalign.h>
+#include <zynqmp_firmware.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/io.h>
@@ -60,8 +63,8 @@ static int do_zynqmp_verify_secure(cmd_tbl_t *cmdtp, int flag, int argc,
 				   (ulong)(key_ptr + KEY_PTR_LEN));
 	}
 
-	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_SECURE_IMG_LOAD, src_lo, src_hi,
-			 key_lo, key_hi, ret_payload);
+	ret = xilinx_pm_request(PM_SECURE_IMAGE, src_lo, src_hi,
+				key_lo, key_hi, ret_payload);
 	if (ret) {
 		printf("Failed: secure op status:0x%x\n", ret);
 	} else {
@@ -121,7 +124,7 @@ static int do_zynqmp_aes(cmd_tbl_t *cmdtp, int flag, int argc,
 	int ret;
 	u32 ret_payload[PAYLOAD_ARG_CNT];
 
-	if (zynqmp_pmufw_version() <= PMUFW_V1_0) {
+	if (zynqmp_firmware_version() <= PMUFW_V1_0) {
 		puts("ERR: PMUFW v1.0 or less is detected\n");
 		puts("ERR: Encrypt/Decrypt feature is not supported\n");
 		puts("ERR: Please upgrade PMUFW\n");
@@ -165,7 +168,7 @@ static int do_zynqmp_aes(cmd_tbl_t *cmdtp, int flag, int argc,
 						    ARCH_DMA_MINALIGN)));
 	}
 
-	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_SECURE_AES,
+	ret = xilinx_pm_request(PM_SECURE_AES,
 			 upper_32_bits((ulong)aes), lower_32_bits((ulong)aes),
 			 0, 0, ret_payload);
 	if (ret || ret_payload[1])
@@ -208,7 +211,7 @@ static int do_zynqmp_rsa(cmd_tbl_t *cmdtp, int flag, int argc,
 	if (argc != cmdtp->maxargs)
 		return CMD_RET_USAGE;
 
-	if (zynqmp_pmufw_version() <= PMUFW_V1_0) {
+	if (zynqmp_firmware_version() <= PMUFW_V1_0) {
 		puts("ERR: PMUFW v1.0 or less is detected\n");
 		puts("ERR: Encrypt/Decrypt feature is not supported\n");
 		puts("ERR: Please upgrade PMUFW\n");
@@ -249,7 +252,7 @@ static int do_zynqmp_rsa(cmd_tbl_t *cmdtp, int flag, int argc,
 	flush_dcache_range((ulong)srcaddr,
 			   (ulong)(srcaddr) + roundup(size, ARCH_DMA_MINALIGN));
 
-	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_SECURE_RSA,
+	ret = xilinx_pm_request(PM_SECURE_RSA,
 			 upper_32_bits((ulong)srcaddr),
 			 lower_32_bits((ulong)srcaddr),
 			 srclen,
@@ -274,7 +277,7 @@ static int do_zynqmp_sha3(cmd_tbl_t *cmdtp, int flag,
 	if (argc != cmdtp->maxargs)
 		return CMD_RET_USAGE;
 
-	if (zynqmp_pmufw_version() <= PMUFW_V1_0) {
+	if (zynqmp_firmware_version() <= PMUFW_V1_0) {
 		puts("ERR: PMUFW v1.0 or less is detected\n");
 		puts("ERR: Encrypt/Decrypt feature is not supported\n");
 		puts("ERR: Please upgrade PMUFW\n");
@@ -293,7 +296,7 @@ static int do_zynqmp_sha3(cmd_tbl_t *cmdtp, int flag,
 	flush_dcache_range(srcaddr,
 			   srcaddr + roundup(srclen, ARCH_DMA_MINALIGN));
 
-	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_SECURE_SHA, 0, 0, 0,
+	ret = xilinx_pm_request(PM_SECURE_SHA, 0, 0, 0,
 			 ZYNQMP_SHA3_INIT, ret_payload);
 	if (ret || ret_payload[1]) {
 		printf("Failed: SHA INIT status:0x%x, errcode:0x%x\n",
@@ -301,7 +304,7 @@ static int do_zynqmp_sha3(cmd_tbl_t *cmdtp, int flag,
 		return CMD_RET_FAILURE;
 	}
 
-	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_SECURE_SHA,
+	ret = xilinx_pm_request(PM_SECURE_SHA,
 			 upper_32_bits((ulong)srcaddr),
 			 lower_32_bits((ulong)srcaddr),
 			 srclen,
@@ -313,7 +316,7 @@ static int do_zynqmp_sha3(cmd_tbl_t *cmdtp, int flag,
 		return CMD_RET_FAILURE;
 	}
 
-	ret = invoke_smc(ZYNQMP_SIP_SVC_PM_SECURE_SHA,
+	ret = xilinx_pm_request(PM_SECURE_SHA,
 			 upper_32_bits((ulong)srcaddr),
 			 lower_32_bits((ulong)srcaddr),
 			 ZYNQMP_SHA3_SIZE,

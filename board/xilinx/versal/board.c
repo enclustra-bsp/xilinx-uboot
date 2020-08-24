@@ -6,17 +6,32 @@
 
 #include <common.h>
 #include <fdtdec.h>
+#include <init.h>
 #include <malloc.h>
+#include <time.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
+#include <asm/arch/sys_proto.h>
 #include <dm/device.h>
 #include <dm/uclass.h>
+#include <versalpl.h>
+#include <linux/sizes.h>
+#include "../common/board.h"
 
 DECLARE_GLOBAL_DATA_PTR;
+
+#if defined(CONFIG_FPGA_VERSALPL)
+static xilinx_desc versalpl = XILINX_VERSAL_DESC;
+#endif
 
 int board_init(void)
 {
 	printf("EL Level:\tEL%d\n", current_el());
+
+#if defined(CONFIG_FPGA_VERSALPL)
+	fpga_init();
+	fpga_add(fpga_xilinx, &versalpl);
+#endif
 
 	return 0;
 }
@@ -78,6 +93,7 @@ int board_late_init(void)
 	const char *mode;
 	char *new_targets;
 	char *env_targets;
+	ulong initrd_hi;
 
 	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
 		debug("Saved variables - Skipping\n");
@@ -93,9 +109,13 @@ int board_late_init(void)
 
 	puts("Bootmode: ");
 	switch (bootmode) {
+	case USB_MODE:
+		puts("USB_MODE\n");
+		mode = "dfu_usb";
+		break;
 	case JTAG_MODE:
 		puts("JTAG_MODE\n");
-		mode = "pxe dhcp";
+		mode = "jtag pxe dhcp";
 		break;
 	case QSPI_MODE_24BIT:
 		puts("QSPI_MODE_24\n");
@@ -111,7 +131,14 @@ int board_late_init(void)
 		break;
 	case EMMC_MODE:
 		puts("EMMC_MODE\n");
-		mode = "mmc0";
+		if (uclass_get_device_by_name(UCLASS_MMC,
+					      "sdhci@f1050000", &dev)) {
+			puts("Boot from EMMC but without SD1 enabled!\n");
+			return -1;
+		}
+		debug("mmc1 device found at %p, seq %d\n", dev, dev->seq);
+		mode = "mmc";
+		bootseq = dev->seq;
 		break;
 	case SD_MODE:
 		puts("SD_MODE\n");
@@ -173,12 +200,22 @@ int board_late_init(void)
 
 	env_set("boot_targets", new_targets);
 
-	return 0;
+	initrd_hi = gd->start_addr_sp - CONFIG_STACK_SIZE;
+	initrd_hi = round_down(initrd_hi, SZ_16M);
+	env_set_addr("initrd_high", (void *)initrd_hi);
+
+	return board_late_init_xilinx();
 }
 
 int dram_init_banksize(void)
 {
-	fdtdec_setup_memory_banksize();
+	int ret;
+
+	ret = fdtdec_setup_memory_banksize();
+	if (ret)
+		return ret;
+
+	mem_map_fill();
 
 	return 0;
 }
@@ -193,4 +230,47 @@ int dram_init(void)
 
 void reset_cpu(ulong addr)
 {
+}
+
+#define PMC_TAP_VERSION_PLATFORM_MASK	0xF
+#define PMC_TAP_VERSION_PLATFORM_SHIFT	24
+
+/* pmc_tap_version platform */
+#define PMC_TAP_VERSION_SILICON	0
+#define PMC_TAP_VERSION_SPP	1
+#define PMC_TAP_VERSION_EMU	2
+#define PMC_TAP_VERSION_QEMU	3
+
+int __maybe_unused board_fit_config_name_match(const char *name)
+{
+	u32 version, platform;
+	char *platform_name = NULL;
+
+	version = readl(&pmc_base_base->version);
+	platform = (version >> PMC_TAP_VERSION_PLATFORM_SHIFT) &
+		   PMC_TAP_VERSION_PLATFORM_MASK;
+
+	switch (platform) {
+	case PMC_TAP_VERSION_SILICON:
+		platform_name = "versal-tenzing"; /* For now */
+		debug("Running on Silicon\n");
+		break;
+	case PMC_TAP_VERSION_SPP:
+		platform_name = "versal-spp";
+		break;
+	case PMC_TAP_VERSION_EMU:
+		platform_name = "versal-emu";
+		break;
+	case PMC_TAP_VERSION_QEMU:
+		platform_name = "versal-qemu"; /* Internal QEMU */
+		debug("Running on QEMU which is suspicious\n");
+		break;
+	}
+
+	if (!strncmp(name, platform_name, sizeof(platform_name))) {
+		printf("Selecting DTB %s for board %s\n", name, platform_name);
+		return 0;
+	}
+
+	return -1;
 }

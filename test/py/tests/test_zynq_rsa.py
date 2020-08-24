@@ -47,7 +47,7 @@ def zynq_rsa_pre_commands(u_boot_console):
     if not m:
        pytest.skip('bootmode cannnot be determined')
     bootmode=m.group(1)
-    if bootmode is "jtag":
+    if bootmode == "jtag":
        pytest.skip('skipping due to jtag bootmode')
 
 @pytest.mark.buildconfigspec('cmd_zynq_rsa')
@@ -75,8 +75,8 @@ def test_zynq_rsa_image(u_boot_console):
     output = u_boot_console.run_command('tftpboot %x %s' % (srcaddr, fn))
     assert expected_tftp in output
 
-    expected_zynqrsa = 'zynqrsa <baseaddr>'
-    output = u_boot_console.run_command('zynqrsa %x ' % (srcaddr))
+    expected_zynqrsa = 'zynq rsa <baseaddr>'
+    output = u_boot_console.run_command('zynq rsa %x ' % (srcaddr))
     assert expected_zynqrsa not in output
 
 @pytest.mark.buildconfigspec('cmd_zynq_rsa')
@@ -104,6 +104,6 @@ def test_zynq_rsa_image_invalid(u_boot_console):
     output = u_boot_console.run_command('tftpboot %x %s' % (srcaddr, fninvalid))
     assert expected_tftp in output
 
-    expected_zynqrsa = 'zynqrsa <baseaddr>'
-    output = u_boot_console.run_command('zynqrsa %x ' % (srcaddr))
+    expected_zynqrsa = 'zynq rsa <baseaddr>'
+    output = u_boot_console.run_command('zynq rsa %x ' % (srcaddr))
     assert expected_zynqrsa in output

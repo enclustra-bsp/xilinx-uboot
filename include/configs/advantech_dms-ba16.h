@@ -21,8 +21,6 @@
 #define CONFIG_LOADCMD "fatload"
 #define CONFIG_RFSPART "2"
 
-#define CONFIG_SUPPORT_EMMC_BOOT
-
 #include "mx6_common.h"
 #include <linux/sizes.h>
 
@@ -34,8 +32,6 @@
 
 #define CONFIG_MXC_UART
 
-#define CONFIG_MXC_OCOTP
-
 /* SATA Configs */
 #define CONFIG_SYS_SATA_MAX_DEVICE	1
 #define CONFIG_DWC_AHSATA_PORT_ID	0
@@ -43,7 +39,6 @@
 #define CONFIG_LBA48
 
 /* MMC Configs */
-#define CONFIG_FSL_USDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR      0
 
 /* USB Configs */
@@ -63,12 +58,6 @@
 #define CONFIG_PHY_ATHEROS
 
 /* Serial Flash */
-#ifdef CONFIG_CMD_SF
-#define CONFIG_SF_DEFAULT_BUS		0
-#define CONFIG_SF_DEFAULT_CS		0
-#define CONFIG_SF_DEFAULT_SPEED	20000000
-#define CONFIG_SF_DEFAULT_MODE		SPI_MODE_0
-#endif
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
@@ -197,7 +186,6 @@
 
 #define CONFIG_SYS_MEMTEST_START       0x10000000
 #define CONFIG_SYS_MEMTEST_END         0x10010000
-#define CONFIG_SYS_MEMTEST_SCRATCH     0x10800000
 
 #define CONFIG_SYS_LOAD_ADDR           CONFIG_LOADADDR
 
@@ -215,19 +203,10 @@
 
 /* FLASH and environment organization */
 
-#define CONFIG_ENV_SIZE                 (8 * 1024)
-#define CONFIG_ENV_OFFSET               (768 * 1024)
-#define CONFIG_ENV_SECT_SIZE            (64 * 1024)
-#define CONFIG_ENV_SPI_BUS              CONFIG_SF_DEFAULT_BUS
-#define CONFIG_ENV_SPI_CS               CONFIG_SF_DEFAULT_CS
-#define CONFIG_ENV_SPI_MODE             CONFIG_SF_DEFAULT_MODE
-#define CONFIG_ENV_SPI_MAX_HZ           CONFIG_SF_DEFAULT_SPEED
-
 #define CONFIG_SYS_FSL_USDHC_NUM        3
 
 /* Framebuffer */
 #ifdef CONFIG_VIDEO
-#define CONFIG_VIDEO_IPUV3
 #define CONFIG_VIDEO_BMP_RLE8
 #define CONFIG_SPLASH_SCREEN
 #define CONFIG_SPLASH_SCREEN_ALIGN
@@ -238,7 +217,6 @@
 #define CONFIG_IMX_VIDEO_SKIP
 #endif
 
-#define CONFIG_PWM_IMX
 #define CONFIG_IMX6_PWM_PER_CLK         66000000
 
 #ifdef CONFIG_CMD_PCI

@@ -7,7 +7,7 @@ config BOARD_COSMOS_XZQ10
 config SPL_LDSCRIPT
 	default "arch/arm/mach-zynq/u-boot-spl.lds"
 
-config SPL_FAT_SUPPORT
+config SPL_FS_FAT
 	default y
 
 config SPL_LIBCOMMON_SUPPORT
@@ -77,13 +77,6 @@ config ZYNQ_M29EW_WB_HACK
 	help
 	  The option provides hack for Zynq NOR driver which is required
 	  for NOR operations to work as expected.
-
-# Temporary Kconfig options which needs to be fixed
-config SYS_I2C_MUX_ADDR
-	int
-
-config SYS_I2C_MUX_EEPROM_SEL
-	int
 
 config ZYNQ_SDHCI_MAX_FREQ
 	default 52000000

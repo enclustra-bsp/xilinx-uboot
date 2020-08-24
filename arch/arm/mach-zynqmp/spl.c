@@ -7,11 +7,13 @@
 
 #include <common.h>
 #include <debug_uart.h>
+#include <init.h>
 #include <spl.h>
 
 #include <asm/io.h>
 #include <asm/spl.h>
 #include <asm/arch/hardware.h>
+#include <asm/arch/psu_init_gpl.h>
 #include <asm/arch/sys_proto.h>
 
 void board_init_f(ulong dummy)
@@ -26,12 +28,6 @@ void board_init_f(ulong dummy)
 #endif
 	/* Delay is required for clocks to be propagated */
 	udelay(1000000);
-
-	/* Clear the BSS */
-	memset(__bss_start, 0, __bss_end - __bss_start);
-
-	/* No need to call timer init - it is empty for ZynqMP */
-	board_init_r(NULL, 0);
 }
 
 static void ps_mode_reset(ulong mode)
@@ -58,8 +54,21 @@ void spl_board_init(void)
 	preloader_console_init();
 	ps_mode_reset(MODE_RESET);
 	board_init();
+	psu_post_config_data();
 }
 #endif
+
+void board_boot_order(u32 *spl_boot_list)
+{
+	spl_boot_list[0] = spl_boot_device();
+
+	if (spl_boot_list[0] == BOOT_DEVICE_MMC1)
+		spl_boot_list[1] = BOOT_DEVICE_MMC2;
+	if (spl_boot_list[0] == BOOT_DEVICE_MMC2)
+		spl_boot_list[1] = BOOT_DEVICE_MMC1;
+
+	spl_boot_list[2] = BOOT_DEVICE_RAM;
+}
 
 u32 spl_boot_device(void)
 {
@@ -84,16 +93,12 @@ u32 spl_boot_device(void)
 #ifdef CONFIG_SPL_MMC_SUPPORT
 	case SD_MODE1:
 	case SD1_LSHFT_MODE: /* not working on silicon v1 */
-/* if both controllers enabled, then these two are the second controller */
-#if defined(SPL_ZYNQMP_TWO_SDHCI)
 		return BOOT_DEVICE_MMC2;
-/* else, fall through, the one SDHCI controller that is enabled is number 1 */
-#endif
 	case SD_MODE:
 	case EMMC_MODE:
 		return BOOT_DEVICE_MMC1;
 #endif
-#ifdef CONFIG_SPL_DFU_SUPPORT
+#ifdef CONFIG_SPL_DFU
 	case USB_MODE:
 		return BOOT_DEVICE_DFU;
 #endif
@@ -117,8 +122,6 @@ u32 spl_boot_device(void)
 #ifdef CONFIG_SPL_OS_BOOT
 int spl_start_uboot(void)
 {
-	handoff_setup();
-
 	return 0;
 }
 #endif
@@ -129,6 +132,6 @@ int board_fit_config_name_match(const char *name)
 	/* Just empty function now - can't decide what to choose */
 	debug("%s: %s\n", __func__, name);
 
-	return 0;
+	return -1;
 }
 #endif

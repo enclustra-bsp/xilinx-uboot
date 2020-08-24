@@ -26,6 +26,32 @@ static int xilinxgmiitorgmii_config(struct phy_device *phydev)
 	return 0;
 }
 
+static int xilinxgmiitorgmii_extread(struct phy_device *phydev, int addr,
+				     int devaddr, int regnum)
+{
+	struct phy_device *ext_phydev = phydev->priv;
+
+	debug("%s\n", __func__);
+	if (ext_phydev->drv->readext)
+		ext_phydev->drv->readext(ext_phydev, addr, devaddr, regnum);
+
+	return 0;
+}
+
+static int xilinxgmiitorgmii_extwrite(struct phy_device *phydev, int addr,
+				      int devaddr, int regnum, u16 val)
+
+{
+	struct phy_device *ext_phydev = phydev->priv;
+
+	debug("%s\n", __func__);
+	if (ext_phydev->drv->writeext)
+		ext_phydev->drv->writeext(ext_phydev, addr, devaddr, regnum,
+					  val);
+
+	return 0;
+}
+
 static int xilinxgmiitorgmii_startup(struct phy_device *phydev)
 {
 	u16 val = 0;
@@ -59,6 +85,7 @@ static int xilinxgmiitorgmii_probe(struct phy_device *phydev)
 	int ofnode = phydev->addr;
 	u32 phy_of_handle;
 	int ext_phyaddr = -1;
+	struct phy_device *ext_phydev;
 
 	debug("%s\n", __func__);
 
@@ -78,14 +105,16 @@ static int xilinxgmiitorgmii_probe(struct phy_device *phydev)
 		ext_phyaddr = fdtdec_get_int(gd->fdt_blob,
 					     phy_of_handle,
 					     "reg", -1);
-	phydev->priv = phy_find_by_mask(phydev->bus,
-					1 << ext_phyaddr,
-					PHY_INTERFACE_MODE_RGMII);
-
-	if (!phydev->priv) {
+	ext_phydev = phy_find_by_mask(phydev->bus,
+				      1 << ext_phyaddr,
+				      PHY_INTERFACE_MODE_RGMII);
+	if (!ext_phydev) {
 		printf("%s, No external phy device found\n", __func__);
 		return -EINVAL;
 	}
+
+	ext_phydev->node = offset_to_ofnode(phy_of_handle);
+	phydev->priv = ext_phydev;
 
 	debug("%s, gmii2rgmmi:0x%x, extphy:0x%x\n", __func__, phydev->addr,
 	      ext_phyaddr);
@@ -103,6 +132,8 @@ static struct phy_driver gmii2rgmii_driver = {
 	.probe = xilinxgmiitorgmii_probe,
 	.config = xilinxgmiitorgmii_config,
 	.startup = xilinxgmiitorgmii_startup,
+	.writeext = xilinxgmiitorgmii_extwrite,
+	.readext = xilinxgmiitorgmii_extread,
 };
 
 int phy_xilinx_gmii2rgmii_init(void)

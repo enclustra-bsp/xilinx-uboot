@@ -11,7 +11,6 @@
 #define CONFIG_CPU_SH7722	1
 
 #define CONFIG_DISPLAY_BOARDINFO
-#undef  CONFIG_SHOW_BOOT_PROGRESS
 
 /* SMC9111 */
 #define CONFIG_SMC91111
@@ -33,7 +32,6 @@
 
 /* Enable alternate, more extensive, memory test */
 /* Scratch address used by the alternate memory test */
-#undef  CONFIG_SYS_MEMTEST_SCRATCH
 
 /* Enable temporary baudrate change while serial download */
 #undef  CONFIG_SYS_LOADS_BAUD_CHANGE
@@ -79,12 +77,7 @@
 
 /* ENV setting */
 #define CONFIG_ENV_OVERWRITE	1
-#define CONFIG_ENV_SECT_SIZE	(128 * 1024)
-#define CONFIG_ENV_SIZE		(CONFIG_ENV_SECT_SIZE)
-#define CONFIG_ENV_ADDR		(CONFIG_SYS_FLASH_BASE + CONFIG_SYS_MONITOR_LEN)
 /* Offset of env Flash sector relative to CONFIG_SYS_FLASH_BASE */
-#define CONFIG_ENV_OFFSET		(CONFIG_ENV_ADDR - CONFIG_SYS_FLASH_BASE)
-#define CONFIG_ENV_SIZE_REDUND	(CONFIG_ENV_SECT_SIZE)
 
 /* Board Clock */
 #define CONFIG_SYS_CLK_FREQ	33333333

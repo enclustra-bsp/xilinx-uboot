@@ -13,6 +13,8 @@
 /* MicroBlaze CPU */
 #define	MICROBLAZE_V5		1
 
+#define CONFIG_SYS_BOOTM_LEN	(64 * 1024 * 1024)
+
 /* linear and spi flash memory */
 #ifdef XILINX_FLASH_START
 #define	FLASH
@@ -68,44 +70,25 @@
 /* hardware flash protection */
 /* use buffered writes (20x faster) */
 # ifdef	RAMENV
-#  define CONFIG_ENV_SIZE	0x1000
-#  define CONFIG_ENV_ADDR	(CONFIG_SYS_MONITOR_BASE - CONFIG_ENV_SIZE)
-
 # else	/* FLASH && !RAMENV */
 /* 128K(one sector) for env */
-#  define CONFIG_ENV_SECT_SIZE	0x20000
-#  define CONFIG_ENV_ADDR \
-			(CONFIG_SYS_FLASH_BASE + (2 * CONFIG_ENV_SECT_SIZE))
-#  define CONFIG_ENV_SIZE	0x20000
 # endif /* FLASH && !RAMBOOT */
 #else /* !FLASH */
 
 #ifdef SPIFLASH
-# define CONFIG_SF_DEFAULT_MODE		SPI_MODE_3
-# define CONFIG_SF_DEFAULT_SPEED	XILINX_SPI_FLASH_MAX_FREQ
-# define CONFIG_SF_DEFAULT_CS		XILINX_SPI_FLASH_CS
-
 # ifdef	RAMENV
-#  define CONFIG_ENV_SIZE	0x1000
-#  define CONFIG_ENV_ADDR	(CONFIG_SYS_MONITOR_BASE - CONFIG_ENV_SIZE)
-
 # else	/* SPIFLASH && !RAMENV */
-#  define CONFIG_ENV_SPI_MODE		SPI_MODE_3
-#  define CONFIG_ENV_SPI_MAX_HZ		CONFIG_SF_DEFAULT_SPEED
-#  define CONFIG_ENV_SPI_CS		CONFIG_SF_DEFAULT_CS
 /* 128K(two sectors) for env */
-#  define CONFIG_ENV_SECT_SIZE	0x10000
-#  define CONFIG_ENV_SIZE	(2 * CONFIG_ENV_SECT_SIZE)
 /* Warning: adjust the offset in respect of other flash content and size */
-#  define CONFIG_ENV_OFFSET	(128 * CONFIG_ENV_SECT_SIZE) /* at 8MB */
 # endif /* SPIFLASH && !RAMBOOT */
 #else /* !SPIFLASH */
 
 /* ENV in RAM */
-# define CONFIG_ENV_SIZE	0x1000
-# define CONFIG_ENV_ADDR	(CONFIG_SYS_MONITOR_BASE - CONFIG_ENV_SIZE)
 #endif /* !SPIFLASH */
 #endif /* !FLASH */
+
+#define XILINX_USE_ICACHE 1
+#define XILINX_USE_DCACHE 1
 
 #if defined(XILINX_USE_ICACHE)
 # define CONFIG_ICACHE
@@ -147,8 +130,6 @@
 /* architecture dependent code */
 #define	CONFIG_SYS_USR_EXCEP	/* user exception */
 
-#define	CONFIG_PREBOOT	"echo U-BOOT for ${hostname};setenv preboot;echo"
-
 #ifndef CONFIG_EXTRA_ENV_SETTINGS
 #define	CONFIG_EXTRA_ENV_SETTINGS	"unlock=yes\0" \
 					"nor0=flash-0\0"\
@@ -160,9 +141,6 @@
 					"serial=setenv stdout serial;"\
 					"setenv stdin serial\0"
 #endif
-
-/* Enable flat device tree support */
-#define CONFIG_LMB		1
 
 #if defined(CONFIG_XILINX_AXIEMAC)
 # define CONFIG_SYS_FAULT_ECHO_LINK_DOWN	1

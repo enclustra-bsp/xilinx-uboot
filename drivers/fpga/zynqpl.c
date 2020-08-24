@@ -8,6 +8,7 @@
 
 #include <common.h>
 #include <console.h>
+#include <cpu_func.h>
 #include <asm/io.h>
 #include <fs.h>
 #include <zynqpl.h>
@@ -409,6 +410,8 @@ static int zynq_load(xilinx_desc *desc, const void *buf, size_t bsize,
 	if (bstype != BIT_PARTIAL)
 		zynq_slcr_devcfg_enable();
 
+	puts("INFO:post config was not run, please run manually if needed\n");
+
 	return FPGA_SUCCESS;
 }
 
@@ -422,7 +425,8 @@ static int zynq_loadfs(xilinx_desc *desc, const void *buf, size_t bsize,
 	loff_t blocksize, actread;
 	loff_t pos = 0;
 	int fstype;
-	char *interface, *dev_part, *filename;
+	char *interface, *dev_part;
+	const char *filename;
 
 	blocksize = fsinfo->blocksize;
 	interface = fsinfo->interface;
@@ -505,7 +509,8 @@ struct xilinx_fpga_op zynq_op = {
  * Load the encrypted image from src addr and decrypt the image and
  * place it back the decrypted image into dstaddr.
  */
-int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen)
+int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen,
+		      u8 bstype)
 {
 	u32 isr_status, ts;
 
@@ -522,7 +527,7 @@ int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen)
 		return FPGA_FAIL;
 	}
 
-	if (zynq_dma_xfer_init(BIT_NONE)) {
+	if (zynq_dma_xfer_init(bstype)) {
 		printf("%s: zynq_dma_xfer_init FAIL\n", __func__);
 		return FPGA_FAIL;
 	}
@@ -540,28 +545,28 @@ int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen)
 	 * Flush destination address range only if image is not
 	 * bitstream.
 	 */
-	if (dstaddr != 0xFFFFFFFF)
+	if (bstype == BIT_NONE && dstaddr != 0xFFFFFFFF)
 		flush_dcache_range((u32)dstaddr, (u32)dstaddr +
 				   roundup(dstlen << 2, ARCH_DMA_MINALIGN));
 
 	if (zynq_dma_transfer(srcaddr | 1, srclen, dstaddr | 1, dstlen))
 		return FPGA_FAIL;
 
-	isr_status = readl(&devcfg_base->int_sts);
-	/* Check FPGA configuration completion */
-	ts = get_timer(0);
-	while (!(isr_status & DEVCFG_ISR_PCFG_DONE)) {
-		if (get_timer(ts) > CONFIG_SYS_FPGA_WAIT) {
-			printf("%s: Timeout wait for FPGA to config\n",
-			       __func__);
-			return FPGA_FAIL;
-		}
+	if (bstype == BIT_FULL) {
 		isr_status = readl(&devcfg_base->int_sts);
+		/* Check FPGA configuration completion */
+		ts = get_timer(0);
+		while (!(isr_status & DEVCFG_ISR_PCFG_DONE)) {
+			if (get_timer(ts) > CONFIG_SYS_FPGA_WAIT) {
+				printf("%s: Timeout wait for FPGA to config\n",
+				       __func__);
+				return FPGA_FAIL;
+			}
+			isr_status = readl(&devcfg_base->int_sts);
+		}
+		printf("%s: FPGA config done\n", __func__);
+		zynq_slcr_devcfg_enable();
 	}
-
-	printf("%s: FPGA config done\n", __func__);
-
-	zynq_slcr_devcfg_enable();
 
 	return FPGA_SUCCESS;
 }

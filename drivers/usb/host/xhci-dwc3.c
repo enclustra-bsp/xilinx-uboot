@@ -14,7 +14,7 @@
 #include <usb.h>
 #include <dwc3-uboot.h>
 
-#include "xhci.h"
+#include <usb/xhci.h>
 #include <asm/io.h>
 #include <linux/usb/dwc3.h>
 #include <linux/usb/otg.h>
@@ -110,6 +110,42 @@ void dwc3_set_fladj(struct dwc3 *dwc3_reg, u32 val)
 			GFLADJ_30MHZ(val));
 }
 
+#if defined(CONFIG_ARCH_VERSAL)
+static void dwc3_frame_length_adjustment(struct udevice *dev, struct dwc3 *dwc)
+{
+	u32 fladj, gfladj, reg;
+	bool refclk_fladj;
+
+	fladj = dev_read_u32_default(dev, "snps,quirk-frame-length-adjustment",
+				     0);
+	if (!fladj)
+		return;
+
+	/* Save the initial GFLADJ register value */
+	reg = readl(&dwc->g_fladj);
+	gfladj = reg;
+
+	refclk_fladj = dev_read_bool(dev, "snps,refclk_fladj");
+
+	if (refclk_fladj) {
+		if ((reg & GFLADJ_REFCLK_FLADJ) != (fladj &
+					GFLADJ_REFCLK_FLADJ)) {
+			reg &= ~GFLADJ_REFCLK_FLADJ;
+			reg |= (fladj & GFLADJ_REFCLK_FLADJ);
+		}
+	}
+
+	if ((reg & GFLADJ_30MHZ_MASK) != fladj) {
+		reg &= ~GFLADJ_30MHZ_MASK;
+		reg |= GFLADJ_30MHZ_REG_SEL | fladj;
+	}
+
+	/* Update GFLADJ if there is any change from initial value */
+	if (reg != gfladj)
+		writel(reg, &dwc->g_fladj);
+}
+#endif
+
 #if CONFIG_IS_ENABLED(DM_USB)
 static int xhci_dwc3_probe(struct udevice *dev)
 {
@@ -118,6 +154,8 @@ static int xhci_dwc3_probe(struct udevice *dev)
 	struct dwc3 *dwc3_reg;
 	enum usb_dr_mode dr_mode;
 	struct xhci_dwc3_platdata *plat = dev_get_platdata(dev);
+	const char *phy;
+	u32 reg;
 	int ret;
 
 	hccr = (struct xhci_hccr *)((uintptr_t)dev_read_addr(dev));
@@ -131,6 +169,31 @@ static int xhci_dwc3_probe(struct udevice *dev)
 	dwc3_reg = (struct dwc3 *)((char *)(hccr) + DWC3_REG_OFFSET);
 
 	dwc3_core_init(dwc3_reg);
+
+#if defined(CONFIG_ARCH_VERSAL)
+	/* Adjust Frame Length */
+	dwc3_frame_length_adjustment(dev, dwc3_reg);
+#endif
+	/* Set dwc3 usb2 phy config */
+	reg = readl(&dwc3_reg->g_usb2phycfg[0]);
+
+	phy = dev_read_string(dev, "phy_type");
+	if (phy && strcmp(phy, "utmi_wide") == 0) {
+		reg |= DWC3_GUSB2PHYCFG_PHYIF;
+		reg &= ~DWC3_GUSB2PHYCFG_USBTRDTIM_MASK;
+		reg |= DWC3_GUSB2PHYCFG_USBTRDTIM_16BIT;
+	}
+
+	if (dev_read_bool(dev, "snps,dis_enblslpm-quirk"))
+		reg &= ~DWC3_GUSB2PHYCFG_ENBLSLPM;
+
+	if (dev_read_bool(dev, "snps,dis-u2-freeclk-exists-quirk"))
+		reg &= ~DWC3_GUSB2PHYCFG_U2_FREECLK_EXISTS;
+
+	if (dev_read_bool(dev, "snps,dis_u2_susphy_quirk"))
+		reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
+
+	writel(reg, &dwc3_reg->g_usb2phycfg[0]);
 
 	dr_mode = usb_get_dr_mode(dev_of_offset(dev));
 	if (dr_mode == USB_DR_MODE_UNKNOWN)
