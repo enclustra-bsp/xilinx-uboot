@@ -1,5 +1,6 @@
 #include <common.h>
 #include <linux/compat.h>
+#include <dm.h>
 #include <i2c.h>
 #include <enclustra/eeprom-mac.h>
 #include <atsha204a-i2c.h>
