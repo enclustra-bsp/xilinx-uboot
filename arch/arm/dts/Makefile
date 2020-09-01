@@ -319,9 +319,7 @@ dtb-$(CONFIG_ARCH_ZYNQMP) += \
 	mercury-xu7.dtb				\
 	mercury-xu8.dtb				\
 	mercury-xu9.dtb				\
-	mars-xu3.dtb				\
-	zynqmp-mini-nand.dtb \
-	zynqmp-zc1751-xm019-dc5.dtb
+	mars-xu3.dtb
 dtb-$(CONFIG_ARCH_VERSAL) += \
 	versal-mini.dtb \
 	versal-mini-emmc0.dtb \

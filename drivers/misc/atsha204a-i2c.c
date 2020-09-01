@@ -237,10 +237,10 @@ int atsha204a_wakeup(struct udevice *dev)
 		}
 
 		debug("success\n");
-		return 0;
+		break;
 	}
 
-	return -ETIMEDOUT;
+	return 0;
 }
 
 int atsha204a_idle(struct udevice *dev)
@@ -277,7 +277,6 @@ static int atsha204a_transaction(struct udevice *dev, struct atsha204a_req *req,
 	}
 
 	do {
-		udelay(ATSHA204A_EXECTIME);
 		res = atsha204a_recv_resp(dev, resp);
 		if (!res || res == -EMSGSIZE || res == -EBADMSG)
 			break;
@@ -285,6 +284,7 @@ static int atsha204a_transaction(struct udevice *dev, struct atsha204a_req *req,
 		debug("ATSHA204A transaction polling for response "
 		      "(timeout = %d)\n", timeout);
 
+		udelay(ATSHA204A_EXECTIME);
 		timeout -= ATSHA204A_EXECTIME;
 	} while (timeout > 0);
 
