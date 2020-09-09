@@ -193,7 +193,6 @@ struct zynqmp_qspi_priv {
 	unsigned int dummy_bytes;
 	unsigned int tx_rx_mode;
 	unsigned int io_mode;
-	unsigned int bytemode;
 };
 
 static u8 last_cmd;
@@ -201,8 +200,6 @@ static u8 last_cmd;
 static int zynqmp_qspi_ofdata_to_platdata(struct udevice *bus)
 {
 	struct zynqmp_qspi_platdata *plat = bus->platdata;
-	struct spi_slave *slave = dev_get_parent_priv(bus);
-	struct zynqmp_qspi_priv *priv = dev_get_priv(bus);
 	int is_dual;
 
 	debug("%s\n", __func__);
@@ -211,12 +208,8 @@ static int zynqmp_qspi_ofdata_to_platdata(struct udevice *bus)
 						 GQSPI_REG_OFFSET);
 	plat->dma_regs = (struct zynqmp_qspi_dma_regs *)
 			  (devfdt_get_addr(bus) + GQSPI_DMA_REG_OFFSET);
-	slave->bytemode = fdtdec_get_int(gd->fdt_blob, dev_of_offset(bus),
-					 "bytemode", SPI_4BYTE_MODE);
-	priv->bytemode = slave->bytemode;
 
-	is_dual = fdtdec_get_int(gd->fdt_blob, dev_of_offset(bus), "is-dual",
-				 -1);
+	is_dual = fdtdec_get_int(gd->fdt_blob, dev_of_offset(bus), "is-dual", -1);
 	if (is_dual < 0)
 		plat->is_dual = SF_SINGLE_FLASH;
 	else if (is_dual == 1)
@@ -601,9 +594,6 @@ static void zynqmp_qspi_genfifo_cmd(struct zynqmp_qspi_priv *priv)
 	u8 command = 1;
 	u32 gen_fifo_cmd;
 	u32 bytecount = 0;
-
-	if (priv->bytemode == SPI_3BYTE_MODE)
-		priv->dummy_bytes = 0;
 
 	if (priv->dummy_bytes)
 		priv->len -= priv->dummy_bytes;

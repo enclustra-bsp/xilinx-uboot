@@ -155,7 +155,6 @@
 &qspi {
 	status = "okay";
 	is-dual = <0>;
-	bytemode = <0>;
 };
 
 &rtc {

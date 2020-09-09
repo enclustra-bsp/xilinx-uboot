@@ -155,7 +155,6 @@
 
 &qspi {
 	status = "okay";
-	bytemode = <0>;
 };
 
 &rtc {
