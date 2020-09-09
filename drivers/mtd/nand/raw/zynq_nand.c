@@ -1208,7 +1208,7 @@ static int zynq_nand_probe(struct udevice *dev)
 		nand_chip->ecc.bytes = 0;
 
 		/* NAND with on-die ECC supports subpage reads */
-		nand_chip->options |= NAND_SUBPAGE_READ |  NAND_NO_SUBPAGE_WRITE;
+		nand_chip->options |= NAND_SUBPAGE_READ;
 
 		/* On-Die ECC spare bytes offset 8 is used for ECC codes */
 		if (ondie_ecc_enabled) {
