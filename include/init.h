@@ -202,6 +202,8 @@ int board_early_init_f(void);
 /* manipulate the U-Boot fdt before its relocation */
 int board_fix_fdt(void *rw_fdt_blob);
 int board_late_init(void);
+int enclustra_board(void);
+int enclustra_common(void);
 int board_postclk_init(void); /* after clocks/timebase, before env/serial */
 int board_early_init_r(void);
 

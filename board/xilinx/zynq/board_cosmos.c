@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * (C) Copyright 2020 Enclustra GmbH
+ */
+ 
 #include <common.h>
 #include <command.h>
 #include <i2c.h>

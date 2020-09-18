@@ -805,6 +805,12 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_BOARD_LATE_INIT
 	board_late_init,
 #endif
+#if defined(CONFIG_ZYNQ_QSPI) || defined(CONFIG_ENCLUSTRA_QSPI_FLASHMAP)
+	enclustra_board,
+#endif
+#ifdef CONFIG_ENCLUSTRA_EEPROM_MAC
+	enclustra_common,
+#endif
 #if defined(CONFIG_SCSI) && !defined(CONFIG_DM_SCSI)
 	INIT_FUNC_WATCHDOG_RESET
 	initr_scsi,

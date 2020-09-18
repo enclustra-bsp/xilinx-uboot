@@ -26,16 +26,16 @@
 #include <zynqmppl.h>
 #include <zynqmp_firmware.h>
 #include <g_dnl.h>
-#include <spi.h>
-#include <spi_flash.h>
-#include <enclustra_qspi.h>
-#include <enclustra/eeprom-mac.h>
 #include <linux/sizes.h>
 #include "../common/board.h"
 
 #include "pm_cfg_obj.h"
 
 DECLARE_GLOBAL_DATA_PTR;
+
+/*#if defined(CONFIG_ENCLUSTRA_QSPI_FLASHMAP)
+extern void enclustra_flash_map(void);
+#endif*/
 
 #if defined(CONFIG_FPGA) && defined(CONFIG_FPGA_ZYNQMPPL) && \
     !defined(CONFIG_SPL_BUILD)
@@ -373,6 +373,9 @@ int board_init(void)
 		fpga_init();
 		fpga_add(fpga_xilinx, &zynqmppl);
 	}
+/*#if defined(CONFIG_ENCLUSTRA_QSPI_FLASHMAP)
+	enclustra_flash_map();
+#endif*/
 #endif
 
 	if (current_el() == 3)
@@ -470,13 +473,6 @@ void reset_cpu(ulong addr)
 {
 }
 
-#if defined(CONFIG_ENCLUSTRA_EEPROM_MAC)
-static struct eeprom_mem eeproms[] = {
-	{.mac_reader = atsha204_get_mac },
-	{.mac_reader = ds28_get_mac }
-};
-#endif
-
 #if defined(CONFIG_BOARD_LATE_INIT)
 static const struct {
 	u32 bit;
@@ -566,25 +562,6 @@ int board_late_init(void)
 	char *env_targets;
 	int ret;
 	ulong initrd_hi;
-	u8 hwaddr[6] = {0, 0, 0, 0, 0, 0};
-	u32 hwaddr_h;
-	char hwaddr_str[18];
-	bool hwaddr_set;
-	u32 i = 0;
-
-	/* Probe the QSPI flash */
-#if defined(CONFIG_ENCLUSTRA_QSPI_FLASHMAP) && \
-    !defined(CONFIG_SPL_BUILD)
-	struct spi_flash *env_flash;
-	u32 flash_size;
-
-	env_flash = spi_flash_probe(0, 0, 1000000,
-				    SPI_RX_QUAD | SPI_TX_QUAD | SPI_MODE_2);
-	if (env_flash) {
-		flash_size = env_flash->size / 1024 / 1024;
-		setup_qspi_args(flash_size, zynqmppl.name);
-	}
-#endif
 
 #if defined(CONFIG_USB_ETHER) && !defined(CONFIG_USB_GADGET_DOWNLOAD)
 	usb_ether_init();
@@ -594,70 +571,6 @@ int board_late_init(void)
 		debug("Saved variables - Skipping\n");
 		return 0;
 	}
-
-#if defined(CONFIG_ENCLUSTRA_EEPROM_MAC)
-	/* setup ethaddr */
-	hwaddr_set = false;
-	if (!env_get("ethaddr")) {
-		for (i = 0; i < ARRAY_SIZE(eeproms); i++) {
-			if (eeproms[i].mac_reader(hwaddr))
-				continue;
-
-			/* Workaround for incorrect MAC address caused by
-			 * flashing to EEPROM addresses like 20:B0:F0:XX:XX:XX
-			 * instead of 20:B0:F7:XX:XX:XX
-			 */
-			hwaddr[2] = (hwaddr[2] == 0xF0) ? 0xF7 : hwaddr[2];
-
-			/* Check if the value is a valid mac registered for
-			 * Enclustra  GmbH
-			 */
-			hwaddr_h = hwaddr[0] | hwaddr[1] << 8 | hwaddr[2] << 16;
-			if ((hwaddr_h & 0xFFFFFF) != ENCLUSTRA_MAC)
-				continue;
-
-			/* Format the address using a string */
-			sprintf(hwaddr_str,
-				"%02X:%02X:%02X:%02X:%02X:%02X",
-				hwaddr[0],
-				hwaddr[1],
-				hwaddr[2],
-				hwaddr[3],
-				hwaddr[4],
-				hwaddr[5]);
-
-			/* Set the actual env variable */
-			env_set("ethaddr", hwaddr_str);
-
-			/* increment MAC addr */
-			hwaddr_h = (hwaddr[3] << 16) | (hwaddr[4] << 8) | hwaddr[5];
-			hwaddr_h = (hwaddr_h + 1) & 0xFFFFFF;
-			hwaddr[3] = (hwaddr_h >> 16) & 0xFF;
-			hwaddr[4] = (hwaddr_h >> 8) & 0xFF;
-			hwaddr[5] = hwaddr_h & 0xFF;
-
-			/* Format the address using a string */
-			sprintf(hwaddr_str,
-				"%02X:%02X:%02X:%02X:%02X:%02X",
-				hwaddr[0],
-				hwaddr[1],
-				hwaddr[2],
-				hwaddr[3],
-				hwaddr[4],
-				hwaddr[5]);
-
-			/* Set the actual env variable */
-			env_set("eth1addr", hwaddr_str);
-			hwaddr_set = true;
-			break;
-		}
-
-		if (!hwaddr_set) {
-			env_set("ethaddr", ENCLUSTRA_ETHADDR_DEFAULT);
-			env_set("eth1addr", ENCLUSTRA_ETH1ADDR_DEFAULT);
-		}
-	}
-#endif
 
 	ret = set_fdtfile();
 	if (ret)
