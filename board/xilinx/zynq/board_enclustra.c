@@ -191,7 +191,7 @@ static char *zx_get_idcode_name(void)
 }
 #endif
 
-void enclustra_board(void)
+int enclustra_board(void)
 {
 #if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX)
 #if defined(CONFIG_ZYNQ_QSPI)
