@@ -52,12 +52,6 @@
 #define CONFIG_ENV_SIZE                 (96 << 10)      /*  96 KiB */
 #endif
 
-#define ENCLUSTRA_MAC               0xF7B020
-
-/* Default MAC address */
-#define ENCLUSTRA_ETHADDR_DEFAULT "00:0A:35:01:02:03"
-#define ENCLUSTRA_ETH1ADDR_DEFAULT "00:0A:35:01:02:04"
-
 /* Only one USB controller supported  */
 #ifdef CONFIG_USB_MAX_CONTROLLER_COUNT
 #undef CONFIG_USB_MAX_CONTROLLER_COUNT

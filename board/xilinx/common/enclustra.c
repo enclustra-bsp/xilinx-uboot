@@ -7,6 +7,12 @@
 #include <env.h>
 #include <enclustra/eeprom-mac.h>
 
+#define ENCLUSTRA_MAC               0xF7B020
+
+/* Default MAC address */
+#define ENCLUSTRA_ETHADDR_DEFAULT "00:0A:35:01:02:03"
+#define ENCLUSTRA_ETH1ADDR_DEFAULT "00:0A:35:01:02:04"
+
 static struct eeprom_mem eeproms[] = {
 	{ .mac_reader = atsha204_get_mac },
 	{ .mac_reader = ds28_get_mac }
