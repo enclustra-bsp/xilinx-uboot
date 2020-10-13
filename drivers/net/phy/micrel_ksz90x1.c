@@ -127,7 +127,7 @@ static int ksz90x1_of_config_group(struct phy_device *phydev,
 		} else {
 			changed = 1;	/* Value was changed in OF */
 			/* Calculate the register value and fix corner cases */
-			if (val[i] > ps_to_regval * 0xf) {
+			if (val[i] > ps_to_regval * ((1 << ofcfg->grp[i].size) - 1 )) {
 				max = (1 << ofcfg->grp[i].size) - 1;
 				regval |= max << offset;
 			} else {
