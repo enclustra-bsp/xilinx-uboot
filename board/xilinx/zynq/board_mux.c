@@ -20,6 +20,9 @@
 #include "../common/board.h"
 
 #if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MERCURY_ZX)
+U_BOOT_CMD(zx_set_storage, 2, 0, zx_set_storage_cmd,
+	"Set non volatile memory access",
+	"<NAND|QSPI> - Set access for the selected memory device");
 extern void zynq_slcr_unlock(void);
 extern void zynq_slcr_lock(void);
 /**

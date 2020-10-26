@@ -20,9 +20,6 @@
 #include "../common/board.h"
 
 #if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX)
-U_BOOT_CMD(zx_set_storage, 2, 0, zx_set_storage_cmd,
-	"Set non volatile memory access",
-	"<NAND|QSPI> - Set access for the selected memory device");
 
 static const struct {
 	uint32_t id;
