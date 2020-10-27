@@ -6,8 +6,8 @@
 obj-y	:= board.o
 obj-y	+= ../common/board.o
 obj-y	+= ../common/enclustra.o
+obj-y   += board_mux.o
 obj-$(CONFIG_ZYNQ_QSPI)  += board_enclustra.o
-obj-$(CONFIG_ZYNQ_MUX)  += board_mux.o
 obj-$(CONFIG_BOARD_COSMOS_XZQ10) += board_cosmos.o
 
 ifneq ($(CONFIG_XILINX_PS_INIT_FILE),"")

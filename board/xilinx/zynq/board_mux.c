@@ -11,18 +11,10 @@
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/io.h>
-#include <spi.h>
-#include <spi_flash.h>
-#include <enclustra_qspi.h>
-#include <enclustra/eeprom-mac.h>
 #include <asm/arch/ps7_init_gpl.h>
 
-#include "../common/board.h"
-
 #if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MERCURY_ZX)
-U_BOOT_CMD(zx_set_storage, 2, 0, zx_set_storage_cmd,
-	"Set non volatile memory access",
-	"<NAND|QSPI> - Set access for the selected memory device");
+
 extern void zynq_slcr_unlock(void);
 extern void zynq_slcr_lock(void);
 /**
@@ -128,4 +120,10 @@ int zx_set_storage_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 {
 	return CMD_RET_SUCCESS;
 }
+#endif
+
+#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX)
+U_BOOT_CMD(zx_set_storage, 2, 0, zx_set_storage_cmd,
+	"Set non volatile memory access",
+	"<NAND|QSPI> - Set access for the selected memory device");
 #endif
