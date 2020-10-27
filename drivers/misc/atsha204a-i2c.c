@@ -385,7 +385,8 @@ static int atsha204a_ofdata_to_platdata(struct udevice *dev)
 	fdt_addr_t *priv = dev_get_priv(dev);
 	fdt_addr_t addr;
 
-	addr = fdtdec_get_addr(gd->fdt_blob, dev_of_offset(dev), "reg");
+	ofnode node = dev_ofnode(dev);
+	addr = ofnode_read_u32_default(node, "reg", -1);
 	if (addr == FDT_ADDR_T_NONE) {
 		debug("Can't get ATSHA204A I2C base address\n");
 		return -ENXIO;
