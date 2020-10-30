@@ -19,7 +19,7 @@
 
 #include "../common/board.h"
 
-#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX)
+#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX) || defined(CONFIG_BOARD_COSMOS_XZQ10)
 
 static const struct {
 	uint32_t id;
@@ -81,7 +81,7 @@ static char *zx_get_idcode_name(void)
 
 int enclustra_board(void)
 {
-#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX)
+#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX) || defined(CONFIG_BOARD_COSMOS_XZQ10)
 #if defined(CONFIG_ZYNQ_QSPI)
 #define xstr(s) str(s)
 #define str(s) #s
@@ -89,10 +89,10 @@ int enclustra_board(void)
 	uint32_t flash_size;
 
 	/* Probe the QSPI flash */
-	env_flash = spi_flash_probe((CONFIG_SF_DEFAULT_BUS,
-								 CONFIG_SF_DEFAULT_CS,
-								 CONFIG_SF_DEFAULT_SPEED,
-								 CONFIG_SF_DEFAULT_MODE);
+	env_flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS,
+								CONFIG_SF_DEFAULT_CS,
+								CONFIG_SF_DEFAULT_SPEED,
+								CONFIG_SF_DEFAULT_MODE);
 
 	if (env_flash) {
 		/* Calculate the size in megabytes */

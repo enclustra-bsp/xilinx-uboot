@@ -12,11 +12,9 @@
 #ifndef __CONFIG_ZYNQ_COSMOS_XZQ10_H
 #define __CONFIG_ZYNQ_COSMOS_XZQ10_H
 
-#define ENCLUSTRA_MARS_ZX
 #define CONFIG_BOARD_COSMOS_XZQ10
-#define CONFIG_LAST_STAGE_INIT
+
 #define CONFIG_CPU_FREQ_HZ		666666666
-#define CONFIG_ZYNQ_I2C0
 
 #include <configs/zynq-common.h>
 #include <configs/enclustra_zx_common.h>
