@@ -293,7 +293,7 @@ static int zynq_qspi_child_pre_probe(struct udevice *bus)
 }
 
 #ifdef CONFIG_ENCLUSTRA_NANDMUX
-extern void zx_set_storage(int store);
+extern void zx_set_storage(char* arg);
 #endif
 
 static int zynq_qspi_probe(struct udevice *bus)
@@ -305,7 +305,7 @@ static int zynq_qspi_probe(struct udevice *bus)
 	int ret;
 
 #ifdef CONFIG_ENCLUSTRA_NANDMUX
-	zx_set_storage(ZX_QSPI);
+	zx_set_storage("QSPI");
 #endif
 
 	priv->regs = plat->regs;

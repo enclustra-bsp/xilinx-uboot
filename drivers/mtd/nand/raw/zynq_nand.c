@@ -1067,7 +1067,7 @@ static int zynq_nand_check_is_16bit_bw_flash(void)
 }
 
 #ifdef CONFIG_ENCLUSTRA_NANDMUX
-extern void zx_set_storage (int store);
+extern void zx_set_storage (char * arg);
 #endif
 
 static int zynq_nand_probe(struct udevice *dev)
@@ -1094,7 +1094,7 @@ static int zynq_nand_probe(struct udevice *dev)
 		return -ENODEV;
 	}
 #ifdef CONFIG_ENCLUSTRA_NANDMUX
-        zx_set_storage(ZX_NAND);
+        zx_set_storage("NAND");
 #endif
 
 	if (!ofnode_is_available(of_nand)) {

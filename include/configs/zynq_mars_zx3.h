@@ -12,7 +12,6 @@
 #ifndef __CONFIG_ZYNQ_MARS_ZX3_EB1_H
 #define __CONFIG_ZYNQ_MARS_ZX3_EB1_H
 
-#define CONFIG_ENCLUSTRA_NANDMUX
 #define CONFIG_CPU_FREQ_HZ		666666666
 
 #include <configs/zynq-common.h>

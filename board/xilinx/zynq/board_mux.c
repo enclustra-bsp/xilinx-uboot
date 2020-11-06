@@ -88,7 +88,14 @@ static void set_mio_mux_qspi( void ){
 
 static int zx_current_storage = ZX_NONE;
 
-void zx_set_storage (int store) {
+void zx_set_storage (char* arg) {
+	int store = ZX_NONE;
+
+	if (!strcmp(arg, "NAND"))
+		store = ZX_NAND;
+	else if (!strcmp(arg, "QSPI"))
+		store = ZX_QSPI;
+
 	if (store == zx_current_storage)
 		return;
 
@@ -115,9 +122,9 @@ int zx_set_storage_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 	if(argc != 2)
 		return CMD_RET_USAGE;
 	if(!strcmp(argv[1], "NAND"))
-		zx_set_storage(ZX_NAND);
+		zx_set_storage("NAND");
 	else if (!strcmp(argv[1], "QSPI"))
-		zx_set_storage(ZX_QSPI);
+		zx_set_storage("QSPI");
 	else return CMD_RET_USAGE;
 #endif
 	return CMD_RET_SUCCESS;
