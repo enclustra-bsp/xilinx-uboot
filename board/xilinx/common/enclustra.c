@@ -58,8 +58,7 @@ int enclustra_common(void)
 
 			/* Set the actual env variable */
 			env_set("ethaddr", hwaddr_str);
-			
-#if !defined(ENCLUSTRA_MARS_ZX) || !defined(ENCLUSTRA_MARS_ZX2) || !defined(ENCLUSTRA_MERCURY_ZX)
+
 			/* increment MAC addr */
 			hwaddr_h = (hwaddr[3] << 16) | (hwaddr[4] << 8) | hwaddr[5];
 			hwaddr_h = (hwaddr_h + 1) & 0xFFFFFF;
@@ -79,7 +78,7 @@ int enclustra_common(void)
 
 			/* Set the actual env variable */
 			env_set("eth1addr", hwaddr_str);
-#endif
+
 			hwaddr_set = true;
 			break;
 		}

@@ -21,7 +21,12 @@
 #define GPIO_PULLUP     0x00001000
 #define IO_TYPE_MASK    0x00000E00
 
-#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MERCURY_ZX)
+/* Select which flash type currently uses Pins */
+#define ZX_NONE    (0)
+#define ZX_NAND    (1)
+#define ZX_QSPI    (2)
+
+#ifdef CONFIG_ENCLUSTRA_NANDMUX
 
 extern void zynq_slcr_unlock(void);
 extern void zynq_slcr_lock(void);
@@ -102,9 +107,11 @@ void zx_set_storage (int store) {
 			break;
 	}
 }
+#endif
 
 int zx_set_storage_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
+#ifdef CONFIG_ENCLUSTRA_NANDMUX
 	if(argc != 2)
 		return CMD_RET_USAGE;
 	if(!strcmp(argv[1], "NAND"))
@@ -112,23 +119,10 @@ int zx_set_storage_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]
 	else if (!strcmp(argv[1], "QSPI"))
 		zx_set_storage(ZX_QSPI);
 	else return CMD_RET_USAGE;
-
-	return CMD_RET_SUCCESS;
-}
-
-#elif defined(ENCLUSTRA_MARS_ZX2)
-/* Mars ZX2 do not have NAND flash, so there is no point to change pinmuxes.
- * Just return SUCCESS
- */
-
-int zx_set_storage_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
-{
-	return CMD_RET_SUCCESS;
-}
 #endif
+	return CMD_RET_SUCCESS;
+}
 
-#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX)
 U_BOOT_CMD(zx_set_storage, 2, 0, zx_set_storage_cmd,
 	"Set non volatile memory access",
 	"<NAND|QSPI> - Set access for the selected memory device");
-#endif

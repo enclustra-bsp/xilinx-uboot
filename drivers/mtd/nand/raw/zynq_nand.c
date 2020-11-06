@@ -1066,7 +1066,7 @@ static int zynq_nand_check_is_16bit_bw_flash(void)
 	return is_16bit_bw;
 }
 
-#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MERCURY_ZX)
+#ifdef CONFIG_ENCLUSTRA_NANDMUX
 extern void zx_set_storage (int store);
 #endif
 
@@ -1093,7 +1093,7 @@ static int zynq_nand_probe(struct udevice *dev)
 		printf("Failed to find nand node in dt\n");
 		return -ENODEV;
 	}
-#if defined (ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MERCURY_ZX)
+#ifdef CONFIG_ENCLUSTRA_NANDMUX
         zx_set_storage(ZX_NAND);
 #endif
 

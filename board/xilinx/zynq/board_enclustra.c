@@ -19,7 +19,7 @@
 
 #include "../common/board.h"
 
-#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX) || defined(CONFIG_BOARD_COSMOS_XZQ10)
+#if defined(CONFIG_ZYNQ_QSPI)
 
 static const struct {
 	uint32_t id;
@@ -81,7 +81,6 @@ static char *zx_get_idcode_name(void)
 
 int enclustra_board(void)
 {
-#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MARS_ZX2) || defined(ENCLUSTRA_MERCURY_ZX) || defined(CONFIG_BOARD_COSMOS_XZQ10)
 #if defined(CONFIG_ZYNQ_QSPI)
 #define xstr(s) str(s)
 #define str(s) #s
@@ -99,7 +98,6 @@ int enclustra_board(void)
 		flash_size = env_flash->size / 1024 / 1024;
 		setup_qspi_args(flash_size, zx_get_idcode_name());
 	}
-#endif
 #endif
 	return 0;
 }

@@ -12,7 +12,7 @@
 #define __CONFIG_ZYNQ_MERCURY_H
 
 #define CONFIG_CPU_FREQ_HZ		800000000
-#define ENCLUSTRA_MERCURY_ZX
+#define CONFIG_ENCLUSTRA_NANDMUX
 
 #include <configs/zynq-common.h>
 #include <configs/enclustra_zx_common.h>

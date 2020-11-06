@@ -11,8 +11,6 @@
 #ifndef __CONFIG_ZYNQ_MARS_ZX2_H
 #define __CONFIG_ZYNQ_MARS_ZX2_H
 
-#define ENCLUSTRA_MARS_ZX2
-
 #define CONFIG_CPU_FREQ_HZ		666666666
 
 #include <configs/zynq-common.h>

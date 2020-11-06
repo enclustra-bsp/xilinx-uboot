@@ -292,7 +292,7 @@ static int zynq_qspi_child_pre_probe(struct udevice *bus)
 	return 0;
 }
 
-#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MERCURY_ZX)
+#ifdef CONFIG_ENCLUSTRA_NANDMUX
 extern void zx_set_storage(int store);
 #endif
 
@@ -304,7 +304,7 @@ static int zynq_qspi_probe(struct udevice *bus)
 	unsigned long clock;
 	int ret;
 
-#if defined(ENCLUSTRA_MARS_ZX) || defined(ENCLUSTRA_MERCURY_ZX)
+#ifdef CONFIG_ENCLUSTRA_NANDMUX
 	zx_set_storage(ZX_QSPI);
 #endif
 

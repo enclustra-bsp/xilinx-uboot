@@ -1,11 +1,6 @@
 #ifndef __ENCLUSTRA_ZX_COMMON
 #define __ENCLUSTRA_ZX_COMMON
 
-/* Select which flash type currently uses Pins */
-#define ZX_NONE    (0)
-#define ZX_NAND    (1)
-#define ZX_QSPI    (2)
-
 #ifndef PHY_ANEG_TIMEOUT
 #define PHY_ANEG_TIMEOUT	8000	/* PHY needs a longer aneg time */
 #endif
