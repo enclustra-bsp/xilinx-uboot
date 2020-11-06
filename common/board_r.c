@@ -805,7 +805,7 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_BOARD_LATE_INIT
 	board_late_init,
 #endif
-#if defined(CONFIG_ZYNQ_QSPI) || defined(CONFIG_ENCLUSTRA_QSPI_FLASHMAP)
+#ifdef CONFIG_ENCLUSTRA_QSPI_FLASHMAP
 	enclustra_board,
 #endif
 #ifdef CONFIG_ENCLUSTRA_EEPROM_MAC
