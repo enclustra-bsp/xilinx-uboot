@@ -1,0 +1,81 @@
+#include "zynqmp.dtsi"
+#include "zynqmp-clk-ccf.dtsi"
+#include "zynqmp_enclustra_common.dtsi"
+#include "zynqmp_enclustra_mercury_xu5.dtsi"
+
+/ {
+	model = "Enclustra XU5-4EV-1I-D11E SOM";
+
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x0 0x0 0x7ff00000>;
+	};
+
+/******************** PL entries **********************/
+
+amba_pl: amba_pl@0 {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "simple-bus";
+		ranges ;
+		ddr4: ddr4@400000000 {
+			compatible = "xlnx,ddr4-2.2";
+			reg = <0x00000004 0x00000000 0x0 0x20000000>;
+		};
+		led: gpio@80000000 {
+			#gpio-cells = <3>;
+			clock-names = "s_axi_aclk";
+			clocks = <&zynqmp_clk 71>;
+			compatible = "xlnx,axi-gpio-2.0", "xlnx,xps-gpio-1.00.a";
+			gpio-controller ;
+			reg = <0x0 0x80000000 0x0 0x10000>;
+			xlnx,all-inputs = <0x0>;
+			xlnx,all-inputs-2 = <0x0>;
+			xlnx,all-outputs = <0x1>;
+			xlnx,all-outputs-2 = <0x0>;
+			xlnx,dout-default = <0x00000003>;
+			xlnx,dout-default-2 = <0x00000000>;
+			xlnx,gpio-width = <0x2>;
+			xlnx,gpio2-width = <0x20>;
+			xlnx,interrupt-present = <0x0>;
+			xlnx,is-dual = <0x0>;
+			xlnx,tri-default = <0xFFFFFFFF>;
+			xlnx,tri-default-2 = <0xFFFFFFFF>;
+		};
+		vcu_0: vcu@a0000000 {
+			#address-cells = <2>;
+			#clock-cells = <1>;
+			#size-cells = <2>;
+			clock-names = "pll_ref", "aclk", "vcu_core_enc", "vcu_core_dec", "vcu_mcu_enc", "vcu_mcu_dec";
+			clocks = <&misc_clk_0>, <&zynqmp_clk 71>, <&vcu_0 1>, <&vcu_0 2>, <&vcu_0 3>, <&vcu_0 4>;
+			compatible = "xlnx,vcu-1.2", "xlnx,vcu";
+			interrupt-names = "vcu_host_interrupt";
+			interrupt-parent = <&gic>;
+			interrupts = <0 89 4>;
+			ranges ;
+			reg = <0x0 0xa0040000 0x0 0x1000>, <0x0 0xa0041000 0x0 0x1000>;
+			reg-names = "vcu_slcr", "logicore";
+			reset-gpios = <&gpio 78 0>;
+			encoder: al5e@a0000000 {
+				compatible = "al,al5e-1.2", "al,al5e";
+				interrupt-parent = <&gic>;
+				interrupts = <0 89 4>;
+				reg = <0x0 0xa0000000 0x0 0x10000>;
+			};
+			decoder: al5d@a0020000 {
+				compatible = "al,al5d-1.2", "al,al5d";
+				interrupt-parent = <&gic>;
+				interrupts = <0 89 4>;
+				reg = <0x0 0xa0020000 0x0 0x10000>;
+			};
+		};
+		misc_clk_0: misc_clk_0 {
+			#clock-cells = <0>;
+			clock-frequency = <33333000>;
+			compatible = "fixed-clock";
+		};
+	};
+
+/******************** PL entries **********************/
+
+};
