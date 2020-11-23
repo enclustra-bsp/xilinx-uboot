@@ -606,7 +606,7 @@ static int arasan_sdhci_probe(struct udevice *dev)
 	if (priv->no_1p8)
 		host->quirks |= SDHCI_QUIRK_NO_1_8_V;
 
-	plat->cfg.f_max = CONFIG_ZYNQ_SDHCI_MAX_FREQ;
+	plat->cfg.f_max = dev_read_u32_default(dev, "max-frequency", CONFIG_ZYNQ_SDHCI_MAX_FREQ);
 
 	ret = mmc_of_parse(dev, &plat->cfg);
 	if (ret)
