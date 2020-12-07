@@ -18,6 +18,7 @@
 #define QSPIMUX         0x00000002
 #define QSPIMUX_PULLUP  0x00001002
 #define TRISTATE_PULLUP 0x00001001
+#define GPIO            0x00000000
 #define GPIO_PULLUP     0x00001000
 #define IO_TYPE_MASK    0x00000E00
 
@@ -39,23 +40,32 @@ static void set_mio_mux_nand( void ){
 
 	/* Define MuxIO for NAND */
 	/* Caution: overwrite some QSPI muxing !!! */
-	writel(NANDMUX         | (readl(&slcr_base->mio_pin[0])  & IO_TYPE_MASK), &slcr_base->mio_pin[0]);  /* Pin 0, NAND Flash Chip Select */
-	writel(TRISTATE_PULLUP | (readl(&slcr_base->mio_pin[1])  & IO_TYPE_MASK), &slcr_base->mio_pin[1]);  /* Pin 1, not NAND */
-	writel(NANDMUX         | (readl(&slcr_base->mio_pin[2])  & IO_TYPE_MASK), &slcr_base->mio_pin[2]);  /* Pin 2, NAND Flash ALEn */
-	writel(NANDMUX         | (readl(&slcr_base->mio_pin[3])  & IO_TYPE_MASK), &slcr_base->mio_pin[3]);  /* Pin 3, NAND WE_B */
-	writel(NANDMUX         | (readl(&slcr_base->mio_pin[4])  & IO_TYPE_MASK), &slcr_base->mio_pin[4]);  /* Pin 4, NAND Flash IO Bit 2 */
-	writel(NANDMUX         | (readl(&slcr_base->mio_pin[5])  & IO_TYPE_MASK), &slcr_base->mio_pin[5]);  /* Pin 5, NAND Flash IO Bit 0 */
-	writel(NANDMUX         | (readl(&slcr_base->mio_pin[6])  & IO_TYPE_MASK), &slcr_base->mio_pin[6]);  /* Pin 6, NAND Flash IO Bit 1 */
-	writel(NANDMUX         | (readl(&slcr_base->mio_pin[7])  & IO_TYPE_MASK), &slcr_base->mio_pin[7]);  /* Pin 7, NAND Flash CLE_B */
-	writel(NANDMUX         | (readl(&slcr_base->mio_pin[8])  & IO_TYPE_MASK), &slcr_base->mio_pin[8]);  /* Pin 8, NAND Flash RD_B */
-	writel(NANDMUX_PULLUP  | (readl(&slcr_base->mio_pin[9])  & IO_TYPE_MASK), &slcr_base->mio_pin[9]);  /* Pin 9, NAND Flash IO Bit 4 */
-	writel(NANDMUX_PULLUP  | (readl(&slcr_base->mio_pin[10]) & IO_TYPE_MASK), &slcr_base->mio_pin[10]); /* Pin 10, NAND Flash IO Bit 5 */
-	writel(NANDMUX_PULLUP  | (readl(&slcr_base->mio_pin[11]) & IO_TYPE_MASK), &slcr_base->mio_pin[11]); /* Pin 11, NAND Flash IO Bit 6 */
-	writel(NANDMUX_PULLUP  | (readl(&slcr_base->mio_pin[12]) & IO_TYPE_MASK), &slcr_base->mio_pin[12]); /* Pin 12, NAND Flash IO Bit 7 */
-	writel(NANDMUX_PULLUP  | (readl(&slcr_base->mio_pin[13]) & IO_TYPE_MASK), &slcr_base->mio_pin[13]); /* Pin 13, NAND Flash IO Bit 3 */
-	writel(NANDMUX         | (readl(&slcr_base->mio_pin[14]) & IO_TYPE_MASK), &slcr_base->mio_pin[14]); /* Pin 14, NAND Flash Busy */
+	writel(NANDMUX_PULLUP            | (readl(&slcr_base->mio_pin[0])  & IO_TYPE_MASK), &slcr_base->mio_pin[0]);  /* Pin 0, NAND Flash Chip Select */
+	writel(TRISTATE_PULLUP           | (readl(&slcr_base->mio_pin[1])  & IO_TYPE_MASK), &slcr_base->mio_pin[1]);  /* Pin 1, not NAND */
+	writel(NANDMUX                   | (readl(&slcr_base->mio_pin[2])  & IO_TYPE_MASK), &slcr_base->mio_pin[2]);  /* Pin 2, NAND Flash ALEn */
+	writel(NANDMUX                   | (readl(&slcr_base->mio_pin[3])  & IO_TYPE_MASK), &slcr_base->mio_pin[3]);  /* Pin 3, NAND WE_B */
+	writel(NANDMUX                   | (readl(&slcr_base->mio_pin[4])  & IO_TYPE_MASK), &slcr_base->mio_pin[4]);  /* Pin 4, NAND Flash IO Bit 2 */
+	writel(NANDMUX                   | (readl(&slcr_base->mio_pin[5])  & IO_TYPE_MASK), &slcr_base->mio_pin[5]);  /* Pin 5, NAND Flash IO Bit 0 */
+	writel(NANDMUX                   | (readl(&slcr_base->mio_pin[6])  & IO_TYPE_MASK), &slcr_base->mio_pin[6]);  /* Pin 6, NAND Flash IO Bit 1 */
+	writel(NANDMUX                   | (readl(&slcr_base->mio_pin[7])  & IO_TYPE_MASK), &slcr_base->mio_pin[7]);  /* Pin 7, NAND Flash CLE_B */
+	writel(NANDMUX                   | (readl(&slcr_base->mio_pin[8])  & IO_TYPE_MASK), &slcr_base->mio_pin[8]);  /* Pin 8, NAND Flash RD_B */
+	writel(NANDMUX_PULLUP            | (readl(&slcr_base->mio_pin[9])  & IO_TYPE_MASK), &slcr_base->mio_pin[9]);  /* Pin 9, NAND Flash IO Bit 4 */
+	writel(NANDMUX_PULLUP            | (readl(&slcr_base->mio_pin[10]) & IO_TYPE_MASK), &slcr_base->mio_pin[10]); /* Pin 10, NAND Flash IO Bit 5 */
+	writel(NANDMUX_PULLUP            | (readl(&slcr_base->mio_pin[11]) & IO_TYPE_MASK), &slcr_base->mio_pin[11]); /* Pin 11, NAND Flash IO Bit 6 */
+	writel(NANDMUX_PULLUP            | (readl(&slcr_base->mio_pin[12]) & IO_TYPE_MASK), &slcr_base->mio_pin[12]); /* Pin 12, NAND Flash IO Bit 7 */
+	writel(NANDMUX_PULLUP            | (readl(&slcr_base->mio_pin[13]) & IO_TYPE_MASK), &slcr_base->mio_pin[13]); /* Pin 13, NAND Flash IO Bit 3 */
+	writel(NANDMUX | TRISTATE_PULLUP | (readl(&slcr_base->mio_pin[14]) & IO_TYPE_MASK), &slcr_base->mio_pin[14]); /* Pin 14, NAND Flash Busy */
+
+	// configure SMC_CLK_CTRL (usually done by FSBL)
+	uint32_t in_clk = 33333334; // input clock in Hz
+	uint32_t smc_clk = 100000000; // requested SMC clock frequency in Hz
+	uint32_t iopll_fb_mult = (readl(&slcr_base->io_pll_ctrl) >> 12) & 0x3F; // get IO PLL feedback divider
+	uint32_t smc_clk_div = (in_clk*iopll_fb_mult)/smc_clk;  // calculate SMC clock divider
+	writel((smc_clk_div << 8) | 0x1, &slcr_base->smc_clk_ctrl); // select IO PLL as source, enable clock and set divider value
 
 	zynq_slcr_lock();
+	
+	printf("Flash MIO pins configured to NAND mode\n");
 }
 
 /**
@@ -74,8 +84,8 @@ static void set_mio_mux_qspi( void ){
 	writel(QSPIMUX        | (readl(&slcr_base->mio_pin[4])  & IO_TYPE_MASK), &slcr_base->mio_pin[4]);  /* Pin 4, Quad SPI 0 IO Bit 2 */
 	writel(QSPIMUX        | (readl(&slcr_base->mio_pin[5])  & IO_TYPE_MASK), &slcr_base->mio_pin[5]);  /* Pin 5, Quad SPI 0 IO Bit 3 */
 	writel(QSPIMUX        | (readl(&slcr_base->mio_pin[6])  & IO_TYPE_MASK), &slcr_base->mio_pin[6]);  /* Pin 6, Quad SPI 0 Clock */
-	writel(QSPIMUX        | (readl(&slcr_base->mio_pin[7])  & IO_TYPE_MASK), &slcr_base->mio_pin[7]);  /* Pin 7, Reserved*/
-	writel(QSPIMUX        | (readl(&slcr_base->mio_pin[8])  & IO_TYPE_MASK), &slcr_base->mio_pin[8]);  /* Pin 8, Quad SPI Feedback Clock */
+	writel(GPIO           | (readl(&slcr_base->mio_pin[7])  & IO_TYPE_MASK), &slcr_base->mio_pin[7]);  /* Pin 7, Reserved*/
+	writel(GPIO           | (readl(&slcr_base->mio_pin[8])  & IO_TYPE_MASK), &slcr_base->mio_pin[8]);  /* Pin 8, Quad SPI Feedback Clock */
 	writel(GPIO_PULLUP    | (readl(&slcr_base->mio_pin[9])  & IO_TYPE_MASK), &slcr_base->mio_pin[9]);  /* Pin 9, Level mux -> disable */
 	writel(GPIO_PULLUP    | (readl(&slcr_base->mio_pin[10]) & IO_TYPE_MASK), &slcr_base->mio_pin[10]); /* Pin 10, Level mux -> disable */
 	writel(GPIO_PULLUP    | (readl(&slcr_base->mio_pin[11]) & IO_TYPE_MASK), &slcr_base->mio_pin[11]); /* Pin 11, Level mux -> disable */
@@ -84,6 +94,8 @@ static void set_mio_mux_qspi( void ){
 	writel(GPIO_PULLUP    | (readl(&slcr_base->mio_pin[14]) & IO_TYPE_MASK), &slcr_base->mio_pin[14]); /* Pin 14, Level mux -> disable */
 
 	zynq_slcr_lock();
+	
+	printf("Flash MIO pins configured to QSPI mode\n");
 }
 
 static int zx_current_storage = ZX_NONE;
