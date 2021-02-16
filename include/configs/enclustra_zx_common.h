@@ -71,6 +71,14 @@
         "sf read ${bootscript_loadaddr} ${qspi_bootscript_offset} ${bootscript_size} && "\
         "source ${bootscript_loadaddr}\0"
 #define NANDBOOT_CMD
+#define SDBOOT_CMD \
+	"sdboot=" \
+        "setenv mmcdev 1;" \
+        "run mmcboot\0"
+#define EMMCBOOT_CMD \
+	"emmcboot=" \
+        "setenv mmcdev 0;" \
+        "run mmcboot\0"
 #else
 #define QSPIBOOT_CMD \
     "qspiboot=echo Bootinq on QSPI Flash ...; " \
@@ -83,6 +91,11 @@
         "zx_set_storage NAND && "               \
         "nand read ${bootscript_loadaddr} nand-bootscript ${bootscript_size} && " \
         "source ${bootscript_loadaddr} \0"
+#define SDBOOT_CMD \
+	"sdboot=" \
+        "setenv mmcdev 0;" \
+        "run mmcboot\0"
+#define EMMCBOOT_CMD
 #endif
 
 #ifdef CONFIG_EXTRA_ENV_SETTINGS
@@ -132,13 +145,9 @@
                                                 \
     "mmcdev=0\0"                                \
                                                 \
-    "sdboot="                                   \
-        "setenv mmcdev 0;"                      \
-        "run mmcboot\0"                         \
+    SDBOOT_CMD \
                                                 \
-    "emmcboot="                                 \
-        "setenv mmcdev 1;"                      \
-        "run mmcboot\0"                         \
+    EMMCBOOT_CMD \
                                                 \
     "mmcboot="                                  \
         "mmc rescan ; "                         \
