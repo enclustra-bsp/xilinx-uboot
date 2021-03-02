@@ -2,9 +2,6 @@
 load mmc ${mmcdev} ${kernel_loadaddr} ${kernel_image} || exit;
 load mmc ${mmcdev} ${devicetree_loadaddr} ${devicetree_image} || exit;
 
-# run qspi setup
-run setupqspi || exit;
-
 # setup mmc bootargs
 run mmc_args;
 

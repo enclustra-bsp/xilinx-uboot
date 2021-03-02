@@ -2,6 +2,4 @@ run qspi_args;
 sf read ${kernel_loadaddr} ${qspi_kernel_offset} ${kernel_size};
 sf read ${devicetree_loadaddr} ${qspi_devicetree_offset} ${devicetree_size};
 
-run setupqspi;
-
 bootm ${kernel_loadaddr} - ${devicetree_loadaddr}
