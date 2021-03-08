@@ -87,15 +87,27 @@ int enclustra_board(void)
 	struct spi_flash *env_flash;
 	uint32_t flash_size;
 
-	/* Probe the QSPI flash */
-	env_flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS,
-								CONFIG_SF_DEFAULT_CS,
-								CONFIG_SF_DEFAULT_SPEED,
-								CONFIG_SF_DEFAULT_MODE);
+	/* probe the QSPI flash like "sf probe" and get the flash size */
 
-	if (env_flash) {
+	struct udevice *new, *bus_dev;
+	struct spi_flash *flash = NULL;
+
+	int ret = spi_find_bus_and_cs(CONFIG_SF_DEFAULT_BUS,
+				      CONFIG_SF_DEFAULT_CS,
+				      &bus_dev, &new);
+	if (!ret) {
+		device_remove(new, DM_REMOVE_NORMAL);
+	}
+	ret = spi_flash_probe_bus_cs(CONFIG_SF_DEFAULT_BUS,
+				     CONFIG_SF_DEFAULT_CS,
+				     CONFIG_SF_DEFAULT_SPEED,
+				     CONFIG_SF_DEFAULT_MODE,
+				     &new);
+	flash = dev_get_uclass_priv(new);
+
+	if (flash) {
 		/* Calculate the size in megabytes */
-		flash_size = env_flash->size / 1024 / 1024;
+		flash_size = flash->size / 1024 / 1024;
 		setup_qspi_args(flash_size, zx_get_idcode_name());
 	}
 #endif

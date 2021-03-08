@@ -21,12 +21,26 @@ int enclustra_board(void)
 	!defined(CONFIG_SPL_BUILD)
 	int count = fpga_count();
 
-	struct spi_flash *env_flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS,
-						      CONFIG_SF_DEFAULT_CS,
-						      CONFIG_SF_DEFAULT_SPEED,
-						      CONFIG_SF_DEFAULT_MODE);
-	if (env_flash && (count > 0)) {
-		u32 flash_size = env_flash->size / 1024 / 1024;
+	/* probe the QSPI flash like "sf probe" and get the flash size */
+
+	struct udevice *new, *bus_dev;
+	struct spi_flash *flash = NULL;
+
+	int ret = spi_find_bus_and_cs(CONFIG_SF_DEFAULT_BUS,
+				      CONFIG_SF_DEFAULT_CS,
+				      &bus_dev, &new);
+	if (!ret) {
+		device_remove(new, DM_REMOVE_NORMAL);
+	}
+	ret = spi_flash_probe_bus_cs(CONFIG_SF_DEFAULT_BUS,
+				     CONFIG_SF_DEFAULT_CS,
+				     CONFIG_SF_DEFAULT_SPEED,
+				     CONFIG_SF_DEFAULT_MODE,
+				     &new);
+	flash = dev_get_uclass_priv(new);
+	
+	if (!ret && (count > 0)) {
+		u32 flash_size = flash->size / 1024 / 1024;
 		const fpga_desc * const desc = fpga_get_desc(0);
 		const xilinx_desc * const xil_desc = desc->devdesc;
 		setup_qspi_args(flash_size, xil_desc->name);
