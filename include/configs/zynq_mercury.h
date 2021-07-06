@@ -14,6 +14,6 @@
 #define CONFIG_CPU_FREQ_HZ		800000000
 
 #include <configs/zynq-common.h>
-#include <configs/enclustra_zx_common.h>
+#include <configs/enclustra_common.h>
 
 #endif /* __CONFIG_ZYNQ_MERCURY_H */

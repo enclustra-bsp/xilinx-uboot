@@ -56,11 +56,9 @@
 /* Kernel image name */
 #ifdef CONFIG_ARCH_ZYNQMP
 #define KERNEL_IMAGE_FILE "Image"
-#define DTB_LOADADDR "0x7180000"
 #define QSPI_STRING "/amba/spi@ff0f0000/flash@0/partition"
 #else
 #define KERNEL_IMAGE_FILE "uImage"
-#define DTB_LOADADDR "0x6600000"
 #define QSPI_STRING "/amba/spi@e000d000/flash@0/partition"
 #endif
 
@@ -117,8 +115,8 @@
     "jffs2_image=rootfs.jffs2\0"                \
     "ubifs_image=rootfs.ubi\0"                  \
                                                 \
-    "kernel_loadaddr=0x6000000\0"               \
-    "devicetree_loadaddr=" DTB_LOADADDR "\0"    \
+    "kernel_loadaddr=0x200000\0"                \
+    "devicetree_loadaddr=0x100000\0"            \
     "ramdisk_loadaddr=0x2000000\0"              \
     "jffs2_loadaddr=0x2000000\0"                \
     "ubifs_loadaddr=0x2000000\0"                \

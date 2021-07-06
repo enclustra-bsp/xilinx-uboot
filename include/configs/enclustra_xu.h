@@ -16,7 +16,7 @@
 #define CONFIG_CMD_EEPROM
 
 #include <configs/xilinx_zynqmp.h>
-#include <configs/enclustra_zx_common.h>
+#include <configs/enclustra_common.h>
 
 #ifdef CONFIG_SCSI
 #undef CONFIG_SCSI

@@ -15,6 +15,6 @@
 #define CONFIG_CPU_FREQ_HZ		666666666
 
 #include <configs/zynq-common.h>
-#include <configs/enclustra_zx_common.h>
+#include <configs/enclustra_common.h>
 
 #endif /* __CONFIG_ZYNQ_MARS_ZX3_H */
