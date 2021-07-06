@@ -1,9 +1,5 @@
 if ARCH_ZYNQ
 
-config BOARD_COSMOS_XZQ10
-	bool "Board Cosmos xzq10"
-	default n
-
 config SPL_LDSCRIPT
 	default "arch/arm/mach-zynq/u-boot-spl.lds"
 
