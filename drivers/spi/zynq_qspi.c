@@ -64,9 +64,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define ZYNQ_QSPI_DEFAULT_BAUD_RATE	0x2
 
 #define ZYNQ_QSPI_FIFO_DEPTH		63
-#ifndef CONFIG_SYS_ZYNQ_QSPI_WAIT
-#define CONFIG_SYS_ZYNQ_QSPI_WAIT	CONFIG_SYS_HZ/100	/* 10 ms */
-#endif
+#define ZYNQ_QSPI_WAIT			(CONFIG_SYS_HZ / 100)	/* 10 ms */
 
 /* zynq qspi register set */
 struct zynq_qspi_regs {
@@ -485,8 +483,8 @@ static void zynq_qspi_fill_tx_fifo(struct zynq_qspi_priv *priv, u32 size)
 	unsigned len, offset;
 	struct zynq_qspi_regs *regs = priv->regs;
 	static const unsigned offsets[4] = {
-		ZYNQ_QSPI_TXD_00_00_OFFSET, ZYNQ_QSPI_TXD_00_01_OFFSET,
-		ZYNQ_QSPI_TXD_00_10_OFFSET, ZYNQ_QSPI_TXD_00_11_OFFSET };
+		ZYNQ_QSPI_TXD_00_01_OFFSET, ZYNQ_QSPI_TXD_00_10_OFFSET,
+		ZYNQ_QSPI_TXD_00_11_OFFSET, ZYNQ_QSPI_TXD_00_00_OFFSET };
 
 	while ((fifocount < size) &&
 			(priv->bytes_to_transfer > 0)) {
@@ -508,7 +506,10 @@ static void zynq_qspi_fill_tx_fifo(struct zynq_qspi_priv *priv, u32 size)
 				return;
 			len = priv->bytes_to_transfer;
 			zynq_qspi_write_data(priv, &data, len);
-			offset = (priv->rx_buf) ? offsets[0] : offsets[len];
+			if (priv->is_dual && !priv->is_inst && (len % 2))
+				len++;
+			offset = (priv->rx_buf) ?
+				  offsets[3] : offsets[len - 1];
 			writel(data, &regs->cr + (offset / 4));
 		}
 	}
@@ -540,7 +541,7 @@ static int zynq_qspi_irq_poll(struct zynq_qspi_priv *priv)
 	do {
 		status = readl(&regs->isr);
 	} while ((status == 0) &&
-		(get_timer(timeout) < CONFIG_SYS_ZYNQ_QSPI_WAIT));
+		(get_timer(timeout) < ZYNQ_QSPI_WAIT));
 
 	if (status == 0) {
 		printf("zynq_qspi_irq_poll: Timeout!\n");

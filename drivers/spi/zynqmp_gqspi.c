@@ -94,7 +94,7 @@
 
 #define GQSPI_BAUD_DIV_SHIFT		2
 #define GQSPI_LPBK_DLY_ADJ_LPBK_SHIFT	5
-#define GQSPI_LPBK_DLY_ADJ_DLY_1	0x2
+#define GQSPI_LPBK_DLY_ADJ_DLY_1	0x1
 #define GQSPI_LPBK_DLY_ADJ_DLY_1_SHIFT	3
 #define GQSPI_LPBK_DLY_ADJ_DLY_0	0x3
 #define GQSPI_USE_DATA_DLY		0x1
@@ -469,18 +469,6 @@ static int zynqmp_qspi_probe(struct udevice *bus)
 		dev_err(dev, "failed to get clock\n");
 		return ret;
 	}
-
-#if defined(CONFIG_ARCH_VERSAL)
-	ret = xilinx_pm_request(PM_REQUEST_NODE, 0x1822402b, 1, 100, 0, NULL);
-	if (ret)
-		printf("Request node failed\n");
-
-	ret = clk_set_rate(&clk, 150000000);
-	if (IS_ERR_VALUE(ret) && ret != (unsigned long)-ENOSYS) {
-		dev_err(dev, "failed to set tx clock rate\n");
-		return ret;
-	}
-#endif
 
 	clock = clk_get_rate(&clk);
 	if (IS_ERR_VALUE(clock)) {

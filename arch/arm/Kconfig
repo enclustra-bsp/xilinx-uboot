@@ -465,7 +465,7 @@ config TPL_USE_ARCH_MEMSET
 
 config SET_STACK_SIZE
 	bool "Enable an option to set max stack size that can be used"
-	default y if ARCH_VERSAL || ARCH_ZYNQMP
+	default y if ARCH_VERSAL || ARCH_ZYNQMP || ARCH_ZYNQ
 	help
 	  This will enable an option to set max stack size that can be
 	  used by U-Boot.
@@ -474,6 +474,7 @@ config STACK_SIZE
 	hex "Define max stack size that can be used by U-Boot"
 	depends on SET_STACK_SIZE
 	default 0x4000000 if ARCH_VERSAL || ARCH_ZYNQMP
+	default 0x1000000 if ARCH_ZYNQ
 	help
 	  Define Max stack size that can be used by U-Boot so that the
 	  initrd_high will be calculated as base stack pointer minus this
@@ -999,6 +1000,7 @@ config ARCH_VERSAL
 	select DM_SERIAL
 	select OF_CONTROL
 	imply BOARD_LATE_INIT
+	imply ENV_VARS_UBOOT_RUNTIME_CONFIG
 
 config ARCH_VF610
 	bool "Freescale Vybrid"
@@ -1032,6 +1034,7 @@ config ARCH_ZYNQ
 	imply CMD_CLK
 	imply CMD_DM
 	imply CMD_SPL
+	imply ENV_VARS_UBOOT_RUNTIME_CONFIG
 	imply FAT_WRITE
 
 config ARCH_ZYNQMP_R5
@@ -1070,6 +1073,7 @@ config ARCH_ZYNQMP
 	select ZYNQMP_IPI
 	imply BOARD_LATE_INIT
 	imply CMD_DM
+	imply ENV_VARS_UBOOT_RUNTIME_CONFIG
 	imply FAT_WRITE
 	imply MP
 	imply DM_USB_GADGET
@@ -1839,6 +1843,7 @@ source "board/woodburn/Kconfig"
 source "board/xilinx/Kconfig"
 source "board/xilinx/zynq/Kconfig"
 source "board/xilinx/zynqmp/Kconfig"
+source "board/xilinx/versal/Kconfig"
 source "board/phytium/durian/Kconfig"
 
 source "arch/arm/Kconfig.debug"

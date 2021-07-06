@@ -33,6 +33,9 @@ int board_init(void)
 	fpga_add(fpga_xilinx, &versalpl);
 #endif
 
+	if (CONFIG_IS_ENABLED(DM_I2C) && CONFIG_IS_ENABLED(I2C_EEPROM))
+		xilinx_read_eeprom();
+
 	return 0;
 }
 
@@ -82,9 +85,23 @@ int board_early_init_r(void)
 	return 0;
 }
 
+static u8 versal_get_bootmode(void)
+{
+	u8 bootmode;
+	u32 reg = 0;
+
+	reg = readl(&crp_base->boot_mode_usr);
+
+	if (reg >> BOOT_MODE_ALT_SHIFT)
+		reg >>= BOOT_MODE_ALT_SHIFT;
+
+	bootmode = reg & BOOT_MODES_MASK;
+
+	return bootmode;
+}
+
 int board_late_init(void)
 {
-	u32 reg = 0;
 	u8 bootmode;
 	struct udevice *dev;
 	int bootseq = -1;
@@ -100,12 +117,10 @@ int board_late_init(void)
 		return 0;
 	}
 
-	reg = readl(&crp_base->boot_mode_usr);
+	if (!CONFIG_IS_ENABLED(ENV_VARS_UBOOT_RUNTIME_CONFIG))
+		return 0;
 
-	if (reg >> BOOT_MODE_ALT_SHIFT)
-		reg >>= BOOT_MODE_ALT_SHIFT;
-
-	bootmode = reg & BOOT_MODES_MASK;
+	bootmode = versal_get_bootmode();
 
 	puts("Bootmode: ");
 	switch (bootmode) {
@@ -222,7 +237,7 @@ int dram_init_banksize(void)
 
 int dram_init(void)
 {
-	if (fdtdec_setup_mem_size_base() != 0)
+	if (fdtdec_setup_mem_size_base_lowest() != 0)
 		return -EINVAL;
 
 	return 0;

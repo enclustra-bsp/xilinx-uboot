@@ -35,6 +35,7 @@ def test_mmc_list(u_boot_console):
     global mmc_set_up
     mmc_set_up = True
 
+@pytest.mark.xfail
 @pytest.mark.buildconfigspec("cmd_mmc")
 def test_mmc_dev(u_boot_console):
     if not mmc_set_up:
@@ -51,6 +52,9 @@ def test_mmc_dev(u_boot_console):
             devices[x]["detected"] = "no"
 
         if "no mmc device at slot" in output:
+            devices[x]["detected"] = "no"
+
+        if "MMC: no card present" in output:
             devices[x]["detected"] = "no"
 
     if fail:

@@ -36,7 +36,6 @@
 #define CONFIG_CQSPI_REF_CLK	200000000
 
 /* Serial setup */
-#define CONFIG_ARM_DCC
 #define CONFIG_CPU_ARMV8
 
 #define CONFIG_SYS_BAUDRATE_TABLE \
@@ -64,7 +63,7 @@
 #define DFU_ALT_INFO_RAM \
 	"dfu_ram_info=" \
 	"setenv dfu_alt_info " \
-	"Image ram $kernel_addr_r $kernel_size_r\\\\;" \
+	"Image ram 80000 $kernel_size_r\\\\;" \
 	"system.dtb ram $fdt_addr_r $fdt_size_r\0" \
 	"dfu_ram=run dfu_ram_info && dfu 0 ram 0\0" \
 	"thor_ram=run dfu_ram_info && thordown 0 ram 0\0"
@@ -114,15 +113,17 @@
 #define BOOTENV_DEV_XSPI(devtypeu, devtypel, instance) \
 	"bootcmd_xspi0=sf probe 0 0 0 && " \
 	"sf read $scriptaddr $script_offset_f $script_size_f && " \
-	"source ${scriptaddr}; echo SCRIPT FAILED: continuing...;\0"
+	"echo XSPI: Trying to boot script at ${scriptaddr} && " \
+	"source ${scriptaddr}; echo XSPI: SCRIPT FAILED: continuing...;\0"
 
 #define BOOTENV_DEV_NAME_XSPI(devtypeu, devtypel, instance) \
-	"xspi "
+	"xspi0 "
 
 #define BOOT_TARGET_DEVICES_JTAG(func)	func(JTAG, jtag, na)
 
 #define BOOTENV_DEV_JTAG(devtypeu, devtypel, instance) \
-	"bootcmd_jtag=source $scriptaddr; echo SCRIPT FAILED: continuing...;\0"
+	"bootcmd_jtag=echo JTAG: Trying to boot script at ${scriptaddr} && " \
+		"source ${scriptaddr}; echo JTAG: SCRIPT FAILED: continuing...;\0"
 
 #define BOOTENV_DEV_NAME_JTAG(devtypeu, devtypel, instance) \
 	"jtag "
@@ -131,8 +132,10 @@
 
 #define BOOTENV_DEV_DFU_USB(devtypeu, devtypel, instance) \
 	"bootcmd_dfu_usb=setenv dfu_alt_info boot.scr ram $scriptaddr " \
-	"$script_size_f; dfu 0 ram 0 && source $scriptaddr; " \
-	"echo SCRIPT FAILED: continuing...;\0"
+	"$script_size_f; dfu 0 ram 0 && " \
+	"echo DFU: Trying to boot script at ${scriptaddr} && " \
+	"source ${scriptaddr}; " \
+	"echo DFU: SCRIPT FAILED: continuing...;\0"
 
 #define BOOTENV_DEV_NAME_DFU_USB(devtypeu, devtypel, instance) \
 	"dfu_usb "

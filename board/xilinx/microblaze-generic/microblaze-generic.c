@@ -35,6 +35,7 @@ int dram_init(void)
 int board_late_init(void)
 {
 	ulong max_size, lowmem_size;
+	u32 status = 0;
 
 #if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_SYSRESET_MICROBLAZE)
 	int ret;
@@ -56,9 +57,26 @@ int board_late_init(void)
 	/* Linux default LOWMEM_SIZE is 0x30000000 = 768MB */
 	lowmem_size = gd->ram_base + 768 * 1024 * 1024;
 
-	env_set_addr("initrd_high", (void *)min_t(ulong, max_size,
-						  lowmem_size));
-	env_set_addr("fdt_high", (void *)min_t(ulong, max_size, lowmem_size));
+	status |= env_set_addr("initrd_high", (void *)min_t(ulong, max_size,
+				lowmem_size));
+	status |= env_set_addr("fdt_high", (void *)min_t(ulong, max_size,
+				lowmem_size));
+
+	status |= env_set_hex("scriptaddr", max_size + SZ_2M);
+
+	status |= env_set_hex("pxefile_addr_r", max_size + SZ_1M);
+
+	status |= env_set_hex("kernel_addr_r", gd->ram_base + SZ_32M);
+
+	status |= env_set_hex("fdt_addr_r", gd->ram_base + SZ_32M - SZ_1M);
+
+	status |= env_set_hex("ramdisk_addr_r",
+			       gd->ram_base + SZ_32M + SZ_4M + SZ_2M);
+
+	status |= env_set_hex("script_offset_f", CONFIG_BOOT_SCRIPT_OFFSET);
+
+	if (status)
+		printf("%s: Saving run time variables FAILED\n", __func__);
 
 	return 0;
 }

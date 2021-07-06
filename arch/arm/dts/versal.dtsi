@@ -143,6 +143,15 @@
 		interrupt-parent = <&gic>;
 		u-boot,dm-pre-reloc;
 
+		apm: performance-monitor@f0920000 {
+			compatible = "xlnx,flexnoc-pm-2.7";
+			status = "disabled";
+			reg-names = "funnel", "baselpd", "basefpd";
+			reg = <0x0 0xf0920000 0x0 0x1000>,
+			      <0x0 0xf0980000 0x0 0x9000>,
+			      <0x0 0xf0b80000 0x0 0x9000>;
+		};
+
 		can0: can@ff060000 {
 			compatible = "xlnx,canfd-2.0";
 			status = "disabled";
@@ -220,7 +229,6 @@
 			xlnx,bus-width = <64>;
 			/* dma-coherent; */
 		};
-
 
 		lpd_dma_chan3: dma@ffab0000 {
 			compatible = "xlnx,zynqmp-dma-1.0";
@@ -308,7 +316,6 @@
 			#size-cells = <0>;
 		};
 
-
 		gpio0: gpio@ff0b0000 {
 			compatible = "xlnx,versal-gpio-1.0";
 			status = "disabled";
@@ -349,6 +356,46 @@
 			clock-frequency = <400000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+		};
+
+		mc0: memory-controller@f6150000	{
+			compatible = "xlnx,versal-ddrmc-edac";
+			status = "disabled";
+			reg = <0x0 0xf6150000 0x0 0x2000>, <0x0 0xf6070000 0x0 0x20000>;
+			reg-names = "ddrmc_base", "ddrmc_noc_base";
+			interrupt-parent = <&gic>;
+			interrupts = <0 147 4>;
+			xlnx,mc-id = <0>;
+		};
+
+		mc1: memory-controller@f62c0000 {
+			compatible = "xlnx,versal-ddrmc-edac";
+			status = "disabled";
+			reg = <0x0 0xf62c0000 0x0 0x2000>, <0x0 0xf6210000 0x0 0x20000>;
+			reg-names = "ddrmc_base", "ddrmc_noc_base";
+			interrupt-parent = <&gic>;
+			interrupts = <0 147 4>;
+			xlnx,mc-id = <1>;
+		};
+
+		mc2: memory-controller@f6430000 {
+			compatible = "xlnx,versal-ddrmc-edac";
+			status = "disabled";
+			reg = <0x0 0xf6430000 0x0 0x2000>, <0x0 0xf6380000 0x0 0x20000>;
+			reg-names = "ddrmc_base", "ddrmc_noc_base";
+			interrupt-parent = <&gic>;
+			interrupts = <0 147 4>;
+			xlnx,mc-id = <2>;
+		};
+
+		mc3: memory-controller@f65a0000 {
+			compatible = "xlnx,versal-ddrmc-edac";
+			status = "disabled";
+			reg = <0x0 0xf65a0000 0x0 0x2000>, <0x0 0xf64f0000 0x0 0x20000>;
+			reg-names = "ddrmc_base", "ddrmc_noc_base";
+			interrupt-parent = <&gic>;
+			interrupts = <0 147 4>;
+			xlnx,mc-id = <3>;
 		};
 
 		rtc: rtc@f12a0000 {
@@ -455,7 +502,6 @@
 			#size-cells = <0>;
 		};
 
-
 		spi0: spi@ff040000 {
 			compatible = "cdns,spi-r1p6";
 			status = "disabled";
@@ -474,6 +520,13 @@
 			clock-names = "ref_clk", "pclk";
 			#address-cells = <1>;
 			#size-cells = <0>;
+		};
+
+		sysmon: sysmon@f1270000 {
+			compatible = "xlnx,versal-sysmon";
+			reg = <0x0 0xf1270000 0x0 0x4000>;
+			interrupts = <0 144 4>;
+			xlnx,numchannels = /bits/8 <0>;
 		};
 
 		ttc0: timer@ff0e0000 {
@@ -565,8 +618,10 @@
 			compatible = "xlnx,versal-wwdt-1.0";
 			status = "disabled";
 			reg = <0 0xfd4d0000 0 0x10000>;
-			timeout-sec = <60>;
+			interrupt-names = "wdt", "wwdt_reset_pending";
+			interrupts = <0 0x64 1>, <0 0x6D 1>;
+			timeout-sec = <30>;
+			pretimeout-sec = <25>;
 		};
 	};
-
 };

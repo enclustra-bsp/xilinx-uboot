@@ -29,10 +29,10 @@ static int fru_check_language(u8 code)
 		return -EINVAL;
 	}
 
-	return code;
+	return 0;
 }
 
-static u8 fru_checksum(u8 *addr, u8 len)
+u8 fru_checksum(u8 *addr, u8 len)
 {
 	u8 checksum = 0;
 
@@ -77,7 +77,7 @@ static u8 fru_gen_type_len(u8 *addr, char *name)
 }
 
 int fru_generate(unsigned long addr, char *manufacturer, char *board_name,
-		 char *serial_no, char *part_no)
+		 char *serial_no, char *part_no, char *revision)
 {
 	struct fru_common_hdr *header = (struct fru_common_hdr *)addr;
 	struct fru_board_info_header *board_info;
@@ -123,6 +123,8 @@ int fru_generate(unsigned long addr, char *manufacturer, char *board_name,
 	member += len;
 	len = fru_gen_type_len(member, "U-Boot generator"); /* File ID */
 	member += len;
+	len = fru_gen_type_len(member, revision); /* Revision */
+	member += len;
 
 	*member++ = 0xc1; /* Indication of no more fields */
 
@@ -145,10 +147,10 @@ int fru_generate(unsigned long addr, char *manufacturer, char *board_name,
 	*member = 0; /* Clear before calculation */
 	*member = 0 - fru_checksum((u8 *)board_info, len);
 
-	debug("checksum %x(len %x)\n", *member, len);
+	debug("checksum %x(addr %x)\n", *member, len);
 
 	env_set_hex("fru_addr", addr);
-	env_set_hex("filesize", len);
+	env_set_hex("filesize", (unsigned long)member - addr + 1);
 
 	return 0;
 }
@@ -164,7 +166,6 @@ static int fru_parse_board(unsigned long addr)
 	data = (u8 *)&fru_data.brd.manufacturer_type_len;
 
 	for (i = 0; ; i++, data += FRU_BOARD_MAX_LEN) {
-		*data++ = *(u8 *)addr;
 		len = fru_check_type_len(*(u8 *)addr, fru_data.brd.lang_code,
 					 &type);
 		/*
@@ -173,15 +174,17 @@ static int fru_parse_board(unsigned long addr)
 		if (len == -EINVAL)
 			break;
 
-		/*
-		 * Dont capture data if type is not ASCII8
-		 */
-		if (type != FRU_TYPELEN_TYPE_ASCII8)
-			return 0;
+		/* This record type/len field */
+		*data++ = *(u8 *)addr;
 
+		/* Add offset to match data */
 		addr += 1;
+
+		/* If len is 0 it means empty field that's why skip writing */
 		if (!len)
 			continue;
+
+		/* Record data field */
 		memcpy(data, (u8 *)addr, len);
 		term = data + (u8)len;
 		*term = 0;
@@ -225,7 +228,7 @@ int fru_capture(unsigned long addr)
 	return 0;
 }
 
-static int fru_display_board(void)
+static int fru_display_board(struct fru_board_data *brd, int verbose)
 {
 	u32 time = 0;
 	u8 type;
@@ -243,24 +246,30 @@ static int fru_display_board(void)
 		"Product Name",
 		"Serial No",
 		"Part Number",
-		"File ID"
+		"File ID",
+		/* Xilinx spec */
+		"Revision Number",
 	};
 
-	printf("*****BOARD INFO*****\n");
-	printf("Version:%d\n", fru_version(fru_data.brd.ver));
-	printf("Board Area Length:%d\n", fru_cal_area_len(fru_data.brd.len));
+	if (verbose) {
+		printf("*****BOARD INFO*****\n");
+		printf("Version:%d\n", fru_version(brd->ver));
+		printf("Board Area Length:%d\n", fru_cal_area_len(brd->len));
+	}
 
-	if (fru_check_language(fru_data.brd.lang_code))
-		return 0;
+	if (fru_check_language(brd->lang_code))
+		return -EINVAL;
 
-	time = fru_data.brd.time[2] << 16 | fru_data.brd.time[1] << 8 |
-	       fru_data.brd.time[0];
-	printf("Time in Minutes from 0:00hrs 1/1/96 %d\n", time);
+	time = brd->time[2] << 16 | brd->time[1] << 8 |
+	       brd->time[0];
 
-	data = (u8 *)&fru_data.brd.manufacturer_type_len;
+	if (verbose)
+		printf("Time in Minutes from 0:00hrs 1/1/96: %d\n", time);
 
-	for (u8 i = 0; ; i++) {
-		len = fru_check_type_len(*data++, fru_data.brd.lang_code,
+	data = (u8 *)&brd->manufacturer_type_len;
+
+	for (u8 i = 0; i < (sizeof(boardinfo)/sizeof(*boardinfo)); i++) {
+		len = fru_check_type_len(*data++, brd->lang_code,
 					 &type);
 		if (len == -EINVAL) {
 			printf("**** EOF for Board Area ****\n");
@@ -268,32 +277,40 @@ static int fru_display_board(void)
 		}
 
 		if (type <= FRU_TYPELEN_TYPE_ASCII8 &&
-		    (fru_data.brd.lang_code == FRU_LANG_CODE_ENGLISH ||
-		     fru_data.brd.lang_code == FRU_LANG_CODE_ENGLISH_1))
-			printf("Type code: %s\n", typecode[type]);
+		    (brd->lang_code == FRU_LANG_CODE_ENGLISH ||
+		     brd->lang_code == FRU_LANG_CODE_ENGLISH_1))
+			debug("Type code: %s\n", typecode[type]);
 		else
-			printf("Type code: %s\n", typecode[type + 1]);
+			debug("Type code: %s\n", typecode[type + 1]);
 
-		if (type != FRU_TYPELEN_TYPE_ASCII8) {
-			printf("FRU_ERROR: Only ASCII8 type is supported\n");
-			return 0;
-		}
 		if (!len) {
-			printf("%s not found\n", boardinfo[i]);
+			debug("%s not found\n", boardinfo[i]);
 			continue;
 		}
 
-		printf("Length: %d\n", len);
-		printf("%s: %s\n", boardinfo[i], data);
+		switch (type) {
+		case FRU_TYPELEN_TYPE_BINARY:
+			debug("Length: %d\n", len);
+			printf(" %s: 0x%x\n", boardinfo[i], *data);
+			break;
+		case FRU_TYPELEN_TYPE_ASCII8:
+			debug("Length: %d\n", len);
+			printf(" %s: %s\n", boardinfo[i], data);
+			break;
+		default:
+			debug("Unsupported type %x\n", type);
+		}
+
 		data += FRU_BOARD_MAX_LEN;
 	}
 
 	return 0;
 }
 
-static void fru_display_common_hdr(void)
+static void fru_display_common_hdr(struct fru_common_hdr *hdr, int verbose)
 {
-	struct fru_common_hdr *hdr = &fru_data.hdr;
+	if (!verbose)
+		return;
 
 	printf("*****COMMON HEADER*****\n");
 	printf("Version:%d\n", fru_version(hdr->version));
@@ -328,15 +345,14 @@ static void fru_display_common_hdr(void)
 		printf("*** No MultiRecord Area ***\n");
 }
 
-int fru_display(void)
+int fru_display(int verbose)
 {
 	if (!fru_data.captured) {
 		printf("FRU data not available please run fru parse\n");
 		return -EINVAL;
 	}
 
-	fru_display_common_hdr();
-	fru_display_board();
+	fru_display_common_hdr(&fru_data.hdr, verbose);
 
-	return 0;
+	return fru_display_board(&fru_data.brd, verbose);
 }

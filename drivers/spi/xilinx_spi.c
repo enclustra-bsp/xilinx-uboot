@@ -76,9 +76,7 @@ DECLARE_GLOBAL_DATA_PTR;
 				SPICR_SPE | SPICR_MASTER_INHIBIT)
 #define XILSPI_SPICR_DFLT_OFF	(SPICR_MASTER_INHIBIT | SPICR_MANUAL_SS)
 
-#ifndef CONFIG_XILINX_SPI_IDLE_VAL
-#define CONFIG_XILINX_SPI_IDLE_VAL	GENMASK(7, 0)
-#endif
+#define XILINX_SPI_IDLE_VAL	GENMASK(7, 0)
 
 #define XILINX_SPISR_TIMEOUT	10000 /* in milliseconds */
 
@@ -199,7 +197,7 @@ static u32 xilinx_spi_fill_txfifo(struct udevice *bus, const u8 *txp,
 
 	while (txbytes && !(readl(&regs->spisr) & SPISR_TX_FULL) &&
 	       i < priv->fifo_depth) {
-		d = txp ? *txp++ : CONFIG_XILINX_SPI_IDLE_VAL;
+		d = txp ? *txp++ : XILINX_SPI_IDLE_VAL;
 		debug("spi_xfer: tx:%x ", d);
 		/* write out and wait for processing (receive data) */
 		writel(d & SPIDTR_8BIT_MASK, &regs->spidtr);
@@ -239,7 +237,7 @@ static void xilinx_spi_startup_block(struct udevice *dev, unsigned int bytes,
 	struct dm_spi_slave_platdata *slave_plat = dev_get_parent_platdata(dev);
 	const unsigned char *txp = dout;
 	unsigned char *rxp = din;
-	u32 reg, count;
+	u32 reg;
 	u32 txbytes = bytes;
 	u32 rxbytes = bytes;
 
@@ -249,10 +247,10 @@ static void xilinx_spi_startup_block(struct udevice *dev, unsigned int bytes,
 	 * it sets txp to the initial value for the normal operation.
 	 */
 	for ( ; priv->startup < 2; priv->startup++) {
-		count = xilinx_spi_fill_txfifo(bus, txp, txbytes);
+		xilinx_spi_fill_txfifo(bus, txp, txbytes);
 		reg = readl(&regs->spicr) & ~SPICR_MASTER_INHIBIT;
 		writel(reg, &regs->spicr);
-		count = xilinx_spi_read_rxfifo(bus, rxp, rxbytes);
+		xilinx_spi_read_rxfifo(bus, rxp, rxbytes);
 		txp = din;
 
 		if (priv->startup) {
