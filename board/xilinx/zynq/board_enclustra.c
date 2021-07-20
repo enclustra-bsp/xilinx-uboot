@@ -13,7 +13,7 @@
 #include <asm/io.h>
 #include <spi.h>
 #include <spi_flash.h>
-#include <enclustra_qspi.h>
+#include <enclustra/enclustra_qspi.h>
 #include <enclustra/eeprom-mac.h>
 #include <asm/arch/ps7_init_gpl.h>
 

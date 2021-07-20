@@ -7,7 +7,7 @@
 #include <zynqmppl.h>
 #include <spi.h>
 #include <spi_flash.h>
-#include <enclustra_qspi.h>
+#include <enclustra/enclustra_qspi.h>
 #include <asm/arch/sys_proto.h>
 
 int enclustra_board(void)
