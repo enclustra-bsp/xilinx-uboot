@@ -64,6 +64,7 @@ struct arasan_sdhci_priv {
 	u8 deviceid;
 	u8 bank;
 	u8 no_1p8;
+	u8 is_emmc;
 	struct reset_ctl_bulk resets;
 };
 
@@ -812,7 +813,7 @@ static int arasan_sdhci_probe(struct udevice *dev)
 	unsigned long clock;
 	int ret;
 
-	host = priv->host;
+        host = priv->host;
 
 #if defined(CONFIG_ARCH_ZYNQMP)
 	if (device_is_compatible(dev, "xlnx,zynqmp-8.9a")) {
@@ -853,10 +854,14 @@ static int arasan_sdhci_probe(struct udevice *dev)
 	host->quirks |= SDHCI_QUIRK_BROKEN_HISPD_MODE;
 #endif
 
+	if (priv->is_emmc)
+		host->quirks |= SDHCI_QUIRK_EMMC_INIT;
+
+	host->version = sdhci_readw(host, SDHCI_HOST_VERSION);
 	if (priv->no_1p8)
 		host->quirks |= SDHCI_QUIRK_NO_1_8_V;
 
-	plat->cfg.f_max = CONFIG_ZYNQ_SDHCI_MAX_FREQ;
+	plat->cfg.f_max = dev_read_u32_default(dev, "max-frequency", CONFIG_ZYNQ_SDHCI_MAX_FREQ);
 
 	ret = mmc_of_parse(dev, &plat->cfg);
 	if (ret)
@@ -907,6 +912,11 @@ static int arasan_sdhci_of_to_plat(struct udevice *dev)
 
 	priv->host->name = dev->name;
 
+	if (fdt_get_property(gd->fdt_blob, dev_of_offset(dev), "is_emmc", NULL))
+		priv->is_emmc = 1;
+	else
+		priv->is_emmc = 0;
+
 #if defined(CONFIG_ARCH_ZYNQMP) || defined(CONFIG_ARCH_VERSAL)
 	priv->host->ops = &arasan_ops;
 	arasan_dt_parse_clk_phases(dev);
@@ -917,7 +927,7 @@ static int arasan_sdhci_of_to_plat(struct udevice *dev)
 		return PTR_ERR(priv->host->ioaddr);
 
 	priv->deviceid = dev_read_u32_default(dev, "xlnx,device_id", -1);
-	priv->bank = dev_read_u32_default(dev, "xlnx,mio-bank", 0);
+	priv->bank = dev_read_u32_default(dev, "xlnx,mio_bank", -1);
 	priv->no_1p8 = dev_read_bool(dev, "no-1-8-v");
 
 	return 0;
