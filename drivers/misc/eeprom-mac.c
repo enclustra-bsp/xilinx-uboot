@@ -5,6 +5,26 @@
 #include <enclustra/eeprom-mac.h>
 #include <atsha204a-i2c.h>
 
+static int i2c_get_device(uint chip_addr, int alen, struct udevice **devp)
+{
+	struct dm_i2c_chip *chip;
+	int ret;
+
+	ret = i2c_get_chip_for_busnum(DS28_SYS_I2C_EEPROM_BUS, chip_addr,
+			alen, devp);
+	if (ret)
+		return ret;
+
+	chip = dev_get_parent_plat(*devp);
+	if (chip->offset_len != alen) {
+		printf("I2C chip %x: requested alen %d does not match chip "
+			"offset_len %d\n", chip_addr, alen, chip->offset_len);
+		return -EADDRNOTAVAIL;
+	}
+
+	return 0;
+}
+
 static struct udevice *get_atsha204a_dev(void)
 {
 	static struct udevice *dev;
@@ -16,6 +36,22 @@ static struct udevice *get_atsha204a_dev(void)
 
 	return dev;
 }
+
+int ds28_get_mac(u8 *buffer)
+{
+	int ret;
+	struct udevice *dev;
+
+	ret = i2c_get_device(DS28_I2C_ADDR, 1, &dev);
+	if (ret != 0)
+		return ret;
+
+	return dm_i2c_read(dev,
+			0x10,
+			buffer,
+			6);
+}
+EXPORT_SYMBOL_GPL(ds28_get_mac);
 
 int atsha204_get_mac(u8 *buffer)
 {
