@@ -33,7 +33,6 @@ struct phy_device *phy_connect_phy_id(struct mii_dev *bus, struct udevice *dev,
 
 	ret = ofnode_read_eth_phy_id(node, &vendor, &device);
 	if (ret) {
-		dev_err(dev, "Failed to read eth PHY id, err: %d\n", ret);
 		return NULL;
 	}
 
