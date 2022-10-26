@@ -262,4 +262,6 @@
 # error "Disable CONFIG_SPL_SYS_MALLOC_SIMPLE. Full malloc needs to be used"
 #endif
 
+#define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS        4
+
 #endif /* __XILINX_ZYNQMP_H */

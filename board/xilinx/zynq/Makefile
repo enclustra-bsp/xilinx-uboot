@@ -4,6 +4,8 @@
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 
 obj-y	:= board.o
+obj-y	+= ../common/enclustra.o
+obj-y   += board_mux.o
 
 ifneq ($(CONFIG_XILINX_PS_INIT_FILE),"")
 PS_INIT_FILE := $(shell cd $(srctree); readlink -f $(CONFIG_XILINX_PS_INIT_FILE))

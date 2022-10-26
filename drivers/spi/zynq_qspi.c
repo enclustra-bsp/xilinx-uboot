@@ -69,7 +69,9 @@ DECLARE_GLOBAL_DATA_PTR;
 #define ZYNQ_QSPI_DEFAULT_BAUD_RATE	0x2
 
 #define ZYNQ_QSPI_FIFO_DEPTH		63
-#define ZYNQ_QSPI_WAIT			(CONFIG_SYS_HZ / 100)	/* 10 ms */
+#ifndef CONFIG_SYS_ZYNQ_QSPI_WAIT
+#define CONFIG_SYS_ZYNQ_QSPI_WAIT	CONFIG_SYS_HZ/100	/* 10 ms */
+#endif
 
 /* zynq qspi register set */
 struct zynq_qspi_regs {
@@ -296,6 +298,10 @@ static int zynq_qspi_child_pre_probe(struct udevice *bus)
 	return 0;
 }
 
+#ifdef CONFIG_ENCLUSTRA_NANDMUX
+extern void zx_set_storage(char* arg);
+#endif
+
 static int zynq_qspi_probe(struct udevice *bus)
 {
 	struct zynq_qspi_plat *plat = dev_get_plat(bus);
@@ -303,6 +309,10 @@ static int zynq_qspi_probe(struct udevice *bus)
 	struct clk clk;
 	unsigned long clock;
 	int ret;
+
+#ifdef CONFIG_ENCLUSTRA_NANDMUX
+	zx_set_storage("QSPI");
+#endif
 
 	priv->regs = plat->regs;
 	priv->fifo_depth = ZYNQ_QSPI_FIFO_DEPTH;
@@ -481,8 +491,8 @@ static void zynq_qspi_fill_tx_fifo(struct zynq_qspi_priv *priv, u32 size)
 	unsigned len, offset;
 	struct zynq_qspi_regs *regs = priv->regs;
 	static const unsigned offsets[4] = {
-		ZYNQ_QSPI_TXD_00_01_OFFSET, ZYNQ_QSPI_TXD_00_10_OFFSET,
-		ZYNQ_QSPI_TXD_00_11_OFFSET, ZYNQ_QSPI_TXD_00_00_OFFSET };
+		ZYNQ_QSPI_TXD_00_00_OFFSET, ZYNQ_QSPI_TXD_00_01_OFFSET,
+		ZYNQ_QSPI_TXD_00_10_OFFSET, ZYNQ_QSPI_TXD_00_11_OFFSET };
 
 	while ((fifocount < size) &&
 			(priv->bytes_to_transfer > 0)) {
@@ -504,10 +514,7 @@ static void zynq_qspi_fill_tx_fifo(struct zynq_qspi_priv *priv, u32 size)
 				return;
 			len = priv->bytes_to_transfer;
 			zynq_qspi_write_data(priv, &data, len);
-			if (priv->is_dual && !priv->is_inst && (len % 2))
-				len++;
-			offset = (priv->rx_buf) ?
-				  offsets[3] : offsets[len - 1];
+		        offset = (priv->rx_buf) ? offsets[0] : offsets[len];
 			writel(data, &regs->cr + (offset / 4));
 		}
 	}
@@ -539,7 +546,7 @@ static int zynq_qspi_irq_poll(struct zynq_qspi_priv *priv)
 	do {
 		status = readl(&regs->isr);
 	} while ((status == 0) &&
-		(get_timer(timeout) < ZYNQ_QSPI_WAIT));
+	        (get_timer(timeout) < CONFIG_SYS_ZYNQ_QSPI_WAIT));
 
 	if (status == 0) {
 		printf("zynq_qspi_irq_poll: Timeout!\n");
