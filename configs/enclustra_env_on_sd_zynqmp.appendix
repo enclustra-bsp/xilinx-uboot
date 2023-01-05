@@ -1,0 +1,12 @@
+#
+# File systems
+#
+CONFIG_FS_FAT=y
+CONFIG_FAT_WRITE=y
+#
+# Environment
+#
+CONFIG_ENV_IS_IN_FAT=y
+CONFIG_ENV_FAT_INTERFACE="mmc"
+CONFIG_ENV_FAT_DEVICE_AND_PART="1:1"
+CONFIG_ENV_FAT_FILE="uboot.env"

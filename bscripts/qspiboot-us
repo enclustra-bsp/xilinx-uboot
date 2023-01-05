@@ -1,0 +1,4 @@
+run qspi_args
+sf read ${bootimage_loadaddr} ${qspi_bootimage_offset} ${bootimage_size}
+
+bootm ${bootimage_loadaddr}

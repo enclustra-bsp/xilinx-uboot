@@ -1,0 +1,1 @@
+run mmc_args && mmc rescan && load mmc 0 ${kernel_loadaddr} ${kernel_image} && load mmc 0 ${devicetree_loadaddr} ${devicetree_image} && bootm ${kernel_loadaddr} - ${devicetree_loadaddr}

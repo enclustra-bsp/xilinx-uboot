@@ -1,0 +1,9 @@
+# first load all the images from current mmcdev
+load mmc ${mmcdev} ${kernel_loadaddr} ${kernel_image} || exit;
+load mmc ${mmcdev} ${devicetree_loadaddr} ${devicetree_image} || exit;
+
+# setup mmc bootargs
+run mmc_args;
+
+# now attempt to boot
+booti ${kernel_loadaddr} - ${devicetree_loadaddr};
