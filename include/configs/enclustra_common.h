@@ -7,10 +7,8 @@
 
 #define MTDIDS_DEFAULT          "nand0=nand"
 #define MTDPARTS_DEFAULT        "mtdparts=" \
-	                                "nand:5M(nand-linux),"  \
-                                "1M(nand-device-tree)," \
+                                "nand:32M(nand-linux),"  \
                                 "1M(nand-bootscript),"  \
-				"11M(ubi-env),"		\
                                 "-(nand-rootfs)"
 
 #define ENVIRONMENT_SIZE "0x18000"
