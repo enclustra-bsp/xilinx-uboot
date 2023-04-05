@@ -162,5 +162,6 @@
                                                 \
     "setuptest=mmc rescan && "                  \
         "load mmc 0 0x1000000 setup_script.img && " \
-        "source 0x1000000\0"
+        "source 0x1000000\0"                    \
+    "scsi_init=true\0"
 #endif
